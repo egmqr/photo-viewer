@@ -12,7 +12,13 @@
     .hint-banner { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: fit-content; max-width: 90%; font-size: 13px; text-align: center; font-weight: bold; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px; z-index: 100; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.3); transition: opacity 0.3s; pointer-events: none; opacity: 0; }
     .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; z-index: 10; color: #fff; cursor:pointer;} 
     .left { left: max(10px, env(safe-area-inset-left)); } .right { right: max(10px, env(safe-area-inset-right)); } 
+    
     .modal-bottom-controls { position: absolute; bottom: 0; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 20; padding-top: 20px; padding-bottom: max(20px, env(safe-area-inset-bottom)); background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%); } 
+    
+    /* Download Button Styles */
+    .download-btn { background: rgba(255, 255, 255, 0.15); color: white; padding: 8px 24px; border-radius: 20px; font-weight: bold; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); font-size: 13px; transition: background 0.2s; backdrop-filter: blur(5px); }
+    .download-btn:active { background: rgba(255,255,255,0.3); }
+
     .filmstrip-wrapper { position: relative; width: 100%; overflow-x: auto; white-space: nowrap; -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); padding: 10px calc(50% - 26.5px); box-sizing: border-box; } 
     .filmstrip-wrapper::-webkit-scrollbar { display: none; } 
     .filmstrip-thumb { cursor: pointer; box-sizing: border-box; width: 45px; height: 45px; object-fit: cover; display: inline-block; margin: 0 4px; border-radius: 6px; opacity: 0.4; border: 2px solid transparent; transition: all 0.2s; background-color: #222; } 
@@ -33,6 +39,7 @@
   </div>
   <div class="modal-bottom-controls">
     <div id="image-counter" style="font-size:12px; color:#aaa; font-weight:bold;">...</div>
+    <button id="download-btn" class="download-btn" style="display: none;" onclick="triggerDownload()">Download</button>
     <div class="filmstrip-wrapper" id="filmstripWrapper"></div>
     <div class="scrubber-track" id="scrubberTrack">
       <div class="time-bubble" id="timeBubble"></div>
@@ -44,11 +51,17 @@
   <script>
     let images = [];
     let currentIndex = 0;
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     
     // State & Timers
     let activeHdLoader = null, idleHdTimer = null, fadeTimer = null, hintTimer = null;
     let isScrubbing = false, pIsProgrammatic = false, scrollEndTimer = null;
     let lastPreviewFetch = 0, popoutImgTimer = null, scrubRAF = null;
+
+    // Show download button for non-iOS users automatically
+    if (!isIOS) {
+      document.getElementById('download-btn').style.display = 'block';
+    }
 
     // 1. Handshake: Tell parent window we are ready
     window.onload = () => {
@@ -61,7 +74,6 @@
 
       if (event.data.type === 'INIT_DATA') {
         images = event.data.images;
-        // Parse the requested ID from the URL (e.g. viewer.html?id=123)
         const targetId = new URLSearchParams(window.location.search).get('id');
         currentIndex = Math.max(0, images.findIndex(img => img.id === targetId));
         
@@ -69,9 +81,8 @@
         updateUI(false, true);
       } 
       else if (event.data.type === 'UPDATE_DATA') {
-        // Deep fetch finished! Update array silently
         images = event.data.images;
-        rebuildFilmstrip(false); // False prevents scrolling the wrapper unnecessarily
+        rebuildFilmstrip(false); 
         updateUI(false, false);
       }
     });
@@ -79,7 +90,7 @@
     // 3. UI Rebuild Logic
     function rebuildFilmstrip(forceScroll) {
       const wrapper = document.getElementById('filmstripWrapper');
-      const currentScroll = wrapper.scrollLeft; // Save exact scroll position
+      const currentScroll = wrapper.scrollLeft; 
       
       let fHtml = '';
       images.forEach((f, i) => { fHtml += `<img id="pt-${i}" class="filmstrip-thumb ${i === currentIndex ? 'active' : ''}" src="${f.baseUrl.startsWith('data:') ? f.baseUrl : f.baseUrl + '=s50-c'}" loading="lazy" onclick="navigateTo(${i})">`; });
@@ -92,7 +103,7 @@
           wrapper.scrollLeft = nA.offsetLeft + (nA.offsetWidth / 2) - (wrapper.offsetWidth / 2); 
         }
       } else {
-        wrapper.scrollLeft = currentScroll; // Restore scroll seamlessly
+        wrapper.scrollLeft = currentScroll; 
       }
     }
 
@@ -132,7 +143,6 @@
         } 
       }
 
-      // Clear Timers & Loaders
       clearTimeout(idleHdTimer); clearTimeout(fadeTimer); clearTimeout(hintTimer);
       document.getElementById('hd-hint').style.opacity = '0';
       if (activeHdLoader) { activeHdLoader.onload = null; activeHdLoader.onerror = null; activeHdLoader.src = ""; activeHdLoader = null; }
@@ -149,7 +159,7 @@
         else { clearTimeout(popoutImgTimer); popoutImgTimer = setTimeout(() => { imgEl.src = scrubUrl; lastPreviewFetch = Date.now(); }, 120); }
       } else { 
         imgEl.style.opacity = 0; 
-        const renderIndex = currentIndex; // Trap index
+        const renderIndex = currentIndex; 
         
         fadeTimer = setTimeout(() => { 
           imgEl.src = previewUrl; 
@@ -169,7 +179,10 @@
                 activeHdLoader.onload = null;
                 if (currentIndex !== renderIndex) return;
                 imgEl.src = hdUrl; 
-                if (!isData) showHint("HD photo loaded. Long press the image then Save to Photos");
+                if (!isData) {
+                    // Smart hinting based on OS
+                    showHint(isIOS ? "HD photo loaded. Long press the image then Save to Photos" : "HD photo loaded.");
+                }
               };
               activeHdLoader.onerror = () => { if (!isData) showHint("Failed to load HD photo", false); };
               activeHdLoader.src = hdUrl;
@@ -177,6 +190,29 @@
           };
         }, 20); 
       } 
+    }
+
+    // Download Function for Non-iOS / Desktop
+    async function triggerDownload() {
+      const img = images[currentIndex];
+      if (!img) return;
+      const btn = document.getElementById('download-btn');
+      btn.innerText = "Downloading...";
+      
+      try { 
+        const res = await fetch(img.baseUrl + '=s0'); 
+        const blob = await res.blob(); 
+        const url = URL.createObjectURL(blob); 
+        const a = document.createElement('a'); 
+        a.href = url; 
+        a.download = img.name || 'photo.jpg'; 
+        a.click(); 
+        URL.revokeObjectURL(url);
+      } catch(e) { 
+        window.open(img.baseUrl + '=s0', '_blank'); 
+      } finally { 
+        btn.innerText = "Download"; 
+      }
     }
 
     // 4. Interactions
