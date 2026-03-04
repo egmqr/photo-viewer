@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    :root { --primary: #202124; --bg: transparent; }
+    html { box-sizing: border-box; background: transparent; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin: 0; padding: 0; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; min-height: 100vh; padding-bottom: calc(230px + env(safe-area-inset-bottom)); }
+
+    /* SEARCH UI */
+    .search-wrapper { position: sticky; top: 0; z-index: 100; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .input-container { position: relative; width: 90%; max-width: 500px; }
+    #timeSearch { width: 100%; padding: 12px 45px 12px 20px; border: 1px solid rgba(0,0,0,0.1); border-radius: 30px; font-size: 16px; outline: none; background: rgba(255,255,255,0.9); box-sizing: border-box; }
+    .clear-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; background: #ccc; color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; cursor: pointer; }
+
+    #background-loader { display: flex; justify-content: center; align-items: center; width: fit-content; margin: 0 auto; height: 26px; padding: 0 15px; color: #333; font-size: 11px; font-weight: 700; gap: 8px; background-color: rgba(255,255,255,0.85); border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .spinner-small { width: 12px; height: 12px; border: 2px solid #ccc; border-top: 2px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* GALLERY GRID */
+    .gallery-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px; max-width: 1200px; margin: 0 auto; }
+    @media (min-width: 768px) { .gallery-container { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; padding: 20px; } }
+    .card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
+    .image-container { width: 100%; aspect-ratio: 1 / 1; overflow: hidden; position: relative; background-color: #eee; background-image: linear-gradient(90deg, #eee 0px, #fafafa 40px, #eee 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+    .image-container img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s; }
+    .image-container img.loaded { opacity: 1; }
+    @keyframes shimmer { 0% { background-position: -100px; } 100% { background-position: 500px; } }
+    .card-footer { padding: 6px; text-align: center; background: rgba(255,255,255,0.8); }
+    .time-value { font-size: 11px; color: #111; font-weight: 700; }
+
+    #status-toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 10px 24px; border-radius: 30px; font-size: 13px; font-weight: bold; opacity: 0; transition: 0.4s; z-index: 5000; }
+    #sentinel { height: 50px; }
+  </style>
+</head>
+<body>
+
+<div id="status-toast">Synced</div>
+<div class="search-wrapper">
+  <div class="input-container">
+    <input type="text" id="timeSearch" placeholder="Search time or filename..." oninput="handleSearch()">
+    <div id="clearSearch" class="clear-btn" onclick="clearSearch()">&times;</div>
+  </div>
+  <div id="background-loader"><div class="spinner-small"></div><span id="loader-msg">Syncing...</span></div>
+</div>
+<div class="gallery-container" id="gallery"></div>
+<div id="sentinel"></div>
+
+<script>
+  // --- FIXED: GRAB VARIABLES FROM THE BACKEND TEMPLATE ---
+  const targetFolderId = "<?= folderId ?>"; 
+  const boothNumber = "<?= boothNumber ?>";
+  
+  // Set the page title dynamically
+  document.title = `Booth ${boothNumber} Gallery`;
+  // -------------------------------------------------------
+
+  window.filteredImages = []; 
+  let allImages = [], currentIndex = 0, isFirstLoad = true, scrollObserver = null;
+  let viewerWindow = null;
+  
+  // ---> IMPORTANT: REPLACE THIS URL WITH YOUR LIVE GITHUB PAGES URL <---
+  const GITHUB_VIEWER_URL = "https://egmqr.github.io/photo-viewer/viewer.html"; 
+
+  const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w150'; 
+
+// 1. Define your Master Apps Script API URL
+const API_URL = "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID/exec";
+
+// 2. Grab folderId from the URL natively (No more iframe issues!)
+const urlParams = new URLSearchParams(window.location.search);
+const targetFolderId = urlParams.get('folderId');
+
+window.onload = () => {
+  if (!targetFolderId) {
+    document.getElementById('gallery').innerHTML = "<h2>Missing Folder ID</h2>";
+    return;
+  }
+  // Fetch initial data using standard Web Fetch
+  fetch(`${API_URL}?api=getInitial&folderId=${targetFolderId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data) loadData(data);
+      // Trigger deep sync immediately after
+      refreshData(); 
+    });
+};
+
+
+
+  // 1. Listen for the GitHub tab asking for data
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'VIEWER_READY') {
+      if (viewerWindow && !viewerWindow.closed) {
+        viewerWindow.postMessage({ 
+          type: 'INIT_DATA', 
+          images: window.filteredImages 
+        }, '*');
+      }
+    }
+  });
+
+  // 2. Launch the viewer
+  function handleImageClick(id) {
+    viewerWindow = window.open(`${GITHUB_VIEWER_URL}?id=${id}`, "_blank");
+  }
+
+  function handleDeepSync(data) {
+    document.getElementById('background-loader').style.display = 'none';
+    if (!data) return;
+    
+    allImages = data.map(processItem);
+    applyFilter(); 
+    isFirstLoad = false; 
+    showToast('Synced'); 
+    setInterval(refreshData, 30000); 
+
+    // Instantly push the new deep-fetched data to the open tab
+    if (viewerWindow && !viewerWindow.closed) {
+      viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
+    }
+  }
+
+  function processItem(item) {
+    const [id, name, rawUrl, rawTime] = item;
+    let displayTime = '';
+    if (rawTime > 0) {
+      const d = new Date(rawTime);
+      const ph = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) + (8 * 3600000));
+      let h = ph.getHours(), m = ph.getMinutes().toString().padStart(2, '0');
+      displayTime = `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
+    }
+    let baseUrl = rawUrl.startsWith('data:') ? rawUrl : rawUrl.split('=')[0];
+    return { id, name, baseUrl, url: baseUrl + (rawUrl.startsWith('data:') ? '' : gridThumbSize), displayTime, searchStr: `${displayTime} ${name}`.toLowerCase() };
+  }
+
+  function applyFilter() {
+    const terms = document.getElementById('timeSearch').value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    window.filteredImages = terms.length > 0 ? allImages.filter(img => terms.every(t => img.searchStr.includes(t))) : allImages;
+    document.getElementById('gallery').innerHTML = ''; 
+    const targetCount = Math.max(currentIndex, 24);
+    currentIndex = 0;
+    
+    if (window.filteredImages.length === 0) {
+      document.getElementById('gallery').innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; font-weight:bold; color: rgba(0,0,0,0.5);">No photos found.</div>`;
+    } else { 
+      while(currentIndex < targetCount && currentIndex < window.filteredImages.length) { renderNextPage(); }
+      setupInfiniteScroll(); 
+    }
+  }
+
+  function renderNextPage() {
+    if (currentIndex >= window.filteredImages.length) return;
+    const frag = document.createDocumentFragment();
+    window.filteredImages.slice(currentIndex, currentIndex + 24).forEach((img, i) => {
+      const card = document.createElement('div'); card.className = 'card';
+      card.innerHTML = `<div class="image-container" onclick="handleImageClick('${img.id}')"><img loading="${currentIndex === 0 && i < 12 ? 'eager' : 'lazy'}" src="${img.url}" onload="this.classList.add('loaded')"></div><div class="card-footer"><span class="time-value">${img.displayTime}</span></div>`;
+      frag.appendChild(card);
+    });
+    document.getElementById('gallery').appendChild(frag); currentIndex += 24;
+  }
+
+  function setupInfiniteScroll() {
+    if (scrollObserver) scrollObserver.disconnect();
+    scrollObserver = new IntersectionObserver(e => { if(e[0].isIntersecting) renderNextPage(); }, {rootMargin: '400px'});
+    scrollObserver.observe(document.getElementById('sentinel'));
+  }
+
+  function showToast(m) { const t = document.getElementById('status-toast'); t.innerText = m; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 3000); }
+  function loadData(d) { allImages = d.map(processItem); applyFilter(); }
+  
+function refreshData() {
+  fetch(`${API_URL}?api=getImages&folderId=${targetFolderId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (!data || data.error) return;
+      const fresh = data.map(processItem);
+      
+      // ... keep your existing 'hasChanges' comparison logic here ...
+      
+      if (hasChanges) {
+        allImages = fresh;
+        applyFilter();
+        showToast('Updated');
+      }
+    });
+}
+</script>
+</body>
+</html>
+
