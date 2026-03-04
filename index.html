@@ -1,3 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    :root { --primary: #202124; --bg: transparent; }
+    html { box-sizing: border-box; background: transparent; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin: 0; padding: 0; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; min-height: 100vh; padding-bottom: calc(230px + env(safe-area-inset-bottom)); }
+
+    /* SEARCH UI */
+    .search-wrapper { position: sticky; top: 0; z-index: 100; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .input-container { position: relative; width: 90%; max-width: 500px; }
+    #timeSearch { width: 100%; padding: 12px 45px 12px 20px; border: 1px solid rgba(0,0,0,0.1); border-radius: 30px; font-size: 16px; outline: none; background: rgba(255,255,255,0.9); box-sizing: border-box; }
+    .clear-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; background: #ccc; color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; cursor: pointer; }
+
+    #background-loader { display: flex; justify-content: center; align-items: center; width: fit-content; margin: 0 auto; height: 26px; padding: 0 15px; color: #333; font-size: 11px; font-weight: 700; gap: 8px; background-color: rgba(255,255,255,0.85); border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .spinner-small { width: 12px; height: 12px; border: 2px solid #ccc; border-top: 2px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* GALLERY GRID */
+    .gallery-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px; max-width: 1200px; margin: 0 auto; }
+    @media (min-width: 768px) { .gallery-container { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; padding: 20px; } }
+    .card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
+    .image-container { width: 100%; aspect-ratio: 1 / 1; overflow: hidden; position: relative; background-color: #eee; background-image: linear-gradient(90deg, #eee 0px, #fafafa 40px, #eee 80px); background-size: 600px; animation: shimmer 1.5s infinite linear; }
+    .image-container img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s; }
+    .image-container img.loaded { opacity: 1; }
+    @keyframes shimmer { 0% { background-position: -100px; } 100% { background-position: 500px; } }
+    .card-footer { padding: 6px; text-align: center; background: rgba(255,255,255,0.8); }
+    .time-value { font-size: 11px; color: #111; font-weight: 700; }
+
+    #status-toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 10px 24px; border-radius: 30px; font-size: 13px; font-weight: bold; opacity: 0; transition: 0.4s; z-index: 5000; }
+    #sentinel { height: 50px; }
+  </style>
+</head>
+<body>
+
+<div id="status-toast">Synced</div>
+<div class="search-wrapper">
+  <div class="input-container">
+    <input type="text" id="timeSearch" placeholder="Search time or filename..." oninput="handleSearch()">
+    <div id="clearSearch" class="clear-btn" onclick="clearSearch()">&times;</div>
+  </div>
+  <div id="background-loader"><div class="spinner-small"></div><span id="loader-msg">Syncing...</span></div>
+</div>
+<div class="gallery-container" id="gallery"></div>
+<div id="sentinel"></div>
+
 <script>
   // ---> IMPORTANT: REPLACE THIS URL WITH YOUR GOOGLE APPS SCRIPT WEB APP URL <---
   const API_URL = "https://script.google.com/macros/s/AKfycbwc6UDaA4yZp6gU0HRlDCiyuDV3Gu74ZbvkH4-o5E5pvgEy1Zv8feCei58rju7_Q_15/exec"; 
@@ -155,4 +202,3 @@
 </script>
 </body>
 </html>
-
