@@ -46,7 +46,7 @@
 <div id="sentinel"></div>
 
 <script>
- // 1. YOUR CONFIGURATION
+  // 1. YOUR CONFIGURATION
   const API_URL = "https://script.google.com/macros/s/AKfycbwc6UDaA4yZp6gU0HRlDCiyuDV3Gu74ZbvkH4-o5E5pvgEy1Zv8feCei58rju7_Q_15/exec";
   const GITHUB_VIEWER_URL = "https://egmqr.github.io/photo-viewer/viewer.html"; 
 
@@ -72,7 +72,6 @@
     fetch(`${API_URL}?api=getInitial&folderId=${targetFolderId}`)
       .then(res => res.json())
       .then(response => {
-        // Extract the array from the backend's 'data' property
         const data = response.data || [];
         if (data && isFirstLoad) loadData(data);
         
@@ -81,22 +80,30 @@
         // Set up the auto-refresh every 30 seconds
         setInterval(refreshData, 30000); 
       })
-      .catch(err => console.error("Connection Failed:", err));
+      .catch(err => {
+        console.error("Connection Failed:", err);
+        const loaderMsg = document.getElementById('loader-msg');
+        if(loaderMsg) loaderMsg.innerText = "Sync Failed";
+      });
   };
 
   // 4. THE DATA HANDSHAKE (API -> UI)
   function refreshData() {
-    // Changed 'getImages' to 'gallery' to match your backend
     fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
       .then(res => res.json())
       .then(response => {
-        if (!response || response.status === 'error') return;
+        // HIDE THE LOADER ONCE DEEP SYNC COMPLETES
+        const loader = document.getElementById('background-loader');
+        if (loader) loader.style.display = 'none';
+
+        if (!response || response.status === 'error') {
+           showToast('Sync Error');
+           return;
+        }
         
-        // Extract the array from the backend's 'data' property
         const data = response.data || [];
         const fresh = data.map(processItem);
         
-        // --- RESTORED COMPARISON LOGIC ---
         let hasChanges = (fresh.length !== allImages.length);
         if (!hasChanges) { 
           for (let i = 0; i < Math.min(fresh.length, 20); i++) { 
@@ -111,15 +118,24 @@
           if (viewerWindow && !viewerWindow.closed) {
             viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
           }
+        } else {
+          // SHOW TOAST IF SYNC FINISHED BUT NO NEW PHOTOS
+          showToast('Synced');
         }
+      })
+      .catch(err => {
+        // GUARANTEE LOADER HIDES EVEN ON NETWORK ERROR
+        console.error("Refresh Failed:", err);
+        const loader = document.getElementById('background-loader');
+        if (loader) loader.style.display = 'none';
+        showToast('Sync Failed');
       });
   }
 
   // 5. HELPER FUNCTIONS (Formatting & Rendering)
   function processItem(item) {
-    // Updated to pull from the backend's object structure
     const id = item.id;
-    const name = item.displayTime; // The backend passes f.name as displayTime
+    const name = item.displayTime; 
     const rawUrl = item.baseUrl;
     const rawTime = item.timestamp;
 
@@ -142,7 +158,8 @@
   }
 
   function applyFilter() {
-    const terms = document.getElementById('timeSearch').value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    const searchInput = document.getElementById('timeSearch');
+    const terms = searchInput ? searchInput.value.toLowerCase().trim().split(/\s+/).filter(Boolean) : [];
     window.filteredImages = terms.length > 0 ? allImages.filter(img => terms.every(t => img.searchStr.includes(t))) : allImages;
     document.getElementById('gallery').innerHTML = ''; 
     const targetCount = Math.max(currentIndex, 24);
@@ -173,8 +190,32 @@
   }
 
   function loadData(d) { allImages = d.map(processItem); applyFilter(); isFirstLoad = false; }
-  function showToast(m) { const t = document.getElementById('status-toast'); t.innerText = m; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 3000); }
+  
+  function showToast(m) { 
+    const t = document.getElementById('status-toast'); 
+    if(t) {
+        t.innerText = m; 
+        t.style.opacity = 1; 
+        setTimeout(() => t.style.opacity = 0, 3000); 
+    }
+  }
+
   function handleImageClick(id) { viewerWindow = window.open(`${GITHUB_VIEWER_URL}?id=${id}`, "_blank"); }
+
+  function handleSearch() {
+    const val = document.getElementById('timeSearch').value;
+    const clearBtn = document.getElementById('clearSearch');
+    if (clearBtn) clearBtn.style.display = val.length > 0 ? 'flex' : 'none';
+    applyFilter();
+  }
+
+  function clearSearch() {
+    const searchInput = document.getElementById('timeSearch');
+    if (searchInput) searchInput.value = '';
+    applyFilter();
+    const clearBtn = document.getElementById('clearSearch');
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
 
   // Handshake with viewer
   window.addEventListener('message', (event) => {
