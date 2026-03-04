@@ -46,7 +46,7 @@
 <div id="sentinel"></div>
 
 <script>
-  // 1. YOUR CONFIGURATION
+ // 1. YOUR CONFIGURATION
   const API_URL = "https://script.google.com/macros/s/AKfycbwc6UDaA4yZp6gU0HRlDCiyuDV3Gu74ZbvkH4-o5E5pvgEy1Zv8feCei58rju7_Q_15/exec";
   const GITHUB_VIEWER_URL = "https://egmqr.github.io/photo-viewer/viewer.html"; 
 
@@ -71,8 +71,11 @@
     // Fetch initial batch
     fetch(`${API_URL}?api=getInitial&folderId=${targetFolderId}`)
       .then(res => res.json())
-      .then(data => {
+      .then(response => {
+        // Extract the array from the backend's 'data' property
+        const data = response.data || [];
         if (data && isFirstLoad) loadData(data);
+        
         // Then do the full deep sync
         refreshData(); 
         // Set up the auto-refresh every 30 seconds
@@ -83,10 +86,14 @@
 
   // 4. THE DATA HANDSHAKE (API -> UI)
   function refreshData() {
-    fetch(`${API_URL}?api=getImages&folderId=${targetFolderId}`)
+    // Changed 'getImages' to 'gallery' to match your backend
+    fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
       .then(res => res.json())
-      .then(data => {
-        if (!data || data.error) return;
+      .then(response => {
+        if (!response || response.status === 'error') return;
+        
+        // Extract the array from the backend's 'data' property
+        const data = response.data || [];
         const fresh = data.map(processItem);
         
         // --- RESTORED COMPARISON LOGIC ---
@@ -110,16 +117,28 @@
 
   // 5. HELPER FUNCTIONS (Formatting & Rendering)
   function processItem(item) {
-    const [id, name, rawUrl, rawTime] = item;
-    let displayTime = '';
+    // Updated to pull from the backend's object structure
+    const id = item.id;
+    const name = item.displayTime; // The backend passes f.name as displayTime
+    const rawUrl = item.baseUrl;
+    const rawTime = item.timestamp;
+
+    let displayTimeStr = '';
     if (rawTime > 0) {
       const d = new Date(rawTime);
       const ph = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) + (8 * 3600000));
       let h = ph.getHours(), m = ph.getMinutes().toString().padStart(2, '0');
-      displayTime = `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
+      displayTimeStr = `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
     }
     let baseUrl = rawUrl.startsWith('data:') ? rawUrl : rawUrl.split('=')[0];
-    return { id, name, baseUrl, url: baseUrl + (rawUrl.startsWith('data:') ? '' : gridThumbSize), displayTime, searchStr: `${displayTime} ${name}`.toLowerCase() };
+    return { 
+      id, 
+      name, 
+      baseUrl, 
+      url: baseUrl + (rawUrl.startsWith('data:') ? '' : gridThumbSize), 
+      displayTime: displayTimeStr, 
+      searchStr: `${displayTimeStr} ${name}`.toLowerCase() 
+    };
   }
 
   function applyFilter() {
@@ -153,7 +172,7 @@
     scrollObserver.observe(document.getElementById('sentinel'));
   }
 
-  function loadData(d) { allImages = d.map(processItem); applyFilter(); }
+  function loadData(d) { allImages = d.map(processItem); applyFilter(); isFirstLoad = false; }
   function showToast(m) { const t = document.getElementById('status-toast'); t.innerText = m; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 3000); }
   function handleImageClick(id) { viewerWindow = window.open(`${GITHUB_VIEWER_URL}?id=${id}`, "_blank"); }
 
