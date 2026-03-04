@@ -31,12 +31,13 @@
       padding-bottom: calc(60px + var(--safe-bottom)); 
     }
 
-    /* MOBILE FLOATING SEARCH BAR */
+/* MOBILE FLOATING SEARCH BAR */
     .search-wrapper { 
       position: sticky; 
       top: 0; 
       z-index: 100; 
-      background: rgba(255, 255, 255, 0.85); 
+      /* Changed background to 0 opacity to retain only the blur */
+      background: rgba(255, 255, 255, 0); 
       backdrop-filter: blur(15px); 
       -webkit-backdrop-filter: blur(15px); 
       padding: calc(10px + var(--safe-top)) 15px 10px 15px; 
