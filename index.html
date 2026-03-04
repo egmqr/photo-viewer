@@ -46,80 +46,69 @@
 <div id="sentinel"></div>
 
 <script>
-  // --- FIXED: GRAB VARIABLES FROM THE BACKEND TEMPLATE ---
-  const targetFolderId = "<?= folderId ?>"; 
-  const boothNumber = "<?= boothNumber ?>";
-  
-  // Set the page title dynamically
-  document.title = `Booth ${boothNumber} Gallery`;
-  // -------------------------------------------------------
+  // 1. YOUR CONFIGURATION
+  const API_URL = "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID/exec";
+  const GITHUB_VIEWER_URL = "https://egmqr.github.io/photo-viewer/viewer.html"; 
 
+  // 2. STATE MANAGEMENT
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetFolderId = urlParams.get('folderId');
+  const boothNumber = urlParams.get('booth') || "1";
+  
+  document.title = `Booth ${boothNumber} Gallery`;
   window.filteredImages = []; 
   let allImages = [], currentIndex = 0, isFirstLoad = true, scrollObserver = null;
   let viewerWindow = null;
-  
-  // ---> IMPORTANT: REPLACE THIS URL WITH YOUR LIVE GITHUB PAGES URL <---
-  const GITHUB_VIEWER_URL = "https://egmqr.github.io/photo-viewer/viewer.html"; 
-
   const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w150'; 
 
-// 1. Define your Master Apps Script API URL
-const API_URL = "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID/exec";
-
-// 2. Grab folderId from the URL natively (No more iframe issues!)
-const urlParams = new URLSearchParams(window.location.search);
-const targetFolderId = urlParams.get('folderId');
-
-window.onload = () => {
-  if (!targetFolderId) {
-    document.getElementById('gallery').innerHTML = "<h2>Missing Folder ID</h2>";
-    return;
-  }
-  // Fetch initial data using standard Web Fetch
-  fetch(`${API_URL}?api=getInitial&folderId=${targetFolderId}`)
-    .then(res => res.json())
-    .then(data => {
-      if (data) loadData(data);
-      // Trigger deep sync immediately after
-      refreshData(); 
-    });
-};
-
-
-
-  // 1. Listen for the GitHub tab asking for data
-  window.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'VIEWER_READY') {
-      if (viewerWindow && !viewerWindow.closed) {
-        viewerWindow.postMessage({ 
-          type: 'INIT_DATA', 
-          images: window.filteredImages 
-        }, '*');
-      }
+  // 3. INITIAL CONNECTION
+  window.onload = () => {
+    if (!targetFolderId) {
+      document.getElementById('gallery').innerHTML = "<h2>Error: No folderId in URL</h2>";
+      return;
     }
-  });
-
-  // 2. Launch the viewer
-  function handleImageClick(id) {
-    viewerWindow = window.open(`${GITHUB_VIEWER_URL}?id=${id}`, "_blank");
-  }
-
-  function handleDeepSync(data) {
-    document.getElementById('background-loader').style.display = 'none';
-    if (!data) return;
     
-    allImages = data.map(processItem);
-    applyFilter(); 
-    isFirstLoad = false; 
-    showToast('Synced'); 
-    setInterval(refreshData, 30000); 
+    // Fetch initial batch
+    fetch(`${API_URL}?api=getInitial&folderId=${targetFolderId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && isFirstLoad) loadData(data);
+        // Then do the full deep sync
+        refreshData(); 
+        // Set up the auto-refresh every 30 seconds
+        setInterval(refreshData, 30000); 
+      })
+      .catch(err => console.error("Connection Failed:", err));
+  };
 
-    // Instantly push the new deep-fetched data to the open tab
-    if (viewerWindow && !viewerWindow.closed) {
-      viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
-    }
+  // 4. THE DATA HANDSHAKE (API -> UI)
+  function refreshData() {
+    fetch(`${API_URL}?api=getImages&folderId=${targetFolderId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data || data.error) return;
+        const fresh = data.map(processItem);
+        
+        // --- RESTORED COMPARISON LOGIC ---
+        let hasChanges = (fresh.length !== allImages.length);
+        if (!hasChanges) { 
+          for (let i = 0; i < Math.min(fresh.length, 20); i++) { 
+            if (fresh[i].id !== allImages[i].id) { hasChanges = true; break; } 
+          } 
+        }
+        
+        if (hasChanges) {
+          allImages = fresh;
+          applyFilter();
+          showToast('Updated');
+          if (viewerWindow && !viewerWindow.closed) {
+            viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
+          }
+        }
+      });
   }
 
+  // 5. HELPER FUNCTIONS (Formatting & Rendering)
   function processItem(item) {
     const [id, name, rawUrl, rawTime] = item;
     let displayTime = '';
@@ -139,7 +128,6 @@ window.onload = () => {
     document.getElementById('gallery').innerHTML = ''; 
     const targetCount = Math.max(currentIndex, 24);
     currentIndex = 0;
-    
     if (window.filteredImages.length === 0) {
       document.getElementById('gallery').innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; font-weight:bold; color: rgba(0,0,0,0.5);">No photos found.</div>`;
     } else { 
@@ -165,25 +153,18 @@ window.onload = () => {
     scrollObserver.observe(document.getElementById('sentinel'));
   }
 
-  function showToast(m) { const t = document.getElementById('status-toast'); t.innerText = m; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 3000); }
   function loadData(d) { allImages = d.map(processItem); applyFilter(); }
-  
-function refreshData() {
-  fetch(`${API_URL}?api=getImages&folderId=${targetFolderId}`)
-    .then(res => res.json())
-    .then(data => {
-      if (!data || data.error) return;
-      const fresh = data.map(processItem);
-      
-      // ... keep your existing 'hasChanges' comparison logic here ...
-      
-      if (hasChanges) {
-        allImages = fresh;
-        applyFilter();
-        showToast('Updated');
+  function showToast(m) { const t = document.getElementById('status-toast'); t.innerText = m; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 3000); }
+  function handleImageClick(id) { viewerWindow = window.open(`${GITHUB_VIEWER_URL}?id=${id}`, "_blank"); }
+
+  // Handshake with viewer
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'VIEWER_READY') {
+      if (viewerWindow && !viewerWindow.closed) {
+        viewerWindow.postMessage({ type: 'INIT_DATA', images: window.filteredImages }, '*');
       }
-    });
-}
+    }
+  });
 </script>
 </body>
 </html>
