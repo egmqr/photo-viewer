@@ -239,13 +239,13 @@
       .then(res => res.json())
       .then(res => {
         if (res.data && isFirstLoad) loadData(res.data);
-        handleDeepSync(); 
       })
       .catch(err => {
         console.error("Initial load failed:", err);
-        document.getElementById('loader-msg').innerText = "Offline";
-        const spinner = document.querySelector('.spinner-small');
-        if(spinner) spinner.style.display = 'none';
+      })
+      .finally(() => {
+        // Now it always attempts deep sync
+        handleDeepSync(); 
       });
   };
 
@@ -272,7 +272,7 @@
         applyFilter(); 
         isFirstLoad = false; 
         showToast('Gallery up to date'); 
-        setInterval(refreshData, 30000); 
+        setInterval(refreshData, 90000); 
 
         if (viewerWindow && !viewerWindow.closed) {
           viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
@@ -309,18 +309,37 @@
     applyFilter();
   }
 
-  function applyFilter() {
+  function applyFilter(isBackgroundRefresh = false) {
     const terms = document.getElementById('timeSearch').value.toLowerCase().trim().split(/\s+/).filter(Boolean);
     window.filteredImages = terms.length > 0 ? allImages.filter(img => terms.every(t => img.searchStr.includes(t))) : allImages;
-    document.getElementById('gallery').innerHTML = ''; 
+    
+    const galleryEl = document.getElementById('gallery');
+    
+    // Save scroll state and lock container height to prevent screen jumping
+    const scrollPos = window.scrollY;
+    if (isBackgroundRefresh) {
+       galleryEl.style.minHeight = galleryEl.offsetHeight + 'px';
+    }
+
+    galleryEl.innerHTML = ''; 
     const targetCount = Math.max(currentIndex, 24);
     currentIndex = 0;
     
     if (window.filteredImages.length === 0) {
-      document.getElementById('gallery').innerHTML = `<h3 style='grid-column: 1/-1; text-align:center; padding: 60px 20px; color: #666; font-weight: 400;'>No photos found.</h3>`;
+      galleryEl.innerHTML = `<h3 style='grid-column: 1/-1; text-align:center; padding: 60px 20px; color: #666; font-weight: 400;'>No photos found.</h3>`;
+      galleryEl.style.minHeight = 'auto'; // release lock
     } else { 
-      while(currentIndex < targetCount && currentIndex < window.filteredImages.length) { renderNextPage(); }
+      while(currentIndex < targetCount && currentIndex < window.filteredImages.length) { 
+        renderNextPage(); 
+      }
       setupInfiniteScroll(); 
+      
+      // Restore scroll state and release height lock
+      if (isBackgroundRefresh) {
+        window.scrollTo(0, scrollPos);
+        // Small timeout ensures the browser paints before releasing the lock
+        setTimeout(() => { galleryEl.style.minHeight = 'auto'; }, 50);
+      }
     }
   }
 
@@ -355,7 +374,7 @@
     setTimeout(() => t.classList.remove('show'), 3000); 
   }
   
-  function loadData(d) { allImages = d.map(processItem); applyFilter(); }
+  function loadData(d) { allImages = d.map(processItem); applyFilter(false); }
   
   function refreshData() { 
     fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
@@ -364,11 +383,15 @@
         if (!res.data) return;
         const fresh = res.data.map(processItem); 
         let hasChanges = (fresh.length !== allImages.length);
-        if (!hasChanges) { for (let i = 0; i < Math.min(fresh.length, 50); i++) { if (fresh[i].id !== allImages[i].id) { hasChanges = true; break; } } }
+        if (!hasChanges) { 
+            for (let i = 0; i < Math.min(fresh.length, 50); i++) { 
+                if (fresh[i].id !== allImages[i].id) { hasChanges = true; break; } 
+            } 
+        }
         
         if (hasChanges) { 
           allImages = fresh; 
-          applyFilter(); 
+          applyFilter(true); // Flag as background refresh to protect scroll
           showToast('New photos added'); 
           if (viewerWindow && !viewerWindow.closed) {
             viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
