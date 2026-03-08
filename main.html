@@ -218,9 +218,9 @@
         // 1. Parse URL Parameters
         const params = new URLSearchParams(window.location.search);
 
-        // Extract parameters (with fallbacks if none are provided)
+        // Extract parameters
         const eventName = params.get('eventName') || 'Default Event Name';
-        const bgId = params.get('bgId') || '1-0RbQzhgbnTk98YwwfNYTyTKeoO68GB9';
+        const bgId = params.get('bgId'); // Removed the hardcoded fallback
         const boothsParam = params.get('booths'); 
         
         // Check for the 'tab' parameter (default to 1 if missing or not a number)
@@ -231,7 +231,13 @@
 
         // 2. Apply Event Name and Background
         document.getElementById('event-title').innerText = eventName;
-        document.body.style.backgroundImage = `url('https://drive.google.com/thumbnail?id=${bgId}&sz=w1000')`;
+        
+        // If bgId exists and isn't empty, show the image. Otherwise, it defaults to the #000 CSS background.
+        if (bgId && bgId.trim() !== '') {
+            document.body.style.backgroundImage = `url('https://drive.google.com/thumbnail?id=${bgId}&sz=w1000')`;
+        } else {
+            document.body.style.backgroundImage = 'none';
+        }
 
         // 3. Setup Booths based on the 'booths' parameter (split by | character)
         let boothLinks = [];
