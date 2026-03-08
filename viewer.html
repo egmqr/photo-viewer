@@ -7,7 +7,10 @@
   <style>
     body { margin:0; background:#000; height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow:hidden; } 
     .popout-close { position: absolute; top: max(40px, env(safe-area-inset-top)); right: max(20px, env(safe-area-inset-right)); width: 44px; height: 44px; background: rgba(255,255,255,0.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; z-index: 99999; color: #fff; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); } 
-    .image-stage { position: absolute; top: calc(max(40px, env(safe-area-inset-top)) + 60px); bottom: calc(160px + env(safe-area-inset-bottom)); left: 0; right: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1; } 
+    
+    /* Adjusted bottom value to 210px to accommodate the reordered controls without overlapping */
+    .image-stage { position: absolute; top: calc(max(40px, env(safe-area-inset-top)) + 60px); bottom: calc(210px + env(safe-area-inset-bottom)); left: 0; right: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1; } 
+    
     img.main { width: 100%; height: 100%; transition: opacity 0.2s ease; opacity:0; object-fit: contain; pointer-events: auto; user-select: none; -webkit-user-drag: none; } 
     .hint-banner { 
       position: absolute; 
@@ -16,7 +19,7 @@
       transform: translateX(-50%); 
       width: fit-content; 
       max-width: 90%; 
-      font-size: 14px; /* Slightly larger text */
+      font-size: 14px; 
       text-align: center; 
       font-weight: bold; 
       background: rgba(0,0,0,0.85); 
@@ -58,8 +61,8 @@
     <div class="nav-btn right" onclick="navigate(1)">&#10095;</div>
   </div>
   <div class="modal-bottom-controls">
-    <div id="image-counter" style="font-size:12px; color:#aaa; font-weight:bold;">...</div>
     <button id="download-btn" class="download-btn" style="display: none;" onclick="triggerDownload()">Download</button>
+    <div id="image-counter" style="font-size:12px; color:#aaa; font-weight:bold;">...</div>
     <div class="filmstrip-wrapper" id="filmstripWrapper"></div>
     <div class="scrubber-track" id="scrubberTrack">
       <div class="time-bubble" id="timeBubble"></div>
