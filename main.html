@@ -14,7 +14,6 @@
         font-family: Montserrat, Tahoma, Geneva, Verdana, sans-serif;
         display: flex;
         flex-direction: column;
-        /* Background is now set dynamically via JavaScript */
         background-repeat: no-repeat;
         background-attachment: fixed;
         background-size: cover;
@@ -180,8 +179,14 @@
 
         // Extract parameters (with fallbacks if none are provided)
         const eventName = params.get('eventName') || 'Default Event Name';
-        const bgId = params.get('bgId') || '1-0RbQzhgbnTk98YwwfNYTyTKeoO68GB9'; // Default background
+        const bgId = params.get('bgId') || '1-0RbQzhgbnTk98YwwfNYTyTKeoO68GB9';
         const boothsParam = params.get('booths'); 
+        
+        // Check for the 'tab' parameter (default to 1 if missing or not a number)
+        let requestedTab = parseInt(params.get('tab'), 10);
+        if (isNaN(requestedTab) || requestedTab < 1) {
+            requestedTab = 1;
+        }
 
         // 2. Apply Event Name and Background
         document.getElementById('event-title').innerText = eventName;
@@ -192,12 +197,19 @@
         if (boothsParam) {
             boothLinks = boothsParam.split('|').filter(link => link.trim() !== '');
         } else {
-            // Fallback links if no URL parameters are provided
             boothLinks = [
                 'https://egmqr.github.io/photo-viewer/index.html?folderId=13fAzmvuXHgOfN6FVXfu7Mbk6Sb0_xXVo&booth=1',
                 'https://egmqr.github.io/photo-viewer/index.html?folderId=1vcSQbJIr945g71SinfzNYxs7AmMV7V-9&booth=2'
             ];
         }
+
+        // Validate requestedTab against the actual number of booths
+        if (requestedTab > boothLinks.length) {
+            requestedTab = 1;
+        }
+        
+        // Convert to a zero-based index for the array
+        const activeIndex = requestedTab - 1; 
 
         const navContainer = document.getElementById('nav-container');
         const iframeContainer = document.getElementById('iframe-container');
@@ -206,10 +218,11 @@
         boothLinks.forEach((link, index) => {
             const boothNum = index + 1;
             const frameId = `frame-${boothNum}`;
+            const isTargetActive = (index === activeIndex); // Check if this is the target tab
 
             // Create Tab Button
             const btn = document.createElement('button');
-            btn.className = `nav-tab ${index === 0 ? 'active' : ''}`;
+            btn.className = `nav-tab ${isTargetActive ? 'active' : ''}`;
             btn.setAttribute('data-target', frameId);
             btn.innerText = `Photobooth ${boothNum}`;
             navContainer.appendChild(btn);
@@ -217,19 +230,26 @@
             // Create Iframe
             const iframe = document.createElement('iframe');
             iframe.id = frameId;
-            iframe.className = `app-iframe ${index === 0 ? 'active' : ''}`;
+            iframe.className = `app-iframe ${isTargetActive ? 'active' : ''}`;
             
-            // First iframe loads immediately, rest use data-src for lazy/background loading
-            if (index === 0) {
+            // The targeted iframe loads immediately, rest use data-src for lazy/background loading
+            if (isTargetActive) {
                 iframe.src = link;
             } else {
                 iframe.setAttribute('data-src', link);
             }
             
-            // Attach the onload event to hide the loader
             iframe.onload = hideLoader;
             iframeContainer.appendChild(iframe);
         });
+
+        // Scroll the active tab into view if it's off-screen (useful for mobile)
+        setTimeout(() => {
+            const activeTabBtn = document.querySelector('.nav-tab.active');
+            if (activeTabBtn) {
+                activeTabBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }, 100);
 
         // 4. Initialize Interactivity (Tabs and Lazy Loading)
         setupInteractivity();
@@ -244,15 +264,14 @@
             tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         };
 
-        // OPTIMIZATION: Background Pre-fetching
-        // Wait 2.5 seconds for the main iframe to fully load, then secretly load the rest 
+        // Background Pre-fetching
         setTimeout(() => {
             let delay = 0;
             frames.forEach(frame => {
                 const dataSrc = frame.getAttribute('data-src');
                 if (dataSrc) {
                     setTimeout(() => { frame.setAttribute('src', dataSrc); }, delay);
-                    delay += 1500; // Stagger loads to prevent overwhelming the mobile browser
+                    delay += 1500; 
                 }
             });
         }, 2500);
@@ -273,16 +292,20 @@
                     const dataSrc = targetFrame.getAttribute('data-src');
                     const currentSrc = targetFrame.getAttribute('src');
 
-                    // If it hasn't been background-fetched yet, fetch it now and show loader
                     if (dataSrc && !currentSrc) {
                         showLoader();
                         targetFrame.setAttribute('src', dataSrc);
                     } else {
-                        // If it's already loaded, ensure loader is hidden for an instant switch
                         hideLoader(); 
                     }
                     
                     targetFrame.classList.add('active');
+                    
+                    // Optional: Update the URL quietly so if they refresh, it stays on this tab
+                    const newTabNum = targetId.replace('frame-', '');
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.set('tab', newTabNum);
+                    window.history.replaceState({}, '', newUrl);
                 }
             });
         });
