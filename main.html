@@ -11,6 +11,8 @@
     <link rel="preconnect" href="https://script.google.com" crossorigin>
     <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
     
+    <link rel="icon" id="dynamic-favicon" href="https://drive.google.com/thumbnail?id=1gy5hzcTIBV_b0POHse-g88WEMss5eot&sz=w64">
+    
     <style>
     /* 1. LAYOUT RESET (MOBILE FIRST) */
     html, body {
@@ -18,7 +20,6 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
-        /* Prevents the elastic "pull-to-refresh" scrolling behavior on mobile */
         overscroll-behavior-y: none; 
         font-family: Montserrat, Tahoma, Geneva, Verdana, sans-serif;
         display: flex;
@@ -28,7 +29,7 @@
         background-size: cover;
         background-position: center;
         background-color: #000; 
-        -webkit-tap-highlight-color: transparent; /* Removes blue tap highlight on mobile */
+        -webkit-tap-highlight-color: transparent;
     }
 
     /* 2. HEADER SECTION */
@@ -40,15 +41,39 @@
         z-index: 10;
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
-        /* Accounts for top notch on modern smartphones */
         padding-top: env(safe-area-inset-top); 
+    }
+
+    /* Top row containing Logo, Title, and Spacer to keep Title Centered */
+    .header-top-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 15px 5px 15px;
+    }
+
+    .logo-link {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+    }
+
+    .logo-link img {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+    }
+
+    .header-spacer {
+        width: 40px; /* Matches logo width to keep title perfectly centered */
+        flex: 0 0 auto;
     }
 
     h1.page-title {
         margin: 0;
-        padding: 12px 10px 5px 10px;
+        padding: 0 10px;
         text-align: center;
-        font-size: 18px; /* Optimized for mobile */
+        font-size: 18px; 
         font-weight: 700;
         color: #fff;
         text-transform: uppercase;
@@ -57,6 +82,7 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        flex: 1;
     }
 
     .nav-container {
@@ -65,9 +91,9 @@
         width: 100%;
         overflow-x: auto; 
         overflow-y: hidden;
-        -webkit-overflow-scrolling: touch; /* Smooth horizontal scrolling on iOS */
+        -webkit-overflow-scrolling: touch; 
         scrollbar-width: none; 
-        padding: 0 5px 2px 5px; /* Slight padding so tabs don't hug the absolute edge */
+        padding: 0 5px 2px 5px; 
         box-sizing: border-box;
     }
 
@@ -77,7 +103,6 @@
 
     .nav-tab {
         flex: 0 0 auto; 
-        /* Taller touch targets for thumbs (minimum 44px recommended) */
         padding: 14px 18px; 
         border: none;
         background: none;
@@ -102,7 +127,6 @@
     .iframe-container {
         flex: 1;
         position: relative;
-        /* Ensures the bottom doesn't get cut off by home indicators on iOS */
         padding-bottom: env(safe-area-inset-bottom);
     }
 
@@ -156,14 +180,16 @@
         visibility: visible;
     }
 
-    /* 4. TABLET & DESKTOP SCALING (MIN-WIDTH) */
+    /* 4. TABLET & DESKTOP SCALING */
     @media (min-width: 768px) {
         h1.page-title { 
             font-size: 24px; 
-            padding: 20px 0 10px 0;
+        }
+        .header-top-row {
+            padding: 15px 25px 5px 25px;
         }
         .nav-container {
-            justify-content: center; /* Center tabs on larger screens */
+            justify-content: center; 
         }
         .nav-tab { 
             padding: 16px 24px; 
@@ -186,22 +212,24 @@
 <body>
 
     <div class="header-wrapper">
-        <h1 class="page-title" id="event-title">Loading...</h1>
-        <div class="nav-container" id="nav-container">
-            </div>
+        <div class="header-top-row">
+            <a href="https://www.facebook.com/egmproductions" target="_blank" class="logo-link">
+                <img id="header-logo" src="https://drive.google.com/thumbnail?id=1gy5hzcTIBV_b0POHse-g88WEMss5eot&sz=w40" alt="Logo">
+            </a>
+            <h1 class="page-title" id="event-title">Loading...</h1>
+            <div class="header-spacer"></div>
+        </div>
+        <div class="nav-container" id="nav-container"></div>
     </div>
 
     <div class="iframe-container" id="iframe-container">
-        
         <div class="global-loader" id="main-loader">
             <div class="spinner"></div>
             <div class="loader-text" id="loader-msg">Loading Gallery...</div>
         </div>
-
-        </div>
+    </div>
 
     <script>
-    // --- GLOBAL LOADER FUNCTIONS ---
     function hideLoader() {
         const activeFrame = document.querySelector('.app-iframe.active');
         if (activeFrame && activeFrame.getAttribute('src')) {
@@ -213,33 +241,32 @@
         document.getElementById('main-loader').style.display = 'flex';
     }
 
-    // --- DYNAMIC CONTENT GENERATION ---
     document.addEventListener('DOMContentLoaded', () => {
-        // 1. Parse URL Parameters
         const params = new URLSearchParams(window.location.search);
 
-        // Extract parameters
         const eventName = params.get('eventName') || 'Default Event Name';
-        const bgId = params.get('bgId'); // Removed the hardcoded fallback
+        const bgId = params.get('bgId'); 
         const boothsParam = params.get('booths'); 
         
-        // Check for the 'tab' parameter (default to 1 if missing or not a number)
+        // Custom Logo check (Defaults to your provided ID if none passed)
+        const logoId = params.get('logoId') || '1gy5hzcTIBV_b0POHse-g88WEMss5eot';
+        
         let requestedTab = parseInt(params.get('tab'), 10);
         if (isNaN(requestedTab) || requestedTab < 1) {
             requestedTab = 1;
         }
 
-        // 2. Apply Event Name and Background
+        // Apply Event Name, Logo, Favicon, and Background
         document.getElementById('event-title').innerText = eventName;
+        document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${logoId}&sz=w40`;
+        document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${logoId}&sz=w64`;
         
-        // If bgId exists and isn't empty, show the image. Otherwise, it defaults to the #000 CSS background.
         if (bgId && bgId.trim() !== '') {
             document.body.style.backgroundImage = `url('https://drive.google.com/thumbnail?id=${bgId}&sz=w1000')`;
         } else {
             document.body.style.backgroundImage = 'none';
         }
 
-        // 3. Setup Booths based on the 'booths' parameter (split by | character)
         let boothLinks = [];
         if (boothsParam) {
             boothLinks = boothsParam.split('|').filter(link => link.trim() !== '');
@@ -250,43 +277,36 @@
             ];
         }
 
-        // Validate requestedTab against the actual number of booths
         if (requestedTab > boothLinks.length) {
             requestedTab = 1;
         }
         
-        // Convert to a zero-based index for the array
         const activeIndex = requestedTab - 1; 
-
         const navContainer = document.getElementById('nav-container');
         const iframeContainer = document.getElementById('iframe-container');
 
-        // Hide the navigation container if there's only 1 booth or less to save screen space
         if (boothLinks.length <= 1) {
             navContainer.style.display = 'none';
-            // Optional: Adjust page title padding so it looks centered without the tabs beneath it
-            document.getElementById('event-title').style.paddingBottom = '12px';
+            document.querySelector('.header-top-row').style.paddingBottom = '10px';
         }
 
-        // Build the DOM elements dynamically
         boothLinks.forEach((link, index) => {
             const boothNum = index + 1;
             const frameId = `frame-${boothNum}`;
-            const isTargetActive = (index === activeIndex); // Check if this is the target tab
+            const isTargetActive = (index === activeIndex); 
 
-            // Create Tab Button
-            const btn = document.createElement('button');
-            btn.className = `nav-tab ${isTargetActive ? 'active' : ''}`;
-            btn.setAttribute('data-target', frameId);
-            btn.innerText = `Photobooth ${boothNum}`;
-            navContainer.appendChild(btn);
+            if (boothLinks.length > 1) {
+                const btn = document.createElement('button');
+                btn.className = `nav-tab ${isTargetActive ? 'active' : ''}`;
+                btn.setAttribute('data-target', frameId);
+                btn.innerText = `Photobooth ${boothNum}`;
+                navContainer.appendChild(btn);
+            }
 
-            // Create Iframe
             const iframe = document.createElement('iframe');
             iframe.id = frameId;
             iframe.className = `app-iframe ${isTargetActive ? 'active' : ''}`;
             
-            // The targeted iframe loads immediately, rest use data-src for lazy/background loading
             if (isTargetActive) {
                 iframe.src = link;
             } else {
@@ -297,7 +317,6 @@
             iframeContainer.appendChild(iframe);
         });
 
-        // Scroll the active tab into view if it's off-screen
         setTimeout(() => {
             const activeTabBtn = document.querySelector('.nav-tab.active');
             if (activeTabBtn && boothLinks.length > 1) {
@@ -305,11 +324,9 @@
             }
         }, 100);
 
-        // 4. Initialize Interactivity (Tabs and Lazy Loading)
         setupInteractivity();
     });
 
-    // --- TAB SWITCHING & PRE-FETCHING LOGIC ---
     function setupInteractivity() {
         const tabs = document.querySelectorAll('.nav-tab');
         const frames = document.querySelectorAll('.app-iframe');
@@ -318,7 +335,6 @@
             tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         };
 
-        // Background Pre-fetching
         setTimeout(() => {
             let delay = 0;
             frames.forEach(frame => {
@@ -330,7 +346,6 @@
             });
         }, 2500);
 
-        // Tab click event listeners
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
@@ -355,7 +370,6 @@
                     
                     targetFrame.classList.add('active');
                     
-                    // Optional: Update the URL quietly so if they refresh, it stays on this tab
                     const newTabNum = targetId.replace('frame-', '');
                     const newUrl = new URL(window.location);
                     newUrl.searchParams.set('tab', newTabNum);
