@@ -1,16 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <link rel="preconnect" href="https://script.google.com" crossorigin>
     <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
     
     <style>
-    /* 1. LAYOUT RESET */
+    /* 1. LAYOUT RESET (MOBILE FIRST) */
     html, body {
         height: 100%;
         margin: 0;
         padding: 0;
         overflow: hidden;
+        /* Prevents the elastic "pull-to-refresh" scrolling behavior on mobile */
+        overscroll-behavior-y: none; 
         font-family: Montserrat, Tahoma, Geneva, Verdana, sans-serif;
         display: flex;
         flex-direction: column;
@@ -19,28 +28,35 @@
         background-size: cover;
         background-position: center;
         background-color: #000; 
+        -webkit-tap-highlight-color: transparent; /* Removes blue tap highlight on mobile */
     }
 
     /* 2. HEADER SECTION */
     .header-wrapper {
         flex: 0 0 auto;
-        background-color: rgba(0, 0, 0, 0.4); 
-        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        background-color: rgba(0, 0, 0, 0.5); 
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         z-index: 10;
-        backdrop-filter: blur(5px);
-        -webkit-backdrop-filter: blur(5px);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        /* Accounts for top notch on modern smartphones */
+        padding-top: env(safe-area-inset-top); 
     }
 
     h1.page-title {
         margin: 0;
-        padding: 15px 0 5px 0;
+        padding: 12px 10px 5px 10px;
         text-align: center;
-        font-size: 22px;
+        font-size: 18px; /* Optimized for mobile */
+        font-weight: 700;
         color: #fff;
         text-transform: uppercase;
         letter-spacing: 1px;
-        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+        text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .nav-container {
@@ -49,9 +65,10 @@
         width: 100%;
         overflow-x: auto; 
         overflow-y: hidden;
-        -webkit-overflow-scrolling: touch; 
+        -webkit-overflow-scrolling: touch; /* Smooth horizontal scrolling on iOS */
         scrollbar-width: none; 
-        padding-bottom: 2px; 
+        padding: 0 5px 2px 5px; /* Slight padding so tabs don't hug the absolute edge */
+        box-sizing: border-box;
     }
 
     .nav-container::-webkit-scrollbar {
@@ -60,32 +77,35 @@
 
     .nav-tab {
         flex: 0 0 auto; 
-        padding: 12px 20px;
+        /* Taller touch targets for thumbs (minimum 44px recommended) */
+        padding: 14px 18px; 
         border: none;
         background: none;
         cursor: pointer;
         font-size: 13px;
         font-weight: 700;
         color: rgba(255, 255, 255, 0.5);
-        border-bottom: 4px solid transparent;
-        transition: all 0.3s ease;
-        text-shadow: 1px 1px 4px rgba(0, 0, 0, 1);
+        border-bottom: 3px solid transparent;
+        transition: all 0.25s ease;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 1);
         white-space: nowrap; 
+        outline: none;
     }
 
     .nav-tab.active {
         color: #fff;
-        border-bottom: 4px solid #fff;
-        text-shadow: 1px 1px 4px rgba(0,0,0,1);
+        border-bottom: 3px solid #fff;
+        text-shadow: 1px 1px 3px rgba(0,0,0,1);
     }
 
     /* 3. IFRAME AREA & SPINNER */
     .iframe-container {
         flex: 1;
         position: relative;
+        /* Ensures the bottom doesn't get cut off by home indicators on iOS */
+        padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* Global loading spinner that sits securely behind the iframes */
     .global-loader {
         position: absolute;
         top: 40%;
@@ -99,20 +119,21 @@
     }
     
     .spinner {
-        width: 30px;
-        height: 30px;
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-top: 3px solid #ffd966;
+        width: 32px;
+        height: 32px;
+        border: 4px solid rgba(255, 255, 255, 0.2);
+        border-top: 4px solid #ffd966;
         border-radius: 50%;
-        animation: spin 1s linear infinite;
+        animation: spin 0.8s linear infinite;
     }
 
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     .loader-text {
         color: #fff;
-        font-size: 12px;
-        font-weight: bold;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
         text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
     }
 
@@ -125,8 +146,8 @@
         border: none;
         opacity: 0;
         visibility: hidden;
-        transition: opacity 0.4s ease, visibility 0.4s;
-        z-index: 2; /* Sits above the loader */
+        transition: opacity 0.3s ease, visibility 0.3s;
+        z-index: 2; 
         background: transparent;
     }
 
@@ -135,10 +156,30 @@
         visibility: visible;
     }
 
-    /* 4. MOBILE SPECIFIC */
-    @media (max-width: 600px) {
-        h1.page-title { font-size: 18px; }
-        .nav-tab { padding: 10px 15px; font-size: 12px; }
+    /* 4. TABLET & DESKTOP SCALING (MIN-WIDTH) */
+    @media (min-width: 768px) {
+        h1.page-title { 
+            font-size: 24px; 
+            padding: 20px 0 10px 0;
+        }
+        .nav-container {
+            justify-content: center; /* Center tabs on larger screens */
+        }
+        .nav-tab { 
+            padding: 16px 24px; 
+            font-size: 15px; 
+            border-bottom: 4px solid transparent;
+        }
+        .nav-tab.active {
+            border-bottom: 4px solid #ffd966;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+        }
+        .loader-text {
+            font-size: 15px;
+        }
     }
     </style>
 </head>
@@ -177,10 +218,12 @@
         // 1. Parse URL Parameters
         const params = new URLSearchParams(window.location.search);
 
+        // Extract parameters (with fallbacks if none are provided)
         const eventName = params.get('eventName') || 'Default Event Name';
         const bgId = params.get('bgId') || '1-0RbQzhgbnTk98YwwfNYTyTKeoO68GB9';
         const boothsParam = params.get('booths'); 
         
+        // Check for the 'tab' parameter (default to 1 if missing or not a number)
         let requestedTab = parseInt(params.get('tab'), 10);
         if (isNaN(requestedTab) || requestedTab < 1) {
             requestedTab = 1;
@@ -201,40 +244,43 @@
             ];
         }
 
+        // Validate requestedTab against the actual number of booths
         if (requestedTab > boothLinks.length) {
             requestedTab = 1;
         }
         
+        // Convert to a zero-based index for the array
         const activeIndex = requestedTab - 1; 
 
         const navContainer = document.getElementById('nav-container');
         const iframeContainer = document.getElementById('iframe-container');
 
-        // Hide the tab bar entirely if there is only 1 booth
+        // Hide the navigation container if there's only 1 booth or less to save screen space
         if (boothLinks.length <= 1) {
             navContainer.style.display = 'none';
+            // Optional: Adjust page title padding so it looks centered without the tabs beneath it
+            document.getElementById('event-title').style.paddingBottom = '12px';
         }
 
         // Build the DOM elements dynamically
         boothLinks.forEach((link, index) => {
             const boothNum = index + 1;
             const frameId = `frame-${boothNum}`;
-            const isTargetActive = (index === activeIndex); 
+            const isTargetActive = (index === activeIndex); // Check if this is the target tab
 
-            // Create Tab Button (Only if there are multiple booths)
-            if (boothLinks.length > 1) {
-                const btn = document.createElement('button');
-                btn.className = `nav-tab ${isTargetActive ? 'active' : ''}`;
-                btn.setAttribute('data-target', frameId);
-                btn.innerText = `Photobooth ${boothNum}`;
-                navContainer.appendChild(btn);
-            }
+            // Create Tab Button
+            const btn = document.createElement('button');
+            btn.className = `nav-tab ${isTargetActive ? 'active' : ''}`;
+            btn.setAttribute('data-target', frameId);
+            btn.innerText = `Photobooth ${boothNum}`;
+            navContainer.appendChild(btn);
 
             // Create Iframe
             const iframe = document.createElement('iframe');
             iframe.id = frameId;
             iframe.className = `app-iframe ${isTargetActive ? 'active' : ''}`;
             
+            // The targeted iframe loads immediately, rest use data-src for lazy/background loading
             if (isTargetActive) {
                 iframe.src = link;
             } else {
@@ -245,15 +291,13 @@
             iframeContainer.appendChild(iframe);
         });
 
-        // Scroll the active tab into view if there are tabs
-        if (boothLinks.length > 1) {
-            setTimeout(() => {
-                const activeTabBtn = document.querySelector('.nav-tab.active');
-                if (activeTabBtn) {
-                    activeTabBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                }
-            }, 100);
-        }
+        // Scroll the active tab into view if it's off-screen
+        setTimeout(() => {
+            const activeTabBtn = document.querySelector('.nav-tab.active');
+            if (activeTabBtn && boothLinks.length > 1) {
+                activeTabBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }, 100);
 
         // 4. Initialize Interactivity (Tabs and Lazy Loading)
         setupInteractivity();
@@ -280,7 +324,7 @@
             });
         }, 2500);
 
-        // Tab click event listeners (will only apply if tabs exist)
+        // Tab click event listeners
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
@@ -305,6 +349,7 @@
                     
                     targetFrame.classList.add('active');
                     
+                    // Optional: Update the URL quietly so if they refresh, it stays on this tab
                     const newTabNum = targetId.replace('frame-', '');
                     const newUrl = new URL(window.location);
                     newUrl.searchParams.set('tab', newTabNum);
