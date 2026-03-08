@@ -231,7 +231,8 @@
         const eventId = params.get('id');
         let requestedTab = parseInt(params.get('tab'), 10) || 1;
 
-        if (eventId && APPS_SCRIPT_API_URL !== "https://script.google.com/macros/s/AKfycbx_N__vm8EexfRPbWjfjAu8c4C0jnVUkxXxyAUoA6aGbGdIwkyEh2UfzCGt6-QArnmkAw/exec") {
+        // The logic bug was here! It is now fixed to correctly execute the fetch.
+        if (eventId) {
             // === CACHE BUSTER ADDED HERE: &t=${new Date().getTime()} ===
             fetch(`${APPS_SCRIPT_API_URL}?action=getEventData&id=${eventId}&t=${new Date().getTime()}`)
                 .then(response => response.json())
@@ -248,6 +249,7 @@
                     console.error("API Fetch Error:", err);
                 });
         } else {
+            // Fallback for direct loads without an ID
             document.getElementById('loader-msg').innerText = "Loading Default...";
             buildPageContent({
                 eventName: 'Default Event',
