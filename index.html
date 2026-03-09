@@ -23,7 +23,6 @@
     html { box-sizing: border-box; background: transparent; }
     *, *:before, *:after { box-sizing: inherit; }
     
-    /* NEW: Locked body overscroll to make pull-to-refresh feel native */
     body { 
       margin: 0; 
       padding: 0; 
@@ -205,7 +204,8 @@
     .side-hint-pill { 
       position: fixed; 
       right: -120px; 
-      top: 25%; 
+      top: 50%; /* Center vertically */
+      transform: translateY(-50%); /* Adjust for perfect centering */
       background: rgba(255,255,255,0.85); 
       backdrop-filter: blur(10px); 
       -webkit-backdrop-filter: blur(10px); 
@@ -217,7 +217,7 @@
       font-size: 11px; 
       font-weight: 600; 
       z-index: 90; 
-      transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s; 
+      transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Removed opacity transition since it never hides */
       pointer-events: none; 
       display: flex; 
       align-items: center; 
@@ -292,7 +292,7 @@
   // Slightly higher res thumbnails for high-density mobile displays
   const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
 
-  // --- NEW: PULL TO REFRESH LOGIC ---
+  // --- PULL TO REFRESH LOGIC ---
   let ptrStartY = 0;
   let ptrCurrentY = 0;
   let isPulling = false;
@@ -302,14 +302,10 @@
   const ptrSpinner = document.getElementById('ptr-spinner');
   const swipeHint = document.getElementById('swipe-hint');
 
-  // Slide in the hint beautifully after 1.5 seconds, then hide it after 8 seconds
+  // Slide in the hint beautifully after 1.5 seconds, and keep it there
   setTimeout(() => { if(swipeHint) swipeHint.classList.add('show'); }, 1500);
-  setTimeout(() => { if(swipeHint) swipeHint.style.opacity = '0'; }, 8000);
 
   window.addEventListener('touchstart', (e) => {
-    // Hide the side hint the moment the user interacts with the page
-    if (swipeHint && swipeHint.style.opacity !== '0') swipeHint.style.opacity = '0';
-
     // Only engage pull-to-refresh if user is at the very top of the page
     if (window.scrollY <= 0 && !isRefreshing) {
       ptrStartY = e.touches[0].clientY;
