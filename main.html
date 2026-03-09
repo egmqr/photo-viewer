@@ -10,6 +10,7 @@
 
     <link rel="preconnect" href="https://script.google.com" crossorigin>
     <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     
     <link rel="icon" id="dynamic-favicon" href="https://drive.google.com/thumbnail?id=18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn&sz=w64">
     
@@ -209,51 +210,53 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
     // ==========================================
     // PASTE YOUR FIREBASE CONFIG OBJECT BELOW
     // ==========================================
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyADWnFhu2xZwGQERFsxP-Xl_OlEaJ6N3NM",
-  authDomain: "event-database-78db0.firebaseapp.com",
-  projectId: "event-database-78db0",
-  storageBucket: "event-database-78db0.firebasestorage.app",
-  messagingSenderId: "130288942287",
-  appId: "1:130288942287:web:68d24ee8d0ef1ae9408bba",
-  measurementId: "G-KCKB2P58QY"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyADWnFhu2xZwGQERFsxP-Xl_OlEaJ6N3NM",
+        authDomain: "event-database-78db0.firebaseapp.com",
+        projectId: "event-database-78db0",
+        storageBucket: "event-database-78db0.firebasestorage.app",
+        messagingSenderId: "130288942287",
+        appId: "1:130288942287:web:68d24ee8d0ef1ae9408bba",
+        measurementId: "G-KCKB2P58QY"
+    };
 
-    function hideLoader() {
-        const activeFrame = document.querySelector('.app-iframe.active');
-        if (activeFrame && activeFrame.getAttribute('src')) {
-            document.getElementById('main-loader').style.display = 'none';
-        }
-    }
+    // 1. IMPORT LITE SDKs AT THE TOP LEVEL for parallel downloading
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    // Switched to firestore-lite.js for maximum speed
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-lite.js";
 
-    function showLoader() {
+    // 2. INITIALIZE FIREBASE IMMEDIATELY
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Attach to window so module scope can reach them
+    window.hideLoader = function() {
+        document.getElementById('main-loader').style.display = 'none';
+    };
+
+    window.showLoader = function() {
         document.getElementById('main-loader').style.display = 'flex';
-    }
+    };
 
+    // 3. FETCH DATA ON LOAD
     document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         const eventId = params.get('id');
         let requestedTab = parseInt(params.get('tab'), 10) || 1;
 
-        if (eventId && firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE") {
+        if (eventId && firebaseConfig.apiKey !== "AIzaSyADWnFhu2xZwGQERFsxP-Xl_OlEaJ6N3NM") {
             try {
-                // Dynamically import Firebase SDK to keep the namespace clean
-                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js");
-                const { getFirestore, doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-                
-                const app = initializeApp(firebaseConfig);
-                const db = getFirestore(app);
                 const docRef = doc(db, "events", eventId);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    document.getElementById('loader-msg').innerText = "Loading Gallery...";
-                    buildPageContent(docSnap.data(), requestedTab);
+                    // Hide the global loader instantly the moment Firebase returns data!
+                    window.hideLoader(); 
+                    window.buildPageContent(docSnap.data(), requestedTab);
                 } else {
                     document.getElementById('loader-msg').innerText = "Event Not Found";
                 }
@@ -262,9 +265,8 @@ const firebaseConfig = {
                 console.error("Firebase Fetch Error:", err);
             }
         } else {
-            // Fallback for direct loads without an ID
             document.getElementById('loader-msg').innerText = "Loading Default...";
-            buildPageContent({
+            window.buildPageContent({
                 eventName: 'Default Event',
                 bgId: '',
                 logoId: '',
@@ -275,7 +277,7 @@ const firebaseConfig = {
         }
     });
 
-    function buildPageContent(data, requestedTab) {
+    window.buildPageContent = function(data, requestedTab) {
         const logoId = data.logoId || '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
         const fontColor = data.fontColor || '#ffffff';
         const bgColor = data.bgColor || '#000000';
@@ -342,7 +344,7 @@ const firebaseConfig = {
                 iframe.setAttribute('data-src', link);
             }
             
-            iframe.onload = hideLoader;
+            // iframe.onload = hideLoader; is removed from here!
             iframeContainer.appendChild(iframe);
         });
 
@@ -353,10 +355,10 @@ const firebaseConfig = {
             }
         }, 100);
 
-        setupInteractivity();
-    }
+        window.setupInteractivity();
+    };
 
-    function setupInteractivity() {
+    window.setupInteractivity = function() {
         const tabs = document.querySelectorAll('.nav-tab');
         const frames = document.querySelectorAll('.app-iframe');
 
@@ -364,6 +366,7 @@ const firebaseConfig = {
             tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         };
 
+        // Lazy load background tabs
         setTimeout(() => {
             let delay = 0;
             frames.forEach(frame => {
@@ -391,10 +394,12 @@ const firebaseConfig = {
                     const currentSrc = targetFrame.getAttribute('src');
 
                     if (dataSrc && !currentSrc) {
-                        showLoader();
+                        window.showLoader();
                         targetFrame.setAttribute('src', dataSrc);
+                        // Using onload here just for unvisited background tabs being clicked
+                        targetFrame.onload = window.hideLoader; 
                     } else {
-                        hideLoader(); 
+                        window.hideLoader(); 
                     }
                     
                     targetFrame.classList.add('active');
@@ -406,7 +411,7 @@ const firebaseConfig = {
                 }
             });
         });
-    }
+    };
     </script>
 </body>
 </html>
