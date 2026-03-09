@@ -60,7 +60,7 @@
   <div class="image-stage">
     <div id="hd-hint" class="hint-banner"></div>
     <div class="nav-btn left" onclick="navigate(-1)">&#10094;</div>
-    <img id="main-image" class="main" src="" decoding="async">
+    <img id="main-image" class="main" src="">
     <div class="nav-btn right" onclick="navigate(1)">&#10095;</div>
   </div>
   <div class="modal-bottom-controls">
@@ -144,7 +144,7 @@
       }
     }
 
-    // NEW: Background preloader to make swiping instantly responsive
+    // Background preloader 
     function preloadNeighbors(index) {
       if (!images || images.length === 0) return;
       const preload = (idx) => {
@@ -205,7 +205,8 @@
         const renderIndex = currentIndex; 
         
         fadeTimer = setTimeout(() => { 
-          imgEl.src = previewUrl; 
+          
+          // FIX: Attach the onload function BEFORE setting the src, avoiding the cache race condition!
           imgEl.onload = () => {
             imgEl.onload = null; 
             if (currentIndex !== renderIndex) return;
@@ -233,6 +234,9 @@
               activeHdLoader.src = hdUrl;
             }, 800);
           };
+          
+          imgEl.src = previewUrl; 
+          
         }, 20); 
       } 
     }
@@ -297,4 +301,16 @@
     };
     track.addEventListener('touchstart', e => { isScrubbing = true; document.getElementById('timeBubble').style.opacity = 1; hS(e.touches[0].clientX); }, {passive: false}); 
     window.addEventListener('touchmove', e => { if (isScrubbing) { e.preventDefault(); hS(e.touches[0].clientX); } }, {passive: false}); 
-    window.
+    window.addEventListener('touchend', () => { if (isScrubbing) { isScrubbing = false; document.getElementById('timeBubble').style.opacity = 0; updateUI(false, true); } }); 
+
+    const wrapper = document.getElementById('filmstripWrapper');
+    wrapper.addEventListener('scroll', () => { 
+      if (isScrubbing || pIsProgrammatic) return; 
+      const centerIdx = Math.max(0, Math.min(images.length - 1, Math.round(wrapper.scrollLeft / 53)));
+      if (centerIdx !== currentIndex) { currentIndex = centerIdx; updateUI(true, false); }
+      clearTimeout(scrollEndTimer); 
+      scrollEndTimer = setTimeout(() => { updateUI(false, false); }, 150);
+    }); 
+  </script>
+</body>
+</html>
