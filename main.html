@@ -248,7 +248,7 @@
         const eventId = params.get('id');
         let requestedTab = parseInt(params.get('tab'), 10) || 1;
 
-        if (eventId && firebaseConfig.apiKey !== "AIzaSyADWnFhu2xZwGQERFsxP-Xl_OlEaJ6N3NM") {
+        if (eventId && firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE") {
             try {
                 const docRef = doc(db, "events", eventId);
                 const docSnap = await getDoc(docRef);
