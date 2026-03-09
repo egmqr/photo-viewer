@@ -23,13 +23,14 @@
     html { box-sizing: border-box; background: transparent; }
     *, *:before, *:after { box-sizing: inherit; }
     
+    /* NEW: Locked body overscroll to make pull-to-refresh feel native */
     body { 
       margin: 0; 
       padding: 0; 
       background: transparent; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
       min-height: 100vh; 
-      /* Touch optimizations */
+      overscroll-behavior-y: none;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       padding-bottom: calc(60px + var(--safe-bottom)); 
@@ -137,7 +138,6 @@
       cursor: pointer; 
       aspect-ratio: 1 / 1;
       overflow: hidden;
-      /* FIX: content-visibility removed to prevent grid collapse */
     }
     
     .image-container { 
@@ -200,11 +200,71 @@
     }
     
     #sentinel { height: 40px; }
+
+    /* NEW: CUSTOM PULL-TO-REFRESH UI */
+    .side-hint-pill { 
+      position: fixed; 
+      right: -120px; 
+      top: 25%; 
+      background: rgba(255,255,255,0.85); 
+      backdrop-filter: blur(10px); 
+      -webkit-backdrop-filter: blur(10px); 
+      border: 1px solid rgba(0,0,0,0.1); 
+      border-right: none; 
+      padding: 10px 12px; 
+      border-radius: 15px 0 0 15px; 
+      color: #333; 
+      font-size: 11px; 
+      font-weight: 600; 
+      z-index: 90; 
+      transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s; 
+      pointer-events: none; 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+      box-shadow: -2px 2px 10px rgba(0,0,0,0.15); 
+    }
+    .side-hint-pill.show { right: 0; }
+    
+    .ptr-container { 
+      position: fixed; 
+      top: env(safe-area-inset-top); 
+      left: 50%; 
+      transform: translate(-50%, -100px); 
+      z-index: 1000; 
+      background: #fff; 
+      border: 1px solid #ddd; 
+      padding: 8px 18px; 
+      border-radius: 25px; 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+    }
+    .ptr-text { font-size: 12px; font-weight: bold; color: #555; }
+    .spinner-micro { 
+      width: 12px; 
+      height: 12px; 
+      border: 2px solid rgba(0,0,0,0.1); 
+      border-top: 2px solid #1a73e8; 
+      border-radius: 50%; 
+      animation: spin 0.8s linear infinite; 
+      display: none; 
+    }
   </style>
 </head>
 <body>
 
-<div id="status-toast">Synced</div>
+<div id="status-toast">Gallery is up to date</div>
+
+<div class="side-hint-pill" id="swipe-hint">
+  <span style="font-size: 16px; font-weight: bold; color: #1a73e8;">↓</span> Pull to Sync
+</div>
+
+<div class="ptr-container" id="ptr-indicator">
+  <div class="spinner-micro" id="ptr-spinner"></div>
+  <span class="ptr-text" id="ptr-text">Pull down to sync...</span>
+</div>
 
 <div class="search-wrapper">
   <div class="input-container">
@@ -231,6 +291,84 @@
   
   // Slightly higher res thumbnails for high-density mobile displays
   const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
+
+  // --- NEW: PULL TO REFRESH LOGIC ---
+  let ptrStartY = 0;
+  let ptrCurrentY = 0;
+  let isPulling = false;
+  let isRefreshing = false;
+  const ptrIndicator = document.getElementById('ptr-indicator');
+  const ptrText = document.getElementById('ptr-text');
+  const ptrSpinner = document.getElementById('ptr-spinner');
+  const swipeHint = document.getElementById('swipe-hint');
+
+  // Slide in the hint beautifully after 1.5 seconds, then hide it after 8 seconds
+  setTimeout(() => { if(swipeHint) swipeHint.classList.add('show'); }, 1500);
+  setTimeout(() => { if(swipeHint) swipeHint.style.opacity = '0'; }, 8000);
+
+  window.addEventListener('touchstart', (e) => {
+    // Hide the side hint the moment the user interacts with the page
+    if (swipeHint && swipeHint.style.opacity !== '0') swipeHint.style.opacity = '0';
+
+    // Only engage pull-to-refresh if user is at the very top of the page
+    if (window.scrollY <= 0 && !isRefreshing) {
+      ptrStartY = e.touches[0].clientY;
+      isPulling = true;
+      ptrIndicator.style.transition = 'none'; // Instant follow finger
+    }
+  }, {passive: true});
+
+  window.addEventListener('touchmove', (e) => {
+    if (!isPulling || isRefreshing) return;
+    ptrCurrentY = e.touches[0].clientY;
+    let dy = ptrCurrentY - ptrStartY;
+    
+    if (dy > 0 && window.scrollY <= 0) {
+      // Physical resistance simulation
+      let visualY = Math.min(dy / 2.5, 90); 
+      ptrIndicator.style.transform = `translate(-50%, calc(-100px + ${visualY}px))`;
+      
+      if (visualY > 70) {
+        ptrText.innerText = "Release to sync";
+        ptrText.style.color = "#1a73e8";
+      } else {
+        ptrText.innerText = "Pull down to sync...";
+        ptrText.style.color = "#555";
+      }
+    }
+  }, {passive: true});
+
+  window.addEventListener('touchend', (e) => {
+    if (!isPulling || isRefreshing) return;
+    isPulling = false;
+    ptrIndicator.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    
+    let dy = ptrCurrentY - ptrStartY;
+    let visualY = Math.min(dy / 2.5, 90);
+    
+    if (visualY > 70 && dy > 0) {
+      // Threshold met: Trigger Refresh
+      isRefreshing = true;
+      ptrIndicator.style.transform = `translate(-50%, 15px)`; // Hold it below the notch
+      ptrText.innerText = "Syncing...";
+      ptrSpinner.style.display = "block";
+      refreshData(true); 
+    } else {
+      // Threshold missed: Snap back
+      closePtr();
+    }
+  });
+
+  function closePtr() {
+    ptrIndicator.style.transform = `translate(-50%, -100px)`;
+    setTimeout(() => {
+      isRefreshing = false;
+      ptrText.innerText = "Pull down to sync...";
+      ptrText.style.color = "#555";
+      ptrSpinner.style.display = "none";
+    }, 300);
+  }
+  // ----------------------------------
 
   window.onload = () => {
     if (!targetFolderId) {
@@ -275,7 +413,7 @@
         applyFilter(); 
         isFirstLoad = false; 
         showToast('Gallery up to date'); 
-        setInterval(refreshData, 90000); 
+        setInterval(() => refreshData(false), 90000); 
 
         if (viewerWindow && !viewerWindow.closed) {
           viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
@@ -375,11 +513,16 @@
   
   function loadData(d) { allImages = d.map(processItem); applyFilter(false); }
   
-  function refreshData() { 
+  // MODIFIED: Accepts the isPtr boolean to handle UI states
+  function refreshData(isPtr = false) { 
     fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
       .then(res => res.json())
       .then(res => {
-        if (!res.data) return;
+        if (!res.data) {
+          if (isPtr) closePtr();
+          return;
+        }
+        
         const fresh = res.data.map(processItem); 
         let hasChanges = (fresh.length !== allImages.length);
         if (!hasChanges) { 
@@ -395,9 +538,17 @@
           if (viewerWindow && !viewerWindow.closed) {
             viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
           }
-        } 
+        } else if (isPtr) {
+          showToast('Gallery is up to date');
+        }
       })
-      .catch(err => console.error("Background sync failed:", err));
+      .catch(err => {
+        console.error("Background sync failed:", err);
+        if (isPtr) showToast('Sync failed. Check connection.');
+      })
+      .finally(() => {
+        if (isPtr) closePtr();
+      });
   }
 </script>
 </body>
