@@ -211,9 +211,18 @@
 
     <script>
     // ==========================================
-    // PASTE YOUR APPS SCRIPT WEB APP URL BELOW
+    // PASTE YOUR FIREBASE CONFIG OBJECT BELOW
     // ==========================================
-    const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx_N__vm8EexfRPbWjfjAu8c4C0jnVUkxXxyAUoA6aGbGdIwkyEh2UfzCGt6-QArnmkAw/exec";
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyADWnFhu2xZwGQERFsxP-Xl_OlEaJ6N3NM",
+  authDomain: "event-database-78db0.firebaseapp.com",
+  projectId: "event-database-78db0",
+  storageBucket: "event-database-78db0.firebasestorage.app",
+  messagingSenderId: "130288942287",
+  appId: "1:130288942287:web:68d24ee8d0ef1ae9408bba",
+  measurementId: "G-KCKB2P58QY"
+};
 
     function hideLoader() {
         const activeFrame = document.querySelector('.app-iframe.active');
@@ -226,28 +235,32 @@
         document.getElementById('main-loader').style.display = 'flex';
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         const eventId = params.get('id');
         let requestedTab = parseInt(params.get('tab'), 10) || 1;
 
-        // The logic bug was here! It is now fixed to correctly execute the fetch.
-        if (eventId) {
-            // === CACHE BUSTER ADDED HERE: &t=${new Date().getTime()} ===
-            fetch(`${APPS_SCRIPT_API_URL}?action=getEventData&id=${eventId}&t=${new Date().getTime()}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        document.getElementById('loader-msg').innerText = "Event Not Found";
-                    } else {
-                        document.getElementById('loader-msg').innerText = "Loading Gallery...";
-                        buildPageContent(data, requestedTab);
-                    }
-                })
-                .catch(err => {
-                    document.getElementById('loader-msg').innerText = "Error loading event";
-                    console.error("API Fetch Error:", err);
-                });
+        if (eventId && firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE") {
+            try {
+                // Dynamically import Firebase SDK to keep the namespace clean
+                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js");
+                const { getFirestore, doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                const docRef = doc(db, "events", eventId);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    document.getElementById('loader-msg').innerText = "Loading Gallery...";
+                    buildPageContent(docSnap.data(), requestedTab);
+                } else {
+                    document.getElementById('loader-msg').innerText = "Event Not Found";
+                }
+            } catch (err) {
+                document.getElementById('loader-msg').innerText = "Database Error";
+                console.error("Firebase Fetch Error:", err);
+            }
         } else {
             // Fallback for direct loads without an ID
             document.getElementById('loader-msg').innerText = "Loading Default...";
@@ -263,17 +276,14 @@
     });
 
     function buildPageContent(data, requestedTab) {
-        // Defaults
         const logoId = data.logoId || '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
         const fontColor = data.fontColor || '#ffffff';
         const bgColor = data.bgColor || '#000000';
 
-        // Apply Event Name, Logo, Favicon
         document.getElementById('event-title').innerText = data.eventName;
         document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${logoId}&sz=w40`;
         document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${logoId}&sz=w64`;
         
-        // Apply Background Color / Image
         document.body.style.backgroundColor = bgColor;
         if (data.bgId && data.bgId.trim() !== '') {
             document.body.style.backgroundImage = `url('https://drive.google.com/thumbnail?id=${data.bgId}&sz=w1000')`;
@@ -281,7 +291,6 @@
             document.body.style.backgroundImage = 'none';
         }
 
-        // Inject Dynamic Styles for Font Colors
         const dynamicStyles = document.createElement('style');
         dynamicStyles.innerHTML = `
             h1.page-title { color: ${fontColor}; }
@@ -399,28 +408,5 @@
         });
     }
     </script>
-    <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyADWnFhu2xZwGQERFsxP-Xl_OlEaJ6N3NM",
-    authDomain: "event-database-78db0.firebaseapp.com",
-    projectId: "event-database-78db0",
-    storageBucket: "event-database-78db0.firebasestorage.app",
-    messagingSenderId: "130288942287",
-    appId: "1:130288942287:web:68d24ee8d0ef1ae9408bba",
-    measurementId: "G-KCKB2P58QY"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
 </body>
 </html>
