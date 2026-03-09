@@ -129,6 +129,9 @@
     
     @media (min-width: 768px) { 
       .gallery-container { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px; padding: 4px; } 
+      
+      /* FIX: Hide pull-to-refresh elements on non-mobile devices */
+      #swipe-hint, #ptr-indicator { display: none !important; }
     }
     
     .card { 
@@ -200,7 +203,7 @@
     
     #sentinel { height: 40px; }
 
-    /* NEW: CUSTOM PULL-TO-REFRESH UI */
+    /* CUSTOM PULL-TO-REFRESH UI */
     .side-hint-pill { 
       position: fixed; 
       right: -120px; 
@@ -217,7 +220,7 @@
       font-size: 11px; 
       font-weight: 600; 
       z-index: 90; 
-      transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Removed opacity transition since it never hides */
+      transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       pointer-events: none; 
       display: flex; 
       align-items: center; 
@@ -509,7 +512,6 @@
   
   function loadData(d) { allImages = d.map(processItem); applyFilter(false); }
   
-  // MODIFIED: Accepts the isPtr boolean to handle UI states
   function refreshData(isPtr = false) { 
     fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
       .then(res => res.json())
