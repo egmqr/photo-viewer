@@ -111,7 +111,21 @@
         updateUI(false, true);
       } 
       else if (event.data.type === 'UPDATE_DATA') {
+        // FIX: Capture current image ID before overwriting the array
+        const currentId = images[currentIndex] ? images[currentIndex].id : null;
         images = event.data.images;
+        
+        // Find where that image moved to in the new array to prevent UI jumping
+        if (currentId) {
+          const newIdx = images.findIndex(img => img.id === currentId);
+          if (newIdx !== -1) {
+            currentIndex = newIdx;
+          } else {
+            // Guard fallback in case the image was deleted remotely
+            currentIndex = Math.min(currentIndex, Math.max(0, images.length - 1));
+          }
+        }
+
         rebuildFilmstrip(false); 
         updateUI(false, false);
       }
