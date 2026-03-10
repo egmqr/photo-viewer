@@ -282,12 +282,14 @@
         const defaultLogoId = '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
         const fontColor = data.fontColor || '#ffffff';
         const bgColor = data.bgColor || '#000000';
-        const logoOnMain = data.logoOnMain !== false; 
+        
+        // FIX: Strictly require true. If it's unchecked (false) or missing, it triggers the default.
+        const logoOnMain = data.logoOnMain === true; 
 
         document.getElementById('event-title').innerText = data.eventName;
         
         const logoContainer = document.getElementById('logo-container');
-        logoContainer.style.display = 'flex'; // The container is always visible now
+        logoContainer.style.display = 'flex'; 
         
         if (logoOnMain) {
             // Checkbox was checked: Show custom logo, remove clickable link behavior
@@ -297,7 +299,7 @@
             logoContainer.style.cursor = 'default';
             document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=w64`;
         } else {
-            // Checkbox was unchecked: Force default logo, keep/restore clickable link behavior
+            // Checkbox was unchecked: Force default logo, restore Facebook link
             document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=h80`;
             logoContainer.setAttribute('href', 'https://www.facebook.com/egmproductions');
             logoContainer.setAttribute('target', '_blank');
