@@ -35,7 +35,7 @@
       padding-bottom: calc(60px + var(--safe-bottom)); 
     }
 
-    /* MOBILE FLOATING SEARCH BAR */
+    /* MOBILE FLOATING SEARCH BAR & SYNC ROW */
     .search-wrapper { 
       position: sticky; 
       top: 0; 
@@ -51,10 +51,18 @@
       gap: 10px; 
     }
 
+    .search-row {
+      display: flex;
+      width: 100%;
+      max-width: 600px;
+      gap: 10px;
+      align-items: center;
+    }
+
     .input-container { 
       position: relative; 
       width: 100%; 
-      max-width: 600px; 
+      flex-grow: 1;
     }
 
     #timeSearch { 
@@ -89,6 +97,27 @@
       font-size: 14px;
       font-weight: bold;
     }
+
+    /* STICKY SYNC BUTTON */
+    .sync-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .sync-btn:active { transform: scale(0.85); background: #1557b0; }
+    .sync-btn.spinning svg { animation: spin 0.8s linear infinite; }
 
     /* COMPACT LOADER PILL */
     #background-loader { 
@@ -129,7 +158,6 @@
 
     @media (min-width: 768px) { 
       .gallery-container { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px; padding: 4px; } 
-      #swipe-hint, #ptr-indicator { display: none !important; }
     }
 
     .card { 
@@ -200,77 +228,24 @@
     }
 
     #sentinel { height: 40px; }
-
-    /* CUSTOM PULL-TO-REFRESH UI */
-    .side-hint-pill { 
-      position: fixed; 
-      right: -120px; 
-      top: 50%; 
-      transform: translateY(-50%); 
-      background: rgba(255,255,255,0.85); 
-      backdrop-filter: blur(10px); 
-      -webkit-backdrop-filter: blur(10px); 
-      border: 1px solid rgba(0,0,0,0.1); 
-      border-right: none; 
-      padding: 10px 12px; 
-      border-radius: 15px 0 0 15px; 
-      color: #333; 
-      font-size: 10px; 
-      font-weight: 600; 
-      z-index: 90; 
-      transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      pointer-events: none; 
-      display: flex; 
-      align-items: center; 
-      gap: 6px; 
-      box-shadow: -2px 2px 10px rgba(0,0,0,0.15); 
-    }
-    .side-hint-pill.show { right: 0; }
-
-    .ptr-container { 
-      position: fixed; 
-      top: env(safe-area-inset-top); 
-      left: 50%; 
-      transform: translate(-50%, -100px); 
-      z-index: 1000; 
-      background: #fff; 
-      border: 1px solid #ddd; 
-      padding: 8px 18px; 
-      border-radius: 25px; 
-      display: flex; 
-      align-items: center; 
-      gap: 10px; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
-    }
-    .ptr-text { font-size: 12px; font-weight: bold; color: #555; }
-    .spinner-micro { 
-      width: 12px; 
-      height: 12px; 
-      border: 2px solid rgba(0,0,0,0.1); 
-      border-top: 2px solid #1a73e8; 
-      border-radius: 50%; 
-      animation: spin 0.8s linear infinite; 
-      display: none; 
-    }
   </style>
 </head>
 <body>
 
   <div id="status-toast">Gallery is up to date</div>
 
-  <div class="side-hint-pill" id="swipe-hint">
-    <span style="font-size: 16px; font-weight: bold; color: #1a73e8;">↓</span> Swipe down<br>to sync
-  </div>
-
-  <div class="ptr-container" id="ptr-indicator">
-    <div class="spinner-micro" id="ptr-spinner"></div>
-    <span class="ptr-text" id="ptr-text">Pull down to sync...</span>
-  </div>
-
   <div class="search-wrapper">
-    <div class="input-container">
-      <input type="text" id="timeSearch" placeholder="Search time or filename..." oninput="handleSearch()" inputmode="search">
-      <div id="clearSearch" class="clear-btn" onclick="clearSearch()">&times;</div>
+    <div class="search-row">
+      <div class="input-container">
+        <input type="text" id="timeSearch" placeholder="Search time or filename..." oninput="handleSearch()" inputmode="search">
+        <div id="clearSearch" class="clear-btn" onclick="clearSearch()">&times;</div>
+      </div>
+      <button class="sync-btn" id="manual-sync-btn" onclick="triggerManualSync()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+          <path d="M21 3v5h-5"></path>
+        </svg>
+      </button>
     </div>
     <div id="background-loader"><div class="spinner-small"></div><span id="loader-msg">Syncing photos...</span></div>
   </div>
@@ -292,76 +267,6 @@
     let viewerWindow = null;
 
     const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
-
-    let ptrStartY = 0;
-    let ptrCurrentY = 0;
-    let isPulling = false;
-    let isRefreshing = false;
-    const ptrIndicator = document.getElementById('ptr-indicator');
-    const ptrText = document.getElementById('ptr-text');
-    const ptrSpinner = document.getElementById('ptr-spinner');
-    const swipeHint = document.getElementById('swipe-hint');
-
-    setTimeout(() => { if(swipeHint) swipeHint.classList.add('show'); }, 1500);
-
-    window.addEventListener('touchstart', (e) => {
-      if (window.scrollY <= 0 && !isRefreshing) {
-        ptrStartY = e.touches[0].clientY;
-        isPulling = true;
-        ptrIndicator.style.transition = 'none'; 
-      }
-    }, {passive: true});
-
-    window.addEventListener('touchmove', (e) => {
-    if (!isPulling || isRefreshing) return;
-    ptrCurrentY = e.touches[0].clientY;
-    let dy = ptrCurrentY - ptrStartY;
-    
-    if (dy > 0 && window.scrollY <= 0) {
-      // FIX: Increased the pull speed (/ 2) and max travel distance (180)
-      let visualY = Math.min(dy / 2, 180); 
-      ptrIndicator.style.transform = `translate(-50%, calc(-100px + ${visualY}px))`;
-      
-      // FIX: Adjusted the threshold to match the new travel distance
-      if (visualY > 120) {
-        ptrText.innerText = "Release to sync";
-        ptrText.style.color = "#1a73e8";
-      } else {
-        ptrText.innerText = "Pull down to sync...";
-        ptrText.style.color = "#555";
-      }
-    }
-  }, {passive: true});
-
-  window.addEventListener('touchend', (e) => {
-    if (!isPulling || isRefreshing) return;
-    isPulling = false;
-    ptrIndicator.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-    
-    let dy = ptrCurrentY - ptrStartY;
-    let visualY = Math.min(dy / 2, 180);
-    
-    if (visualY > 120 && dy > 0) {
-      isRefreshing = true;
-      // FIX: Changed resting position to 75px so it sits visibly below the tabs and search bar
-      ptrIndicator.style.transform = `translate(-50%, 75px)`; 
-      ptrText.innerText = "Syncing...";
-      ptrSpinner.style.display = "block";
-      refreshData(true); 
-    } else {
-      closePtr();
-    }
-  });
-
-    function closePtr() {
-      ptrIndicator.style.transform = `translate(-50%, -100px)`;
-      setTimeout(() => {
-        isRefreshing = false;
-        ptrText.innerText = "Pull down to sync...";
-        ptrText.style.color = "#555";
-        ptrSpinner.style.display = "none";
-      }, 300);
-    }
 
     window.onload = () => {
       if (!targetFolderId) {
@@ -460,6 +365,15 @@
       applyFilter();
     }
 
+    function triggerManualSync() {
+      const btn = document.getElementById('manual-sync-btn');
+      if (btn.classList.contains('spinning')) return; 
+      
+      btn.classList.add('spinning');
+      showToast('Syncing...');
+      refreshData(true); // Now serves as our manual button flag
+    }
+
     function applyFilter(isBackgroundRefresh = false) {
       const terms = document.getElementById('timeSearch').value.toLowerCase().trim().split(/\s+/).filter(Boolean);
       window.filteredImages = terms.length > 0 ? allImages.filter(img => terms.every(t => img.searchStr.includes(t))) : allImages;
@@ -527,14 +441,11 @@
       hasRendered = true;
     }
 
-    function refreshData(isPtr = false) { 
+    function refreshData(isManualBtn = false) { 
       fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
         .then(res => res.json())
         .then(res => {
-          if (!res.data) {
-            if (isPtr) closePtr();
-            return;
-          }
+          if (!res.data) return;
 
           const fresh = res.data.map(processItem).filter(img => !window.deadImageIds.has(img.id)); 
           let hasChanges = (fresh.length !== allImages.length);
@@ -552,16 +463,18 @@
             if (viewerWindow && !viewerWindow.closed) {
               viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
             }
-          } else if (isPtr) {
+          } else if (isManualBtn) {
             showToast('Gallery is up to date');
           }
         })
         .catch(err => {
           console.error("Background sync failed:", err);
-          if (isPtr) showToast('Sync failed. Check connection.');
+          if (isManualBtn) showToast('Sync failed. Check connection.');
         })
         .finally(() => {
-          if (isPtr) closePtr();
+          if (isManualBtn) {
+            document.getElementById('manual-sync-btn').classList.remove('spinning');
+          }
         });
     }
   </script>
