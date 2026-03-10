@@ -35,7 +35,6 @@
       padding-bottom: calc(60px + var(--safe-bottom)); 
     }
 
-    /* MOBILE FLOATING SEARCH BAR */
     .search-wrapper { 
       position: sticky; 
       top: 0; 
@@ -90,7 +89,6 @@
       font-weight: bold;
     }
 
-    /* COMPACT LOADER PILL */
     #background-loader { 
       display: flex; 
       justify-content: center; 
@@ -117,7 +115,6 @@
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* EDGE-TO-EDGE CAMERA ROLL GRID */
     .gallery-container { 
       display: grid; 
       grid-template-columns: repeat(3, 1fr); 
@@ -129,7 +126,6 @@
     
     @media (min-width: 768px) { 
       .gallery-container { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px; padding: 4px; } 
-      
       #swipe-hint, #ptr-indicator { display: none !important; }
     }
     
@@ -161,7 +157,6 @@
     
     @keyframes shimmer { 0% { background-position: -100px; } 100% { background-position: 500px; } }
     
-    /* OVERLAY TIMESTAMP */
     .card-footer { 
       position: absolute; 
       bottom: 4px; 
@@ -175,7 +170,6 @@
     }
     .time-value { font-size: 10px; color: #fff; font-weight: 600; letter-spacing: 0.3px;}
 
-    /* MOBILE NATIVE TOAST */
     #status-toast { 
       position: fixed; 
       top: calc(50px + var(--safe-bottom)); 
@@ -202,7 +196,6 @@
     
     #sentinel { height: 40px; }
 
-    /* CUSTOM PULL-TO-REFRESH UI */
     .side-hint-pill { 
       position: fixed; 
       right: -120px; 
@@ -287,6 +280,8 @@
   const targetFolderId = urlParams.get('folderId');
 
   window.filteredImages = []; 
+  // FIX: Added deadImageIds Set to store permanently broken IDs
+  window.deadImageIds = new Set();
   
   let allImages = [], currentIndex = 0, isFirstLoad = true, hasRendered = false, scrollObserver = null;
   let viewerWindow = null;
@@ -392,17 +387,16 @@
     viewerWindow = window.open(`${GITHUB_VIEWER_URL}?id=${id}`, "_blank");
   }
 
-  // FIX: The Self-Healing Error Handler
   window.handleImageError = function(id, imgElement) {
-    // 1. Erase from master arrays
+    // FIX: Add to permanent blacklist so background sync ignores it entirely
+    window.deadImageIds.add(id);
+
     allImages = allImages.filter(img => img.id !== id);
     window.filteredImages = window.filteredImages.filter(img => img.id !== id);
     
-    // 2. Erase from the UI grid silently
     const card = imgElement.closest('.card');
     if (card) card.remove();
     
-    // 3. Keep the viewer window perfectly synced so the user doesn't hit a ghost file
     if (viewerWindow && !viewerWindow.closed) {
       viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
     }
@@ -415,7 +409,8 @@
         document.getElementById('background-loader').style.display = 'none';
         if (!res.data) return;
         
-        allImages = res.data.map(processItem);
+        // FIX: Ensure deep sync respects the dead image blacklist
+        allImages = res.data.map(processItem).filter(img => !window.deadImageIds.has(img.id));
         
         applyFilter(hasRendered); 
         
@@ -496,7 +491,6 @@
     window.filteredImages.slice(currentIndex, currentIndex + 24).forEach((img, i) => {
       const card = document.createElement('div'); card.className = 'card';
       
-      // FIX: Added the onerror handler to the image tag
       card.innerHTML = `
         <div class="image-container" onclick="handleImageClick('${img.id}')">
           <img decoding="async" loading="${currentIndex === 0 && i < 12 ? 'eager' : 'lazy'}" src="${img.url}" onload="this.classList.add('loaded')" onerror="handleImageError('${img.id}', this)">
@@ -522,7 +516,8 @@
   }
   
   function loadData(d) { 
-    allImages = d.map(processItem); 
+    // FIX: Make sure the initial fast load also respects the dead image blacklist
+    allImages = d.map(processItem).filter(img => !window.deadImageIds.has(img.id)); 
     applyFilter(false); 
     hasRendered = true;
   }
@@ -536,8 +531,10 @@
           return;
         }
         
-        const fresh = res.data.map(processItem); 
+        // FIX: The 90s sync payload is sanitized against the blacklist before comparison
+        const fresh = res.data.map(processItem).filter(img => !window.deadImageIds.has(img.id)); 
         let hasChanges = (fresh.length !== allImages.length);
+        
         if (!hasChanges) { 
             for (let i = 0; i < Math.min(fresh.length, 50); i++) { 
                 if (fresh[i].id !== allImages[i].id) { hasChanges = true; break; } 
