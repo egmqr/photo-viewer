@@ -313,42 +313,45 @@
     }, {passive: true});
 
     window.addEventListener('touchmove', (e) => {
-      if (!isPulling || isRefreshing) return;
-      ptrCurrentY = e.touches[0].clientY;
-      let dy = ptrCurrentY - ptrStartY;
-
-      if (dy > 0 && window.scrollY <= 0) {
-        let visualY = Math.min(dy / 2.5, 90); 
-        ptrIndicator.style.transform = `translate(-50%, calc(-100px + ${visualY}px))`;
-
-        if (visualY > 70) {
-          ptrText.innerText = "Release to sync";
-          ptrText.style.color = "#1a73e8";
-        } else {
-          ptrText.innerText = "Pull down to sync...";
-          ptrText.style.color = "#555";
-        }
-      }
-    }, {passive: true});
-
-    window.addEventListener('touchend', (e) => {
-      if (!isPulling || isRefreshing) return;
-      isPulling = false;
-      ptrIndicator.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-
-      let dy = ptrCurrentY - ptrStartY;
-      let visualY = Math.min(dy / 2.5, 90);
-
-      if (visualY > 70 && dy > 0) {
-        isRefreshing = true;
-        ptrIndicator.style.transform = `translate(-50%, 15px)`; 
-        ptrText.innerText = "Syncing...";
-        ptrSpinner.style.display = "block";
-        refreshData(true); 
+    if (!isPulling || isRefreshing) return;
+    ptrCurrentY = e.touches[0].clientY;
+    let dy = ptrCurrentY - ptrStartY;
+    
+    if (dy > 0 && window.scrollY <= 0) {
+      // FIX: Increased the pull speed (/ 2) and max travel distance (180)
+      let visualY = Math.min(dy / 2, 180); 
+      ptrIndicator.style.transform = `translate(-50%, calc(-100px + ${visualY}px))`;
+      
+      // FIX: Adjusted the threshold to match the new travel distance
+      if (visualY > 120) {
+        ptrText.innerText = "Release to sync";
+        ptrText.style.color = "#1a73e8";
       } else {
-        closePtr();
+        ptrText.innerText = "Pull down to sync...";
+        ptrText.style.color = "#555";
       }
-    });
+    }
+  }, {passive: true});
+
+  window.addEventListener('touchend', (e) => {
+    if (!isPulling || isRefreshing) return;
+    isPulling = false;
+    ptrIndicator.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    
+    let dy = ptrCurrentY - ptrStartY;
+    let visualY = Math.min(dy / 2, 180);
+    
+    if (visualY > 120 && dy > 0) {
+      isRefreshing = true;
+      // FIX: Changed resting position to 75px so it sits visibly below the tabs and search bar
+      ptrIndicator.style.transform = `translate(-50%, 75px)`; 
+      ptrText.innerText = "Syncing...";
+      ptrSpinner.style.display = "block";
+      refreshData(true); 
+    } else {
+      closePtr();
+    }
+  });
 
     function closePtr() {
       ptrIndicator.style.transform = `translate(-50%, -100px)`;
