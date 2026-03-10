@@ -111,17 +111,14 @@
         updateUI(false, true);
       } 
       else if (event.data.type === 'UPDATE_DATA') {
-        // FIX: Capture current image ID before overwriting the array
         const currentId = images[currentIndex] ? images[currentIndex].id : null;
         images = event.data.images;
         
-        // Find where that image moved to in the new array to prevent UI jumping
         if (currentId) {
           const newIdx = images.findIndex(img => img.id === currentId);
           if (newIdx !== -1) {
             currentIndex = newIdx;
           } else {
-            // Guard fallback in case the image was deleted remotely
             currentIndex = Math.min(currentIndex, Math.max(0, images.length - 1));
           }
         }
@@ -136,7 +133,8 @@
       const currentScroll = wrapper.scrollLeft; 
       
       let fHtml = '';
-      images.forEach((f, i) => { fHtml += `<img id="pt-${i}" class="filmstrip-thumb ${i === currentIndex ? 'active' : ''}" src="${f.baseUrl.startsWith('data:') ? f.baseUrl : f.baseUrl + '=s50-c'}" loading="lazy" onclick="navigateTo(${i})">`; });
+      // FIX: Added onerror handler to instantly hide broken filmstrip thumbnails
+      images.forEach((f, i) => { fHtml += `<img id="pt-${i}" class="filmstrip-thumb ${i === currentIndex ? 'active' : ''}" src="${f.baseUrl.startsWith('data:') ? f.baseUrl : f.baseUrl + '=s50-c'}" loading="lazy" onclick="navigateTo(${i})" onerror="this.style.display='none'">`; });
       wrapper.innerHTML = fHtml;
       
       if (forceScroll) {
@@ -163,7 +161,6 @@
       }
     }
 
-    // Background preloader 
     function preloadNeighbors(index) {
       if (!images || images.length === 0) return;
       const preload = (idx) => {
@@ -173,7 +170,6 @@
           preImg.src = bUrl.startsWith('data:') ? bUrl : bUrl + '=w400';
         }
       };
-      // Pre-download the adjacent photos so they are ready before the user swipes
       preload(index + 1);
       preload(index - 1);
     }
@@ -208,6 +204,7 @@
       
       const imgEl = document.getElementById('main-image');
       imgEl.onload = null;
+      imgEl.onerror = null;
 
       let previewUrl = imgData.baseUrl.startsWith('data:') ? imgData.baseUrl : imgData.baseUrl + '=w400';
       let scrubUrl = imgData.baseUrl.startsWith('data:') ? imgData.baseUrl : imgData.baseUrl + '=w200';
@@ -217,7 +214,6 @@
         if (now - lastPreviewFetch > 120) { imgEl.src = scrubUrl; lastPreviewFetch = now; } 
         else { clearTimeout(popoutImgTimer); popoutImgTimer = setTimeout(() => { imgEl.src = scrubUrl; lastPreviewFetch = Date.now(); }, 120); }
       } else { 
-        // Trigger Preloading for smooth navigation
         preloadNeighbors(currentIndex);
 
         imgEl.style.opacity = 0; 
@@ -225,7 +221,6 @@
         
         fadeTimer = setTimeout(() => { 
           
-          // FIX: Attach the onload function BEFORE setting the src, avoiding the cache race condition!
           imgEl.onload = () => {
             imgEl.onload = null; 
             if (currentIndex !== renderIndex) return;
@@ -252,6 +247,13 @@
               activeHdLoader.onerror = () => { if (!isData) showHint("Failed to load HD photo", false); };
               activeHdLoader.src = hdUrl;
             }, 800);
+          };
+          
+          // FIX: Added primary image error fallback
+          imgEl.onerror = () => {
+             imgEl.onerror = null;
+             if (currentIndex !== renderIndex) return;
+             showHint("Photo unavailable or deleted", false);
           };
           
           imgEl.src = previewUrl; 
@@ -319,12 +321,10 @@
       }); 
     };
     
-    // Mobile Touch Events
     track.addEventListener('touchstart', e => { isScrubbing = true; document.getElementById('timeBubble').style.opacity = 1; hS(e.touches[0].clientX); }, {passive: false}); 
     window.addEventListener('touchmove', e => { if (isScrubbing) { e.preventDefault(); hS(e.touches[0].clientX); } }, {passive: false}); 
     window.addEventListener('touchend', () => { if (isScrubbing) { isScrubbing = false; document.getElementById('timeBubble').style.opacity = 0; updateUI(false, true); } }); 
 
-    // Desktop Mouse Events
     track.addEventListener('mousedown', e => { isScrubbing = true; document.getElementById('timeBubble').style.opacity = 1; hS(e.clientX); });
     window.addEventListener('mousemove', e => { if (isScrubbing) { e.preventDefault(); hS(e.clientX); } });
     window.addEventListener('mouseup', () => { if (isScrubbing) { isScrubbing = false; document.getElementById('timeBubble').style.opacity = 0; updateUI(false, true); } });
