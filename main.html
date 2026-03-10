@@ -278,28 +278,32 @@
     });
 
     window.buildPageContent = function(data, requestedTab) {
-        const logoId = data.logoId || '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
+        const customLogoId = data.logoId && data.logoId.trim() !== '' ? data.logoId : '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
+        const defaultLogoId = '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
         const fontColor = data.fontColor || '#ffffff';
         const bgColor = data.bgColor || '#000000';
         const logoOnMain = data.logoOnMain !== false; 
 
         document.getElementById('event-title').innerText = data.eventName;
         
-        // Setup Logo visibility and source
         const logoContainer = document.getElementById('logo-container');
+        logoContainer.style.display = 'flex'; // The container is always visible now
+        
         if (logoOnMain) {
-            logoContainer.style.display = 'flex';
-            document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${logoId}&sz=h80`;
-            
-            // REMOVE LINK BEHAVIOR
+            // Checkbox was checked: Show custom logo, remove clickable link behavior
+            document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=h80`;
             logoContainer.removeAttribute('href');
             logoContainer.removeAttribute('target');
             logoContainer.style.cursor = 'default';
+            document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=w64`;
         } else {
-            logoContainer.style.display = 'none';
+            // Checkbox was unchecked: Force default logo, keep/restore clickable link behavior
+            document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=h80`;
+            logoContainer.setAttribute('href', 'https://www.facebook.com/egmproductions');
+            logoContainer.setAttribute('target', '_blank');
+            logoContainer.style.cursor = 'pointer';
+            document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=w64`;
         }
-        
-        document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${logoId}&sz=w64`;
         
         document.body.style.backgroundColor = bgColor;
         if (data.bgId && data.bgId.trim() !== '') {
