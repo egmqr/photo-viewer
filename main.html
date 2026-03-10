@@ -195,8 +195,8 @@
 
     <div class="header-wrapper">
         <div class="header-top-row">
-            <a href="https://www.facebook.com/egmproductions" target="_blank" class="logo-link" id="logo-container">
-                <img id="header-logo" src="https://drive.google.com/thumbnail?id=18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn&sz=h80" alt="Logo">
+            <a class="logo-link" id="logo-container" style="opacity: 0; pointer-events: none; transition: opacity 0.3s ease;">
+                <img id="header-logo" alt="Logo">
             </a>
             <h1 class="page-title" id="event-title">Loading...</h1>
             <div class="header-spacer"></div>
@@ -283,29 +283,34 @@
         const fontColor = data.fontColor || '#ffffff';
         const bgColor = data.bgColor || '#000000';
         
-        // FIX: Strictly require true. If it's unchecked (false) or missing, it triggers the default.
         const logoOnMain = data.logoOnMain === true; 
 
         document.getElementById('event-title').innerText = data.eventName;
         
         const logoContainer = document.getElementById('logo-container');
-        logoContainer.style.display = 'flex'; 
+        const headerLogo = document.getElementById('header-logo');
         
         if (logoOnMain) {
-            // Checkbox was checked: Show custom logo, remove clickable link behavior
-            document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=h80`;
+            // Show custom logo, remove link
+            headerLogo.src = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=h80`;
             logoContainer.removeAttribute('href');
             logoContainer.removeAttribute('target');
             logoContainer.style.cursor = 'default';
             document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=w64`;
         } else {
-            // Checkbox was unchecked: Force default logo, restore Facebook link
-            document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=h80`;
+            // Force default logo, restore Facebook link
+            headerLogo.src = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=h80`;
             logoContainer.setAttribute('href', 'https://www.facebook.com/egmproductions');
             logoContainer.setAttribute('target', '_blank');
             logoContainer.style.cursor = 'pointer';
             document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=w64`;
         }
+        
+        // SMOOTH FADE IN: Only reveal the logo once the final image has actually downloaded
+        headerLogo.onload = function() {
+            logoContainer.style.opacity = '1';
+            logoContainer.style.pointerEvents = 'auto';
+        };
         
         document.body.style.backgroundColor = bgColor;
         if (data.bgId && data.bgId.trim() !== '') {
@@ -313,6 +318,8 @@
         } else {
             document.body.style.backgroundImage = 'none';
         }
+
+        // ... (Keep the rest of your dynamicStyles and iframe logic below exactly as it is) ...
 
         const dynamicStyles = document.createElement('style');
         dynamicStyles.innerHTML = `
