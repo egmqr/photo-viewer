@@ -58,7 +58,6 @@
         align-items: center;
     }
 
-    /* FIX: Force 40px height, allow auto width for rectangles, contain aspect ratio */
     .logo-link img {
         height: 40px;
         width: auto;
@@ -272,7 +271,7 @@
                 logoId: '',
                 fontColor: '#ffffff',
                 bgColor: '#000000',
-                logoOnMain: true, // Defaulting true for the fallback data
+                logoOnMain: true, 
                 booths: 'https://egmqr.github.io/photo-viewer/index.html?folderId=13fAzmvuXHgOfN6FVXfu7Mbk6Sb0_xXVo&booth=1|https://egmqr.github.io/photo-viewer/index.html?folderId=1vcSQbJIr945g71SinfzNYxs7AmMV7V-9&booth=2'
             }, requestedTab);
         }
@@ -282,7 +281,6 @@
         const logoId = data.logoId || '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
         const fontColor = data.fontColor || '#ffffff';
         const bgColor = data.bgColor || '#000000';
-        // Check logoOnMain toggle. If undefined (older event data), default to true.
         const logoOnMain = data.logoOnMain !== false; 
 
         document.getElementById('event-title').innerText = data.eventName;
@@ -291,8 +289,12 @@
         const logoContainer = document.getElementById('logo-container');
         if (logoOnMain) {
             logoContainer.style.display = 'flex';
-            // Using sz=h80 to ensure wide logos don't get tiny, CSS will scale the height down to 40px safely
             document.getElementById('header-logo').src = `https://drive.google.com/thumbnail?id=${logoId}&sz=h80`;
+            
+            // REMOVE LINK BEHAVIOR
+            logoContainer.removeAttribute('href');
+            logoContainer.removeAttribute('target');
+            logoContainer.style.cursor = 'default';
         } else {
             logoContainer.style.display = 'none';
         }
