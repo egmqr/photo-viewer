@@ -121,7 +121,7 @@
     .gallery-container { 
       display: grid; 
       grid-template-columns: repeat(3, 1fr); 
-      gap: 2px; /* Tight native gap */
+      gap: 2px;
       padding: 2px; 
       max-width: 1200px; 
       margin: 0 auto; 
@@ -130,7 +130,6 @@
     @media (min-width: 768px) { 
       .gallery-container { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px; padding: 4px; } 
       
-      /* FIX: Hide pull-to-refresh elements on non-mobile devices */
       #swipe-hint, #ptr-indicator { display: none !important; }
     }
     
@@ -172,7 +171,7 @@
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
       border-radius: 8px;
-      pointer-events: none; /* Let clicks pass through to image */
+      pointer-events: none; 
     }
     .time-value { font-size: 10px; color: #fff; font-weight: 600; letter-spacing: 0.3px;}
 
@@ -207,8 +206,8 @@
     .side-hint-pill { 
       position: fixed; 
       right: -120px; 
-      top: 50%; /* Center vertically */
-      transform: translateY(-50%); /* Adjust for perfect centering */
+      top: 50%; 
+      transform: translateY(-50%); 
       background: rgba(255,255,255,0.85); 
       backdrop-filter: blur(10px); 
       -webkit-backdrop-filter: blur(10px); 
@@ -281,7 +280,6 @@
 <div id="sentinel"></div>
 
 <script>
-  // ---> IMPORTANT: REPLACE THIS URL WITH YOUR GOOGLE APPS SCRIPT WEB APP URL <---
   const API_URL = "https://script.google.com/macros/s/AKfycbwc6UDaA4yZp6gU0HRlDCiyuDV3Gu74ZbvkH4-o5E5pvgEy1Zv8feCei58rju7_Q_15/exec"; 
   const GITHUB_VIEWER_URL = "viewer.html"; 
 
@@ -290,14 +288,11 @@
 
   window.filteredImages = []; 
   
-  // FIX: Added 'hasRendered' to track if the fast load actually painted the DOM
   let allImages = [], currentIndex = 0, isFirstLoad = true, hasRendered = false, scrollObserver = null;
   let viewerWindow = null;
   
-  // Slightly higher res thumbnails for high-density mobile displays
   const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
 
-  // --- PULL TO REFRESH LOGIC ---
   let ptrStartY = 0;
   let ptrCurrentY = 0;
   let isPulling = false;
@@ -307,15 +302,13 @@
   const ptrSpinner = document.getElementById('ptr-spinner');
   const swipeHint = document.getElementById('swipe-hint');
 
-  // Slide in the hint beautifully after 1.5 seconds, and keep it there
   setTimeout(() => { if(swipeHint) swipeHint.classList.add('show'); }, 1500);
 
   window.addEventListener('touchstart', (e) => {
-    // Only engage pull-to-refresh if user is at the very top of the page
     if (window.scrollY <= 0 && !isRefreshing) {
       ptrStartY = e.touches[0].clientY;
       isPulling = true;
-      ptrIndicator.style.transition = 'none'; // Instant follow finger
+      ptrIndicator.style.transition = 'none'; 
     }
   }, {passive: true});
 
@@ -325,7 +318,6 @@
     let dy = ptrCurrentY - ptrStartY;
     
     if (dy > 0 && window.scrollY <= 0) {
-      // Physical resistance simulation
       let visualY = Math.min(dy / 2.5, 90); 
       ptrIndicator.style.transform = `translate(-50%, calc(-100px + ${visualY}px))`;
       
@@ -348,14 +340,12 @@
     let visualY = Math.min(dy / 2.5, 90);
     
     if (visualY > 70 && dy > 0) {
-      // Threshold met: Trigger Refresh
       isRefreshing = true;
-      ptrIndicator.style.transform = `translate(-50%, 15px)`; // Hold it below the notch
+      ptrIndicator.style.transform = `translate(-50%, 15px)`; 
       ptrText.innerText = "Syncing...";
       ptrSpinner.style.display = "block";
       refreshData(true); 
     } else {
-      // Threshold missed: Snap back
       closePtr();
     }
   });
@@ -369,7 +359,6 @@
       ptrSpinner.style.display = "none";
     }, 300);
   }
-  // ----------------------------------
 
   window.onload = () => {
     if (!targetFolderId) {
@@ -403,6 +392,22 @@
     viewerWindow = window.open(`${GITHUB_VIEWER_URL}?id=${id}`, "_blank");
   }
 
+  // FIX: The Self-Healing Error Handler
+  window.handleImageError = function(id, imgElement) {
+    // 1. Erase from master arrays
+    allImages = allImages.filter(img => img.id !== id);
+    window.filteredImages = window.filteredImages.filter(img => img.id !== id);
+    
+    // 2. Erase from the UI grid silently
+    const card = imgElement.closest('.card');
+    if (card) card.remove();
+    
+    // 3. Keep the viewer window perfectly synced so the user doesn't hit a ghost file
+    if (viewerWindow && !viewerWindow.closed) {
+      viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
+    }
+  };
+
   function handleDeepSync() {
     fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
       .then(res => res.json())
@@ -412,8 +417,6 @@
         
         allImages = res.data.map(processItem);
         
-        // FIX: Only trigger a harsh re-render if the screen is empty. 
-        // Otherwise, treat this as a background refresh to save scroll position.
         applyFilter(hasRendered); 
         
         hasRendered = true;
@@ -493,9 +496,10 @@
     window.filteredImages.slice(currentIndex, currentIndex + 24).forEach((img, i) => {
       const card = document.createElement('div'); card.className = 'card';
       
+      // FIX: Added the onerror handler to the image tag
       card.innerHTML = `
         <div class="image-container" onclick="handleImageClick('${img.id}')">
-          <img decoding="async" loading="${currentIndex === 0 && i < 12 ? 'eager' : 'lazy'}" src="${img.url}" onload="this.classList.add('loaded')">
+          <img decoding="async" loading="${currentIndex === 0 && i < 12 ? 'eager' : 'lazy'}" src="${img.url}" onload="this.classList.add('loaded')" onerror="handleImageError('${img.id}', this)">
         </div>
         <div class="card-footer"><span class="time-value">${img.displayTime}</span></div>
       `;
@@ -517,7 +521,6 @@
     setTimeout(() => t.classList.remove('show'), 3000); 
   }
   
-  // FIX: Make sure we register that the DOM is painted
   function loadData(d) { 
     allImages = d.map(processItem); 
     applyFilter(false); 
