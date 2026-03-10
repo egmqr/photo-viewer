@@ -255,7 +255,7 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbwc6UDaA4yZp6gU0HRlDCiyuDV3Gu74ZbvkH4-o5E5pvgEy1Zv8feCei58rju7_Q_15/exec"; 
-    const GITHUB_VIEWER_URL = "viewer.html"; 
+    const VIEWER_URL = "viewer.html";
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetFolderId = urlParams.get('folderId');
@@ -297,7 +297,7 @@
     });
 
     function handleImageClick(id) {
-      viewerWindow = window.open(`${GITHUB_VIEWER_URL}?id=${id}`, "_blank");
+      viewerWindow = window.open(`${VIEWER_URL}?id=${id}`, "_blank");
     }
 
     window.handleImageError = function(id, imgElement) {
