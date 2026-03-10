@@ -53,6 +53,11 @@
     .track-line { width: 100%; height: 4px; background: #444; border-radius: 2px; } 
     .scrubber-handle { width: 24px; height: 24px; background: #fff; border-radius: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 8px rgba(0,0,0,0.6); pointer-events: none; } 
     .time-bubble { position: absolute; top: -30px; transform: translateX(-50%); background: #333; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    
+    /* Desktop layout overrides */
+    @media (min-width: 768px) {
+      .scrubber-track { max-width: 95%; } 
+    }
   </style>
 </head>
 <body>
@@ -299,9 +304,16 @@
         if (n !== currentIndex) { currentIndex = n; updateUI(true, true); }
       }); 
     };
+    
+    // Mobile Touch Events
     track.addEventListener('touchstart', e => { isScrubbing = true; document.getElementById('timeBubble').style.opacity = 1; hS(e.touches[0].clientX); }, {passive: false}); 
     window.addEventListener('touchmove', e => { if (isScrubbing) { e.preventDefault(); hS(e.touches[0].clientX); } }, {passive: false}); 
     window.addEventListener('touchend', () => { if (isScrubbing) { isScrubbing = false; document.getElementById('timeBubble').style.opacity = 0; updateUI(false, true); } }); 
+
+    // Desktop Mouse Events
+    track.addEventListener('mousedown', e => { isScrubbing = true; document.getElementById('timeBubble').style.opacity = 1; hS(e.clientX); });
+    window.addEventListener('mousemove', e => { if (isScrubbing) { e.preventDefault(); hS(e.clientX); } });
+    window.addEventListener('mouseup', () => { if (isScrubbing) { isScrubbing = false; document.getElementById('timeBubble').style.opacity = 0; updateUI(false, true); } });
 
     const wrapper = document.getElementById('filmstripWrapper');
     wrapper.addEventListener('scroll', () => { 
