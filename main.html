@@ -290,14 +290,12 @@
         const headerLogo = document.getElementById('header-logo');
         
         if (logoOnMain) {
-            // Show custom logo, remove link
             headerLogo.src = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=h80`;
             logoContainer.removeAttribute('href');
             logoContainer.removeAttribute('target');
             logoContainer.style.cursor = 'default';
             document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=w64`;
         } else {
-            // Force default logo, restore Facebook link
             headerLogo.src = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=h80`;
             logoContainer.setAttribute('href', 'https://www.facebook.com/egmproductions');
             logoContainer.setAttribute('target', '_blank');
@@ -305,7 +303,6 @@
             document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=w64`;
         }
         
-        // SMOOTH FADE IN: Only reveal the logo once the final image has actually downloaded
         headerLogo.onload = function() {
             logoContainer.style.opacity = '1';
             logoContainer.style.pointerEvents = 'auto';
@@ -317,8 +314,6 @@
         } else {
             document.body.style.backgroundImage = 'none';
         }
-
-        // ... (Keep the rest of your dynamicStyles and iframe logic below exactly as it is) ...
 
         const dynamicStyles = document.createElement('style');
         dynamicStyles.innerHTML = `
@@ -348,10 +343,18 @@
             document.querySelector('.header-top-row').style.paddingBottom = '10px';
         }
 
-        boothLinks.forEach((link, index) => {
+        boothLinks.forEach((rawLink, index) => {
             const boothNum = index + 1;
             const frameId = `frame-${boothNum}`;
             const isTargetActive = (index === activeIndex); 
+
+            // 🔥 DOMAIN-AGNOSTIC FIX: Intercept the raw link from Firebase and force a relative path
+            let cleanLink = rawLink;
+            const folderMatch = rawLink.match(/folderId=([a-zA-Z0-9_-]+)/);
+            if (folderMatch) {
+                // This forces the iframe to load exactly where the container is currently hosted
+                cleanLink = `index.html?folderId=${folderMatch[1]}`;
+            }
 
             if (boothLinks.length > 1) {
                 const btn = document.createElement('button');
@@ -366,9 +369,9 @@
             iframe.className = `app-iframe ${isTargetActive ? 'active' : ''}`;
             
             if (isTargetActive) {
-                iframe.src = link;
+                iframe.src = cleanLink;
             } else {
-                iframe.setAttribute('data-src', link);
+                iframe.setAttribute('data-src', cleanLink);
             }
             
             iframeContainer.appendChild(iframe);
