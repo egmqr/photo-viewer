@@ -270,7 +270,15 @@
 
     window.onload = () => {
       if (!targetFolderId) {
-        document.getElementById('gallery').innerHTML = "<h3 style='text-align:center; padding: 60px 20px; color: #666; font-weight: 400;'>No folder ID provided.</h3>";
+        document.getElementById('gallery').innerHTML = "<h3 style='margin: 10%;
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 12px;
+    padding: 10px;
+    color: #333;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 30px;'>No folder ID provided.</h3>";
         document.getElementById('background-loader').style.display = 'none';
         return;
       }
@@ -390,7 +398,15 @@
       currentIndex = 0;
 
       if (window.filteredImages.length === 0) {
-        galleryEl.innerHTML = `<h3 style='grid-column: 1/-1; text-align:center; padding: 60px 20px; color: #666; font-weight: 400;'>No photos found.</h3>`;
+        galleryEl.innerHTML = `<h3 style='margin: 10%;
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 12px;
+    padding: 10px;
+    color: #333;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 30px;'>No photos found.</h3>`;
         galleryEl.style.minHeight = 'auto'; 
       } else { 
         while(currentIndex < targetCount && currentIndex < window.filteredImages.length) { 
