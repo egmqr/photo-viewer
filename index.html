@@ -255,6 +255,7 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbwc6UDaA4yZp6gU0HRlDCiyuDV3Gu74ZbvkH4-o5E5pvgEy1Zv8feCei58rju7_Q_15/exec"; 
+    const GITHUB_VIEWER_URL = "viewer.html"; 
     const VIEWER_URL = "viewer.html";
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -270,15 +271,7 @@
 
     window.onload = () => {
       if (!targetFolderId) {
-        document.getElementById('gallery').innerHTML = "<div style='margin: 10%;
-    grid-column: 1 / -1;
-    text-align: center;
-    font-size: 12px;
-    padding: 10px;
-    color: #333;
-    font-weight: bold;
-    background: rgba(255, 255, 255, 0.5);
-    border-radius: 30px;'>No folder ID provided.</div>";
+        document.getElementById('gallery').innerHTML = "<div style='margin: 10%; grid-column: 1 / -1; text-align: center; font-size: 12px; padding: 10px; color: #333; font-weight: bold; background: rgba(255, 255, 255, 0.5); border-radius: 30px;'>No folder ID provided.</div>";
         document.getElementById('background-loader').style.display = 'none';
         return;
       }
@@ -376,7 +369,7 @@
     function triggerManualSync() {
       const btn = document.getElementById('manual-sync-btn');
       if (btn.classList.contains('spinning')) return; 
-      
+
       btn.classList.add('spinning');
       showToast('Syncing...');
       refreshData(true); // Now serves as our manual button flag
@@ -457,7 +450,7 @@
 
           const fresh = res.data.map(processItem).filter(img => !window.deadImageIds.has(img.id)); 
           let hasChanges = (fresh.length !== allImages.length);
-          
+
           if (!hasChanges) { 
             for (let i = 0; i < Math.min(fresh.length, 50); i++) { 
               if (fresh[i].id !== allImages[i].id) { hasChanges = true; break; } 
