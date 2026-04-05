@@ -58,6 +58,23 @@
     @media (min-width: 768px) {
       .scrubber-track { max-width: 95%; } 
     }
+
+    /* 🔥 THE FIX: Landscape Mobile Fix 🔥 */
+    @media (orientation: landscape) and (max-height: 600px) {
+      .image-stage {
+        top: max(10px, env(safe-area-inset-top));
+        bottom: max(10px, env(safe-area-inset-bottom));
+      }
+      .is-ios .image-stage {
+        bottom: max(10px, env(safe-area-inset-bottom));
+      }
+      .popout-close {
+        top: max(10px, env(safe-area-inset-top));
+      }
+      .modal-bottom-controls {
+        padding-top: 30px; /* Ensures the dark gradient covers the image smoothly behind the controls */
+      }
+    }
   </style>
 </head>
 <body>
@@ -238,7 +255,6 @@
                 if (currentIndex !== renderIndex) return;
                 imgEl.src = hdUrl; 
                 
-                // 🔥 THE FIX: Use the existing isIOS variable to determine the message
                 if (!isData) {
                     showHint(isIOS ? "HD photo is loaded. Long press image then Save to Photos" : "HD photo is loaded.");
                 }
