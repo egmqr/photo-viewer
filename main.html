@@ -351,16 +351,28 @@
             // 🔥 DOMAIN-AGNOSTIC FIX: Intercept the raw link from Firebase and force a relative path
             let cleanLink = rawLink;
             const folderMatch = rawLink.match(/folderId=([a-zA-Z0-9_-]+)/);
+            const tabMatch = rawLink.match(/tab=([a-zA-Z0-9_-]+)/); // 🟢 Grab the tab parameter from Firebase!
+            
+            let tabLabel = `Photobooth ${boothNum}`;
+
             if (folderMatch) {
                 // This forces the iframe to load exactly where the container is currently hosted
                 cleanLink = `index.html?folderId=${folderMatch[1]}`;
+                
+                // 🟢 If Firebase says it's the community booth, pass the tag down and rename the UI!
+                if (tabMatch) {
+                    cleanLink += `&tab=${tabMatch[1]}`;
+                    if (tabMatch[1] === 'community') {
+                        tabLabel = "Community Booth"; 
+                    }
+                }
             }
 
             if (boothLinks.length > 1) {
                 const btn = document.createElement('button');
                 btn.className = `nav-tab ${isTargetActive ? 'active' : ''}`;
                 btn.setAttribute('data-target', frameId);
-                btn.innerText = `Photobooth ${boothNum}`;
+                btn.innerText = tabLabel; // 🟢 Use the smart label!
                 navContainer.appendChild(btn);
             }
 
