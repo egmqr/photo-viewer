@@ -328,7 +328,7 @@
           document.getElementById('communityUploadBtn').style.display = 'flex';
           document.getElementById('searchContainer').style.display = 'none';
           
-          // 🟢 Ask the backend for the template overlays!
+          // 🟢 NEW: Ask the backend for the template overlays!
           fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
           .then(res => res.json())
           .then(async res => {
