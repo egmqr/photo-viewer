@@ -328,19 +328,20 @@
           document.getElementById('communityUploadBtn').style.display = 'flex';
           document.getElementById('searchContainer').style.display = 'none';
           
-          // 🟢 Ask the backend for the template overlays!
+          // 🟢 BOOTHPURE TEMPLATE FETCH ENGINE
+          console.log("Fetching templates for folder:", targetFolderId);
           fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
           .then(res => res.json())
           .then(async res => {
-              if (res.data && res.data.length > 0) {
+              if (res.success && res.data && res.data.length > 0) {
+                  console.log("Templates found:", res.data.length);
                   for (let t of res.data) {
                       let largestImage = null;
                       let maxArea = 0;
                       
-                      // Filter to only ImageLayers that have a Base64 path
+                      // Filter to ImageLayers
                       let imageLayers = t.Layers.filter(l => l.LayerType === 'ImageLayer' && l.ImagePath);
                       
-                      // 🟢 THE FIX: Physically measure every image in the template to find the massive background frame!
                       for (let layer of imageLayers) {
                           await new Promise((resolve) => {
                               const tempImg = new Image();
@@ -355,12 +356,11 @@
                                   }
                                   resolve();
                               };
-                              tempImg.onerror = resolve; // Skip broken images
+                              tempImg.onerror = resolve;
                               tempImg.src = layer.ImagePath;
                           });
                       }
                       
-                      // Map to the correct bucket based on the absolute largest image
                       if (largestImage) {
                           if (largestImage.isLandscape) {
                               templateOverlays.landscape = largestImage.src;
@@ -369,16 +369,12 @@
                           }
                       }
                   }
-                  
-                  // 🟢 Safety Fallback: If they only configured one template, use it for both orientations
-                  if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
-                  if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
-                  
-                  console.log("Template Overlays successfully mapped via Area calculation!", templateOverlays);
+                  console.log("Mapped Overlays:", templateOverlays);
+              } else {
+                  console.warn("No templates found for this booth. Using blank overlays.");
               }
           })
           .catch(err => console.error("Template fetch error:", err));
-      }
 
       if (!targetFolderId) {
         document.getElementById('gallery').innerHTML = "<div style='margin: 10%; grid-column: 1 / -1; text-align: center; font-size: 12px; padding: 10px; color: #333; font-weight: bold; background: rgba(255, 255, 255, 0.5); border-radius: 30px;'>No folder ID provided.</div>";
