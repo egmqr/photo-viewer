@@ -272,9 +272,28 @@
 
     window.onload = () => {
       // Show Community UI if applicable
+      // Show Community UI if applicable
       if (isCommunityBooth) {
           document.getElementById('communityUploadBtn').style.display = 'flex';
-          // In Phase 2, we will add a fetch call here to download the template JSON
+          
+          // 🟢 NEW: Ask the backend for the template overlay!
+          fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
+          .then(res => res.json())
+          .then(res => {
+              if (res.data && res.data.length > 0) {
+                  let t = res.data[0]; // Use the first template
+                  for (let layer of t.Layers) {
+                      // Grab the ImageLayer (this is the transparent cutout overlay)
+                      if (layer.LayerType === 'ImageLayer' && layer.ImagePath) {
+                          templateOverlays.landscape = layer.ImagePath;
+                          templateOverlays.portrait = layer.ImagePath;
+                          console.log("Template Overlay successfully loaded into Canvas Engine!");
+                          break;
+                      }
+                  }
+              }
+          })
+          .catch(err => console.error("Template fetch error:", err));
       }
 
       if (!targetFolderId) {
