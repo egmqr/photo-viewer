@@ -337,54 +337,50 @@
                       let largestImage = null;
                       let maxArea = 0;
                       
-                      // 🟢 THE FIX 1: Broaden the search to catch ImageBase64 keys as well!
-                      let imageLayers = t.Layers.filter(l => l.LayerType === 'ImageLayer' && (l.ImagePath || l.ImageBase64 || l.base64));
+                      // Filter to only ImageLayers (Extremely forgiving checks)
+                      let imageLayers = t.Layers.filter(l => l.LayerType === 'ImageLayer');
                       
                       for (let layer of imageLayers) {
                           await new Promise((resolve) => {
                               const tempImg = new Image();
-                              tempImg.crossOrigin = "anonymous"; // Prevent CORS blocking
                               
                               tempImg.onload = function() {
                                   const area = tempImg.width * tempImg.height;
                                   if (area > maxArea) {
                                       maxArea = area;
                                       largestImage = {
-                                          src: tempImg.src, // 🟢 Save the safely formatted source!
+                                          src: tempImg.src, 
                                           isLandscape: tempImg.width > tempImg.height
                                       };
                                   }
                                   resolve();
                               };
-                              tempImg.onerror = function() {
-                                  console.warn("Skipping unreadable layer image.");
-                                  resolve(); // Skip broken images cleanly
-                              };
                               
-                              // 🟢 THE FIX 2: Safely handle raw base64 strings by forcing the prefix!
-                              let rawSrc = layer.ImageBase64 || layer.base64 || layer.ImagePath;
-                              if (rawSrc && !rawSrc.startsWith('data:image') && !rawSrc.startsWith('http')) {
-                                  rawSrc = 'data:image/png;base64,' + rawSrc;
+                              tempImg.onerror = function() { resolve(); }; // Skip broken images cleanly
+                              
+                              // Safely handle raw base64 strings by forcing the prefix!
+                              let rawSrc = layer.ImageBase64 || layer.base64 || layer.ImagePath || layer.src;
+                              if (rawSrc) {
+                                  if (!rawSrc.startsWith('data:image') && !rawSrc.startsWith('http')) {
+                                      rawSrc = 'data:image/png;base64,' + rawSrc;
+                                  }
+                                  tempImg.src = rawSrc;
+                              } else {
+                                  resolve();
                               }
-                              tempImg.src = rawSrc;
                           });
                       }
                       
-                      // Map to the correct bucket based on the absolute largest image
                       if (largestImage) {
-                          if (largestImage.isLandscape) {
-                              templateOverlays.landscape = largestImage.src;
-                          } else {
-                              templateOverlays.portrait = largestImage.src;
-                          }
+                          if (largestImage.isLandscape) templateOverlays.landscape = largestImage.src;
+                          else templateOverlays.portrait = largestImage.src;
                       }
                   }
                   
-                  // Safety Fallback: If they only configured one template, use it for both orientations
                   if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
                   if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
                   
-                  console.log("Template Overlays successfully mapped via Area calculation!", templateOverlays);
+                  console.log("Template Overlays mapped!", templateOverlays);
               }
           })
           .catch(err => console.error("Template fetch error:", err));
@@ -456,20 +452,18 @@
                     uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
                 };
 
-                // 3. Load Template and Execute
+                // 3. Load Template and Execute (Removed CORS trap for Base64)
                 if (activeTemplateBase64) {
                     const overlayImg = new Image();
-                    overlayImg.crossOrigin = "anonymous"; // 🟢 THE FIX 3: Prevents "Tainted Canvas" crashing!
                     overlayImg.onload = function() {
                         drawAndUpload(overlayImg.width, overlayImg.height, overlayImg);
                     };
                     overlayImg.onerror = function() {
-                        console.warn("Template failed to load on canvas. Falling back to bare photo.");
+                        console.warn("Template failed to load on canvas. Falling back to default dimensions.");
                         drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
                     };
                     overlayImg.src = activeTemplateBase64;
                 } else {
-                    console.warn("No active template found in memory. Uploading bare photo.");
                     drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
                 }
             };
