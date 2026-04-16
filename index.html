@@ -280,7 +280,11 @@
       </button>
     </div>
     
-    <div id="shareModal" class="custom-modal-overlay" onclick="closeShareModal()">
+    
+    
+    <div id="background-loader"><div class="spinner-small"></div><span id="loader-msg">Syncing photos...</span></div>
+  </div>
+<div id="shareModal" class="custom-modal-overlay" onclick="closeShareModal()">
       <div class="custom-modal-box" onclick="event.stopPropagation()">
         <h3>Share Community Booth</h3>
         <div class="qr-wrapper">
@@ -292,10 +296,6 @@
         </div>
       </div>
     </div>
-    
-    <div id="background-loader"><div class="spinner-small"></div><span id="loader-msg">Syncing photos...</span></div>
-  </div>
-
   <div class="gallery-container" id="gallery"></div>
   <div id="sentinel"></div>
 
@@ -528,13 +528,28 @@
         viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
       }
     };
-// 🟢 SHARE MODAL LOGIC
+// 🟢 SHARE MODAL LOGIC (Upgraded for iFrames)
+    
+    // Helper to peek outside the iframe and grab the main.html URL
+    function getShareUrl() {
+        try {
+            // Check if we are inside an iframe and grab the parent's URL
+            if (window.parent && window.parent.location.href !== window.location.href) {
+                return window.parent.location.href;
+            }
+        } catch (e) {
+            // Failsafe in case of cross-origin blocks
+        }
+        return window.location.href;
+    }
+
     function openShareModal() {
         const modal = document.getElementById('shareModal');
         const qrImg = document.getElementById('shareQrImage');
-        // Instantly generate a QR code pointing to their exact current URL
-        const currentUrl = window.location.href;
-        qrImg.src = `https://quickchart.io/qr?size=400&margin=1&text=${encodeURIComponent(currentUrl)}`;
+        
+        // Use our new smart URL fetcher
+        const shareUrl = getShareUrl();
+        qrImg.src = `https://quickchart.io/qr?size=400&margin=1&text=${encodeURIComponent(shareUrl)}`;
         modal.style.display = 'flex';
     }
 
@@ -543,7 +558,8 @@
     }
 
     function copyShareLink() {
-        navigator.clipboard.writeText(window.location.href).then(() => {
+        const shareUrl = getShareUrl();
+        navigator.clipboard.writeText(shareUrl).then(() => {
             showToast("Link copied to clipboard!");
             closeShareModal();
         }).catch(err => {
