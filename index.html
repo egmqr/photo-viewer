@@ -281,22 +281,46 @@
           .then(res => res.json())
           .then(res => {
               if (res.data && res.data.length > 0) {
-                  // 🟢 THE FIX: Intelligently map portrait vs landscape templates
+                  let expectedLayers = [];
+                  
+                  // Extract the Base64 overlay images from the JSON
                   res.data.forEach(t => {
-                      let isTempLandscape = t.CanvasWidth > t.CanvasHeight;
                       for (let layer of t.Layers) {
                           if (layer.LayerType === 'ImageLayer' && layer.ImagePath) {
-                              if (isTempLandscape) templateOverlays.landscape = layer.ImagePath;
-                              else templateOverlays.portrait = layer.ImagePath;
-                              break;
+                              expectedLayers.push(layer.ImagePath);
+                              break; // Only grab the background overlay per template
                           }
                       }
                   });
-                  // 🟢 Fallback: If they only uploaded one orientation, use it for both
-                  if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
-                  if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
+
+                  if (expectedLayers.length === 0) return;
+
+                  let loadedCount = 0;
                   
-                  console.log("Template Overlays successfully mapped!", templateOverlays);
+                  // 🟢 THE FIX: Physically load the images to check their true pixel dimensions
+                  expectedLayers.forEach(base64str => {
+                      const tempImg = new Image();
+                      tempImg.onload = function() {
+                          const isTempLandscape = tempImg.width > tempImg.height;
+                          
+                          // Accurately sort them into the correct buckets
+                          if (isTempLandscape) {
+                              templateOverlays.landscape = base64str;
+                          } else {
+                              templateOverlays.portrait = base64str;
+                          }
+                          
+                          loadedCount++;
+                          
+                          // Once all templates are processed, apply the safety fallback
+                          if (loadedCount === expectedLayers.length) {
+                              if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
+                              if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
+                              console.log("Template Overlays successfully mapped by physical pixels!", templateOverlays);
+                          }
+                      };
+                      tempImg.src = base64str;
+                  });
               }
           })
           .catch(err => console.error("Template fetch error:", err));
