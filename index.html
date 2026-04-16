@@ -119,8 +119,7 @@
 
     /* 🟢 COMMUNITY BOOTH BUTTON */
     #communityUploadBtn {
-      width: 100%;
-      max-width: 600px;
+      flex-grow: 1; /* Replaces width:100% to fit perfectly next to sync button */
       height: 44px;
       border-radius: 24px;
       background: #0d9488;
@@ -221,10 +220,20 @@
 
   <div class="search-wrapper">
     <div class="search-row">
-      <div class="input-container">
+      
+      <div class="input-container" id="searchContainer">
         <input type="text" id="timeSearch" placeholder="Search time or filename..." oninput="handleSearch()" inputmode="search">
         <div id="clearSearch" class="clear-btn" onclick="clearSearch()">&times;</div>
       </div>
+
+      <button id="communityUploadBtn" onclick="document.getElementById('communityFileInput').click()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        Add Your Photo
+      </button>
+      <input type="file" id="communityFileInput" accept="image/*" style="display:none;" onchange="handleCommunityPhotoCapture(event)">
+
       <button class="sync-btn" id="manual-sync-btn" onclick="triggerManualSync()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
@@ -233,14 +242,6 @@
       </button>
     </div>
     
-    <button id="communityUploadBtn" onclick="document.getElementById('communityFileInput').click()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>
-      </svg>
-      Add Your Photo
-    </button>
-    <input type="file" id="communityFileInput" accept="image/*" style="display:none;" onchange="handleCommunityPhotoCapture(event)">
-
     <div id="background-loader"><div class="spinner-small"></div><span id="loader-msg">Syncing photos...</span></div>
   </div>
 
