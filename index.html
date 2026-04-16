@@ -98,7 +98,6 @@
       font-weight: bold;
     }
 
-    /* STICKY SYNC BUTTON */
     .sync-btn {
       width: 44px;
       height: 44px;
@@ -113,47 +112,49 @@
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
-      -webkit-tap-highlight-color: transparent;
     }
     
     .sync-btn:active { transform: scale(0.85); background: #f0f0f0; }
     .sync-btn.spinning svg { animation: spin 0.8s linear infinite; }
 
+    /* 🟢 COMMUNITY BOOTH BUTTON */
+    #communityUploadBtn {
+      width: 100%;
+      max-width: 600px;
+      height: 44px;
+      border-radius: 24px;
+      background: #0d9488;
+      color: white;
+      border: none;
+      display: none; /* Hidden by default */
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(13, 148, 136, 0.3);
+      transition: 0.2s;
+    }
+    #communityUploadBtn:active { transform: scale(0.95); background: #0f766e; }
+    #communityUploadBtn svg { margin-right: 8px; }
+
     /* COMPACT LOADER PILL */
     #background-loader { 
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      width: fit-content; 
-      margin: 0 auto; 
-      height: 24px; 
-      padding: 0 12px; 
-      color: #555; 
-      font-size: 11px; 
-      font-weight: 600; 
-      gap: 6px; 
-      background-color: #fff; 
-      border-radius: 12px; 
+      display: flex; justify-content: center; align-items: center; width: fit-content; 
+      margin: 0 auto; height: 24px; padding: 0 12px; color: #555; font-size: 11px; 
+      font-weight: 600; gap: 6px; background-color: #fff; border-radius: 12px; 
     }
 
     .spinner-small { 
-      width: 10px; 
-      height: 10px; 
-      border: 2px solid rgba(0,0,0,0.1); 
-      border-top: 2px solid #555; 
-      border-radius: 50%; 
-      animation: spin 1s linear infinite; 
+      width: 10px; height: 10px; border: 2px solid rgba(0,0,0,0.1); 
+      border-top: 2px solid #555; border-radius: 50%; animation: spin 1s linear infinite; 
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     /* EDGE-TO-EDGE CAMERA ROLL GRID */
     .gallery-container { 
-      display: grid; 
-      grid-template-columns: repeat(3, 1fr); 
-      gap: 2px;
-      padding: 2px; 
-      max-width: 1200px; 
-      margin: 0 auto; 
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+      padding: 2px; max-width: 1200px; margin: 0 auto; 
     }
 
     @media (min-width: 768px) { 
@@ -161,70 +162,49 @@
     }
 
     .card { 
-      background: #eee; 
-      position: relative; 
-      cursor: pointer; 
-      aspect-ratio: 1 / 1;
-      overflow: hidden;
+      background: #eee; position: relative; cursor: pointer; aspect-ratio: 1 / 1; overflow: hidden;
     }
 
     .image-container { 
-      width: 100%; 
-      height: 100%; 
-      background-image: linear-gradient(90deg, #eee 0px, #f5f5f5 40px, #eee 80px); 
-      background-size: 600px; 
-      animation: shimmer 1.5s infinite linear; 
-      will-change: background-position;
+      width: 100%; height: 100%; background-image: linear-gradient(90deg, #eee 0px, #f5f5f5 40px, #eee 80px); 
+      background-size: 600px; animation: shimmer 1.5s infinite linear; will-change: background-position;
     }
 
     .image-container img { 
-      width: 100%; 
-      height: 100%; 
-      object-fit: cover; 
-      opacity: 0; 
-      transition: opacity 0.2s ease-in; 
+      width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.2s ease-in; 
     }
     .image-container img.loaded { opacity: 1; }
 
     @keyframes shimmer { 0% { background-position: -100px; } 100% { background-position: 500px; } }
 
-    /* OVERLAY TIMESTAMP */
     .card-footer { 
-      position: absolute; 
-      bottom: 4px; 
-      right: 4px; 
-      padding: 0px 6px 4px;
-      background: rgba(0,0,0,0.6); 
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      border-radius: 8px;
-      pointer-events: none; 
+      position: absolute; bottom: 4px; right: 4px; padding: 0px 6px 4px;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px); border-radius: 8px; pointer-events: none; 
     }
     .time-value { font-size: 10px; color: #fff; font-weight: 600; letter-spacing: 0.3px;}
 
     /* MOBILE NATIVE TOAST */
     #status-toast { 
-      position: fixed; 
-      top: calc(50px + var(--safe-bottom)); 
-      left: 50%; 
-      transform: translateX(-50%) translateY(20px); 
-      background: rgba(30, 30, 30, 0.9); 
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      color: white; 
-      padding: 12px 24px; 
-      border-radius: 30px; 
-      font-size: 14px; 
-      font-weight: 500; 
-      opacity: 0; 
-      pointer-events: none;
-      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-      z-index: 5000; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      position: fixed; top: calc(50px + var(--safe-bottom)); left: 50%; 
+      transform: translateX(-50%) translateY(20px); background: rgba(30, 30, 30, 0.9); 
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: white; 
+      padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 500; 
+      opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+      z-index: 5000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-    #status-toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
+    #status-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* 🟢 FULL SCREEN PROCESSING OVERLAY */
+    #uploadOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px); z-index: 9999;
+      display: none; flex-direction: column; align-items: center; justify-content: center; color: white;
+    }
+    .big-spinner {
+      width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.2);
+      border-top: 4px solid #0d9488; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;
     }
 
     #sentinel { height: 40px; }
@@ -233,6 +213,11 @@
 <body>
 
   <div id="status-toast">Gallery is up to date</div>
+
+  <div id="uploadOverlay">
+    <div class="big-spinner"></div>
+    <h3 id="uploadStatusText" style="margin:0; font-weight: 600;">Processing Photo...</h3>
+  </div>
 
   <div class="search-wrapper">
     <div class="search-row">
@@ -247,6 +232,15 @@
         </svg>
       </button>
     </div>
+    
+    <button id="communityUploadBtn" onclick="document.getElementById('communityFileInput').click()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>
+      </svg>
+      Add Your Photo
+    </button>
+    <input type="file" id="communityFileInput" accept="image/*" style="display:none;" onchange="handleCommunityPhotoCapture(event)">
+
     <div id="background-loader"><div class="spinner-small"></div><span id="loader-msg">Syncing photos...</span></div>
   </div>
 
@@ -254,12 +248,19 @@
   <div id="sentinel"></div>
 
   <script>
+    // IMPORTANT: Make sure this points to your unified backend Apps Script URL
     const API_URL = "https://script.google.com/macros/s/AKfycbwc6UDaA4yZp6gU0HRlDCiyuDV3Gu74ZbvkH4-o5E5pvgEy1Zv8feCei58rju7_Q_15/exec"; 
-    const GITHUB_VIEWER_URL = "viewer.html"; 
     const VIEWER_URL = "viewer.html";
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetFolderId = urlParams.get('folderId');
+    const isCommunityBooth = urlParams.get('tab') === 'community';
+
+    // 🟢 DUMMY TEMPLATES (Will be replaced dynamically in Phase 2)
+    let templateOverlays = {
+        landscape: null, // Base64 string of the horizontal PNG
+        portrait: null   // Base64 string of the vertical PNG
+    };
 
     window.filteredImages = []; 
     window.deadImageIds = new Set();
@@ -270,6 +271,12 @@
     const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
 
     window.onload = () => {
+      // Show Community UI if applicable
+      if (isCommunityBooth) {
+          document.getElementById('communityUploadBtn').style.display = 'flex';
+          // In Phase 2, we will add a fetch call here to download the template JSON
+      }
+
       if (!targetFolderId) {
         document.getElementById('gallery').innerHTML = "<div style='margin: 10%; grid-column: 1 / -1; text-align: center; font-size: 12px; padding: 10px; color: #333; font-weight: bold; background: rgba(255, 255, 255, 0.5); border-radius: 30px;'>No folder ID provided.</div>";
         document.getElementById('background-loader').style.display = 'none';
@@ -288,6 +295,104 @@
           handleDeepSync(); 
         });
     };
+
+    // 🟢 HTML5 CANVAS ENGINE: Merge Photo with Template
+    function handleCommunityPhotoCapture(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const overlayUI = document.getElementById('uploadOverlay');
+        const statusText = document.getElementById('uploadStatusText');
+        overlayUI.style.display = 'flex';
+        statusText.innerText = "Applying Layout...";
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Determine orientation to apply correct template
+                const isLandscape = img.width > img.height;
+                const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
+
+                // Scale the canvas to a reasonable size to prevent massive mobile uploads
+                const MAX_DIMENSION = 1800; 
+                let finalWidth = img.width;
+                let finalHeight = img.height;
+
+                if (isLandscape && finalWidth > MAX_DIMENSION) {
+                    finalHeight *= MAX_DIMENSION / finalWidth;
+                    finalWidth = MAX_DIMENSION;
+                } else if (!isLandscape && finalHeight > MAX_DIMENSION) {
+                    finalWidth *= MAX_DIMENSION / finalHeight;
+                    finalHeight = MAX_DIMENSION;
+                }
+
+                canvas.width = finalWidth;
+                canvas.height = finalHeight;
+
+                // Draw the user's photo
+                ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
+
+                // Draw the overlay template if it exists
+                if (activeTemplateBase64) {
+                    const overlayImg = new Image();
+                    overlayImg.onload = function() {
+                        ctx.drawImage(overlayImg, 0, 0, finalWidth, finalHeight);
+                        uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
+                    };
+                    overlayImg.onerror = function() {
+                        console.warn("Template overlay failed to load. Uploading raw photo.");
+                        uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
+                    };
+                    overlayImg.src = activeTemplateBase64;
+                } else {
+                    // No template loaded yet, just upload the raw photo
+                    uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
+                }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+        event.target.value = ''; // Reset input
+    }
+
+    // 🟢 UPLOAD LOGIC
+    function uploadProcessedPhoto(base64Data) {
+        document.getElementById('uploadStatusText').innerText = "Uploading to Gallery...";
+        
+        // Format the payload exactly how Apps Script expects it
+        const b64Clean = base64Data.split(',')[1];
+        const payload = {
+            action: 'uploadCommunityPhoto',
+            folderId: targetFolderId,
+            base64Data: b64Clean,
+            mimeType: 'image/jpeg',
+            filename: `Community_${Date.now()}.jpg`
+        };
+
+        fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(result => {
+            document.getElementById('uploadOverlay').style.display = 'none';
+            if (result.success) {
+                showToast("Photo added successfully!");
+                triggerManualSync(); // Immediately fetch the new photo to show it
+            } else {
+                alert("Failed to upload: " + (result.error || "Unknown error"));
+            }
+        })
+        .catch(err => {
+            document.getElementById('uploadOverlay').style.display = 'none';
+            alert("Network error during upload.");
+            console.error(err);
+        });
+    }
 
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'VIEWER_READY') {
