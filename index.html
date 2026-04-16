@@ -306,7 +306,9 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const targetFolderId = urlParams.get('folderId');
-    const isCommunityBooth = urlParams.get('tab') === 'community';
+    
+    // 🟢 Read the new safe flag to identify the Community Booth, keeping legacy support just in case
+    const isCommunityBooth = urlParams.get('isCommunity') === 'true' || urlParams.get('tab') === 'community';
 
     // 🟢 DUMMY TEMPLATES (Will be replaced dynamically in Phase 2)
     let templateOverlays = {
