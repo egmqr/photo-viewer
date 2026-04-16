@@ -278,43 +278,50 @@
           // 🟢 NEW: Ask the backend for the template overlays!
           fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
           .then(res => res.json())
-          .then(res => {
+          .then(async res => {
               if (res.data && res.data.length > 0) {
-                  res.data.forEach(t => {
-                      // 🟢 THE FIX: Check multiple possible JSON formats for the true dimensions
-                      let cWidth = parseInt(t.Width) || parseInt(t.CanvasWidth) || parseInt(t.pageWidth) || 0;
-                      let cHeight = parseInt(t.Height) || parseInt(t.CanvasHeight) || parseInt(t.pageHeight) || 0;
+                  for (let t of res.data) {
+                      let largestImage = null;
+                      let maxArea = 0;
                       
-                      let isTempLandscape = true; // Default assumption
+                      // Filter to only ImageLayers that have a Base64 path
+                      let imageLayers = t.Layers.filter(l => l.LayerType === 'ImageLayer' && l.ImagePath);
                       
-                      if (cWidth > 0 && cHeight > 0) {
-                          isTempLandscape = cWidth > cHeight;
+                      // 🟢 THE FIX: Physically measure every image in the template to find the massive background frame!
+                      for (let layer of imageLayers) {
+                          await new Promise((resolve) => {
+                              const tempImg = new Image();
+                              tempImg.onload = function() {
+                                  const area = tempImg.width * tempImg.height;
+                                  if (area > maxArea) {
+                                      maxArea = area;
+                                      largestImage = {
+                                          src: layer.ImagePath,
+                                          isLandscape: tempImg.width > tempImg.height
+                                      };
+                                  }
+                                  resolve();
+                              };
+                              tempImg.onerror = resolve; // Skip broken images
+                              tempImg.src = layer.ImagePath;
+                          });
                       }
-
-                      for (let layer of t.Layers) {
-                          // Look for the main overlay image
-                          if (layer.LayerType === 'ImageLayer' && layer.ImagePath) {
-                              
-                              // Fallback: If JSON is completely missing width/height, read the layer's size directly
-                              if (cWidth === 0 && layer.Width && layer.Height) {
-                                  isTempLandscape = parseInt(layer.Width) > parseInt(layer.Height);
-                              }
-
-                              if (isTempLandscape) {
-                                  templateOverlays.landscape = layer.ImagePath;
-                              } else {
-                                  templateOverlays.portrait = layer.ImagePath;
-                              }
-                              break; 
+                      
+                      // Map to the correct bucket based on the absolute largest image
+                      if (largestImage) {
+                          if (largestImage.isLandscape) {
+                              templateOverlays.landscape = largestImage.src;
+                          } else {
+                              templateOverlays.portrait = largestImage.src;
                           }
                       }
-                  });
+                  }
                   
-                  // 🟢 Safety Fallback: If they only uploaded one orientation, use it for both
+                  // 🟢 Safety Fallback: If they only configured one template, use it for both orientations
                   if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
                   if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
                   
-                  console.log("Template Overlays successfully mapped!", templateOverlays);
+                  console.log("Template Overlays successfully mapped via Area calculation!", templateOverlays);
               }
           })
           .catch(err => console.error("Template fetch error:", err));
@@ -353,26 +360,20 @@
         reader.onload = function(e) {
             const img = new Image();
             img.onload = function() {
-                // 1. Detect User's Photo Orientation
-                let isLandscape = img.width > img.height;
-                
-                // 🟢 MOBILE EXIF SAFETY: If the user is on a phone held vertically, trust the physical device orientation!
-                if (window.innerHeight > window.innerWidth) {
-                    isLandscape = false; 
-                }
-
+                // 1. Strictly detect the User's Photo Orientation
+                const isLandscape = img.width > img.height;
                 const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
 
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
 
-                // Helper to perform the actual drawing and upload
+                // 2. Helper to perform the actual drawing and upload
                 const drawAndUpload = (templateWidth, templateHeight, overlayImg = null) => {
-                    // 🟢 Force canvas to match template dimensions EXACTLY
+                    // Force canvas to match template dimensions EXACTLY
                     canvas.width = templateWidth;
                     canvas.height = templateHeight;
 
-                    // 🟢 Scale-to-Fill Math (Crop excess off sides or top/bottom)
+                    // 🟢 Scale-to-Fill Math (Crop excess off sides or top/bottom perfectly)
                     const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
                     const drawWidth = img.width * scale;
                     const drawHeight = img.height * scale;
@@ -399,7 +400,7 @@
                         drawAndUpload(overlayImg.width, overlayImg.height, overlayImg);
                     };
                     overlayImg.onerror = function() {
-                        console.warn("Template failed to load. Falling back to default.");
+                        console.warn("Template failed to load. Falling back to default dimensions.");
                         drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
                     };
                     overlayImg.src = activeTemplateBase64;
