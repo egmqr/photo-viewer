@@ -281,13 +281,25 @@
           .then(res => {
               if (res.data && res.data.length > 0) {
                   res.data.forEach(t => {
-                      // 🟢 THE FIX: Trust the template's actual canvas settings, not the PNG size!
-                      let cWidth = parseInt(t.CanvasWidth) || 1800;
-                      let cHeight = parseInt(t.CanvasHeight) || 1200;
-                      let isTempLandscape = cWidth > cHeight;
+                      // 🟢 THE FIX: Check multiple possible JSON formats for the true dimensions
+                      let cWidth = parseInt(t.Width) || parseInt(t.CanvasWidth) || parseInt(t.pageWidth) || 0;
+                      let cHeight = parseInt(t.Height) || parseInt(t.CanvasHeight) || parseInt(t.pageHeight) || 0;
                       
+                      let isTempLandscape = true; // Default assumption
+                      
+                      if (cWidth > 0 && cHeight > 0) {
+                          isTempLandscape = cWidth > cHeight;
+                      }
+
                       for (let layer of t.Layers) {
+                          // Look for the main overlay image
                           if (layer.LayerType === 'ImageLayer' && layer.ImagePath) {
+                              
+                              // Fallback: If JSON is completely missing width/height, read the layer's size directly
+                              if (cWidth === 0 && layer.Width && layer.Height) {
+                                  isTempLandscape = parseInt(layer.Width) > parseInt(layer.Height);
+                              }
+
                               if (isTempLandscape) {
                                   templateOverlays.landscape = layer.ImagePath;
                               } else {
@@ -298,7 +310,7 @@
                       }
                   });
                   
-                  // 🟢 Fallback: If they only uploaded one orientation, use it for both
+                  // 🟢 Safety Fallback: If they only uploaded one orientation, use it for both
                   if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
                   if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
                   
