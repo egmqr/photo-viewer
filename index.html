@@ -276,21 +276,27 @@
       if (isCommunityBooth) {
           document.getElementById('communityUploadBtn').style.display = 'flex';
           
-          // 🟢 NEW: Ask the backend for the template overlay!
+          // 🟢 NEW: Ask the backend for the template overlays!
           fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
           .then(res => res.json())
           .then(res => {
               if (res.data && res.data.length > 0) {
-                  let t = res.data[0]; // Use the first template
-                  for (let layer of t.Layers) {
-                      // Grab the ImageLayer (this is the transparent cutout overlay)
-                      if (layer.LayerType === 'ImageLayer' && layer.ImagePath) {
-                          templateOverlays.landscape = layer.ImagePath;
-                          templateOverlays.portrait = layer.ImagePath;
-                          console.log("Template Overlay successfully loaded into Canvas Engine!");
-                          break;
+                  // 🟢 THE FIX: Intelligently map portrait vs landscape templates
+                  res.data.forEach(t => {
+                      let isTempLandscape = t.CanvasWidth > t.CanvasHeight;
+                      for (let layer of t.Layers) {
+                          if (layer.LayerType === 'ImageLayer' && layer.ImagePath) {
+                              if (isTempLandscape) templateOverlays.landscape = layer.ImagePath;
+                              else templateOverlays.portrait = layer.ImagePath;
+                              break;
+                          }
                       }
-                  }
+                  });
+                  // 🟢 Fallback: If they only uploaded one orientation, use it for both
+                  if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
+                  if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
+                  
+                  console.log("Template Overlays successfully mapped!", templateOverlays);
               }
           })
           .catch(err => console.error("Template fetch error:", err));
@@ -315,7 +321,7 @@
         });
     };
 
-    // 🟢 HTML5 CANVAS ENGINE: Merge Photo with Template
+    // 🟢 HTML5 CANVAS ENGINE: Merge Photo with Template (Scale-to-Fill & Orientation Aware)
     function handleCommunityPhotoCapture(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -329,53 +335,60 @@
         reader.onload = function(e) {
             const img = new Image();
             img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                
-                // Determine orientation to apply correct template
+                // 1. Detect User's Photo Orientation
                 const isLandscape = img.width > img.height;
                 const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
 
-                // Scale the canvas to a reasonable size to prevent massive mobile uploads
-                const MAX_DIMENSION = 1800; 
-                let finalWidth = img.width;
-                let finalHeight = img.height;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
 
-                if (isLandscape && finalWidth > MAX_DIMENSION) {
-                    finalHeight *= MAX_DIMENSION / finalWidth;
-                    finalWidth = MAX_DIMENSION;
-                } else if (!isLandscape && finalHeight > MAX_DIMENSION) {
-                    finalWidth *= MAX_DIMENSION / finalHeight;
-                    finalHeight = MAX_DIMENSION;
-                }
+                // Helper to perform the actual drawing and upload
+                const drawAndUpload = (templateWidth, templateHeight, overlayImg = null) => {
+                    // 🟢 Force canvas to match template dimensions EXACTLY
+                    canvas.width = templateWidth;
+                    canvas.height = templateHeight;
 
-                canvas.width = finalWidth;
-                canvas.height = finalHeight;
+                    // 🟢 Scale-to-Fill Math (Crop excess off sides or top/bottom)
+                    const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+                    const drawWidth = img.width * scale;
+                    const drawHeight = img.height * scale;
+                    
+                    // Center the crop automatically
+                    const offsetX = (canvas.width - drawWidth) / 2;
+                    const offsetY = (canvas.height - drawHeight) / 2;
 
-                // Draw the user's photo
-                ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
+                    // Draw Photo (Perfectly Cropped & Centered)
+                    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
-                // Draw the overlay template if it exists
+                    // Draw Template Overlay directly on top (if it exists)
+                    if (overlayImg) {
+                        ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                    }
+
+                    uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
+                };
+
+                // 3. Load Template and Execute
                 if (activeTemplateBase64) {
                     const overlayImg = new Image();
                     overlayImg.onload = function() {
-                        ctx.drawImage(overlayImg, 0, 0, finalWidth, finalHeight);
-                        uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
+                        // Use exact pixel dimensions of the loaded template PNG
+                        drawAndUpload(overlayImg.width, overlayImg.height, overlayImg);
                     };
                     overlayImg.onerror = function() {
-                        console.warn("Template overlay failed to load. Uploading raw photo.");
-                        uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
+                        console.warn("Template failed to load. Falling back to default size.");
+                        drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
                     };
                     overlayImg.src = activeTemplateBase64;
                 } else {
-                    // No template loaded yet, just upload the raw photo
-                    uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
+                    // No template loaded at all (e.g. no templates configured on dashboard)
+                    drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
                 }
             };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
-        event.target.value = ''; // Reset input
+        event.target.value = ''; // Reset input so they can take another photo!
     }
 
     // 🟢 UPLOAD LOGIC
