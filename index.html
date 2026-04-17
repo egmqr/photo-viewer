@@ -52,7 +52,24 @@
     }
     .tool-btn { background: #222; color: white; border: 1px solid #333; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; justify-content: center; align-items: center; transition: 0.2s; cursor: pointer; }
     .tool-btn.active { background: #0d9488; border-color: #5eead4; }
-
+/* 🟢 STICKER LAYER CONTROLS & TOUCH TARGETS */
+    .editor-sticker { 
+      position: absolute; object-fit: contain; pointer-events: auto; 
+      cursor: grab; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      /* THE FIX: Add 20px of invisible padding to make tiny stickers pinchable! */
+      padding: 20px; margin: -20px; 
+      box-sizing: content-box; transition: outline 0.1s;
+    }
+    .editor-sticker:active { cursor: grabbing; }
+    
+    /* The Bounding Box for the Active Element */
+    .editor-sticker.active {
+      outline: 2px dashed #5eead4;
+      outline-offset: -10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      z-index: 100 !important;
+    }
     /* TEXT LIGHTBOX */
     .text-sticker-modal {
       background: #1e1e1e; border-radius: 20px; padding: 24px; width: 90%; max-width: 350px;
@@ -489,10 +506,13 @@
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
     <div class="sticker-tabs" id="stickerTabs">
-      <button class="sticker-tab active" onclick="loadStickerCategory('props', this)">🎭 Props & Masks</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('faces', this)">😎 Glasses & Hats</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('emojis', this)">💖 Emojis & Bubbles</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('party', this)">🎉 Party & Food</button>
+      <button class="sticker-tab active" onclick="loadStickerCategory('props', this)">🎭 Props</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('faces', this)">😎 Faces</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('food', this)">🍔 Food</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('travel', this)">✈️ Travel</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('corporate', this)">💼 Office</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('symbols', this)">💯 Symbols</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('emojis', this)">💖 Hearts</button>
     </div>
     <div class="sticker-grid" id="stickerGrid"></div>
   </div>
@@ -1215,30 +1235,16 @@ function applyTextSticker() {
 
 // --- PHOTOBOOTH STICKER CATALOG ---
 const stickerCatalog = {
-    props: [
-        "1f3ad", "1f47d", "1f47b", "1f921", "1f9b9", "1f9b8", "1f47e", "1f479", "1f47a", "1f9df", 
-        "1f9db", "1f9da", "1f385", "1f936", "1f482", "1f575", "1f9d4", "1f468-200d-1f3a4", "1f469-200d-1f3a8", "1f9b4",
-        "1f9b7", "1f9e2", "1f9e3", "1f3b8", "1f3b7", "1f3fa", "1f3fb", "1f3c6", "1f48e", "1f484"
-    ],
-    faces: [
-        "1f3a9", "1f451", "1f380", "1f453", "1f576", "1f9d0", "1f97d", "1f913", "1f60e", "1f920", 
-        "1f978", "1f48b", "1f444", "1f440", "1f441", "1f443", "1f442", "1f9e0", "1f3b1", "1f9e1",
-        "1f9fc", "1f97f", "1f637", "1f912", "1f922", "1f92b", "1f92e", "1f927", "1f608", "1f47f"
-    ],
-    emojis: [
-        "1f4ac", "1f4ad", "1f4a2", "1f4a4", "1f5e8", "1f5ef", "1f496", "1f49e", "1f525", "1f4af", 
-        "1f4a5", "1f4a3", "2728", "1f31f", "1f49d", "1f497", "1f493", "2764", "1f9e1", "1f49b",
-        "1f49a", "1f499", "1f498", "1f5a4", "1f90e", "1f90d", "1f4a8", "1f4ab", "1f4a6", "1f4ab"
-    ],
-    party: [
-        "1f389", "1f388", "1f382", "1f37b", "1f37e", "1f377", "1f378", "1f379", "1f37a", "1f942", 
-        "1f943", "1f36b", "1f36c", "1f36d", "1f36e", "1f36f", "1f370", "1f371", "1f372", "1f373",
-        "1f355", "1f354", "1f35f", "1f366", "1f36a", "1f381", "1f38a", "1f387", "1f4e3", "1f680"
-    ]
+    props: ["1f3ad", "1f47d", "1f47b", "1f921", "1f9b9", "1f9b8", "1f47e", "1f479", "1f47a", "1f9df", "1f9db", "1f9da", "1f385", "1f936", "1f482", "1f575", "1f9d4", "1f3b8", "1f3b7", "1f3fa", "1f3fb", "1f3c6", "1f48e", "1f484", "1f389", "1f388", "1f382"],
+    faces: ["1f3a9", "1f451", "1f380", "1f453", "1f576", "1f9d0", "1f97d", "1f913", "1f60e", "1f920", "1f978", "1f48b", "1f444", "1f440", "1f441", "1f443", "1f442", "1f9e0", "1f3b1", "1f9e1", "1f9fc", "1f97f", "1f637", "1f912", "1f922", "1f92b"],
+    food: ["1f354", "1f355", "1f35f", "1f32d", "1f37f", "1f369", "1f36a", "1f382", "1f9c1", "1f36b", "1f36c", "1f36d", "1f378", "2615", "1f32e", "1f32f", "1f35c", "1f363", "1f951", "1f353", "1f349", "1f37b", "1f37e", "1f377", "1f942", "1f943"],
+    travel: ["2708", "1f697", "1f6f3", "1f3dd", "1f5fd", "1f5fc", "1f3ef", "1f3d6", "1f3d5", "1f682", "1f680", "1f681", "1f6f8", "1f30d", "1f5fa", "1f3d4", "1f30b", "1f9f3", "26f1", "1f3a2", "1f3a1", "1f3a0"],
+    corporate: ["1f4bc", "1f4c8", "1f4bb", "1f5a5", "2328", "1f4f1", "1f4de", "1f4e0", "1f4c5", "1f4ca", "1f4cb", "1f4c1", "1f4c2", "1f4dd", "1f4cc", "1f4ce", "1f4a1", "1f4b0", "1f4b5", "1f91d", "1f3c6", "1f3c5"],
+    symbols: ["1f3c1", "1f6a9", "1f38c", "1f3f4", "1f3f3", "1f4af", "1f4a2", "1f4ac", "1f5ef", "1f4ad", "1f4a4", "2755", "2757", "2753", "274c", "2b55", "1f6d1", "26d4", "2668"],
+    emojis: ["1f496", "1f49e", "1f525", "1f4a5", "1f4a3", "2728", "1f31f", "1f49d", "1f497", "1f493", "2764", "1f9e1", "1f49b", "1f49a", "1f499", "1f498", "1f5a4", "1f90e", "1f90d", "1f4a8", "1f4ab", "1f4a6"]
 };
 
 function loadStickerCategory(category, btnElement) {
-    // UI Tab Switching
     document.querySelectorAll('.sticker-tab').forEach(el => el.classList.remove('active'));
     if (btnElement) btnElement.classList.add('active');
 
@@ -1246,7 +1252,6 @@ function loadStickerCategory(category, btnElement) {
     let html = '';
     
     stickerCatalog[category].forEach(code => {
-        // High Quality Twemoji CDN
         const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
         html += `<img class="sticker-item" src="${url}" onclick="addSticker('${url}', 120, 120)">`;
     });
@@ -1255,8 +1260,8 @@ function loadStickerCategory(category, btnElement) {
 }
 
 function openStickerDrawer() {
-    if (isDrawMode) toggleDrawMode(); // Auto-off draw mode!
-    loadStickerCategory('props', document.querySelector('.sticker-tab')); // Load first tab by default
+    if (isDrawMode) toggleDrawMode(); 
+    loadStickerCategory('props', document.querySelector('.sticker-tab')); 
     document.getElementById('stickerDrawer').style.display = 'flex';
     setTimeout(() => document.getElementById('stickerDrawer').classList.add('open'), 10);
 }
@@ -1265,19 +1270,32 @@ function closeStickerDrawer() {
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
 }
 
-// 🟢 MASTER STICKER ENGINE (With 2-Finger Pinch!)
+// 🟢 DESELECT STICKERS WHEN CLICKING BACKGROUND
+document.getElementById('editorCanvasContainer').addEventListener('mousedown', (e) => {
+    if (e.target.id === 'doodleCanvas') document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+});
+document.getElementById('editorCanvasContainer').addEventListener('touchstart', (e) => {
+    if (e.target.id === 'doodleCanvas') document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+}, {passive: true});
+
+
+// 🟢 MASTER STICKER ENGINE (With Bounding Boxes & Touch Targets!)
 function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
     closeStickerDrawer();
     if (isDrawMode) toggleDrawMode();
 
     const img = document.createElement('img');
+    img.crossOrigin = "anonymous"; 
     img.src = url;
-    img.className = 'editor-sticker';
+    img.className = 'editor-sticker active'; // Make it active immediately
     img.style.width = sWidth + 'px';
     img.style.height = sHeight + 'px';
 
     const container = document.getElementById('stickerContainer');
     
+    // Deselect all other stickers
+    document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+
     if (forceX !== null && forceY !== null) {
         img.style.left = forceX + 'px';
         img.style.top = forceY + 'px';
@@ -1286,7 +1304,6 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
         img.style.top = (container.clientHeight / 2 - (sHeight / 2)) + 'px';
     }
 
-    // Advanced Multi-Touch State
     let isDragging = false;
     let isPinching = false;
     let startX, startY, initialLeft, initialTop;
@@ -1294,14 +1311,20 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
 
     const startDrag = (e) => {
         e.preventDefault();
+        
+        // Deselect others and highlight this one
+        document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+        img.classList.add('active');
         container.appendChild(img); // Bring to front!
 
         if (e.touches && e.touches.length === 2) {
             isPinching = true;
             isDragging = false;
             initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            initialWidth = img.offsetWidth;
-            initialHeight = img.offsetHeight;
+            
+            // Because of our invisible CSS padding, we need to subtract it to get the visual width
+            initialWidth = img.offsetWidth - 40; 
+            initialHeight = img.offsetHeight - 40;
         } else {
             isDragging = true;
             isPinching = false;
@@ -1320,8 +1343,9 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
             const currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             const scale = currDist / initialDist;
             
-            const newW = Math.max(30, Math.min(initialWidth * scale, 1200));
-            const newH = Math.max(30, Math.min(initialHeight * scale, 1200));
+            // 🟢 THE PINCH FIX: Prevent it from scaling below 60px visual width!
+            const newW = Math.max(60, Math.min(initialWidth * scale, 1200));
+            const newH = Math.max(60, Math.min(initialHeight * scale, 1200));
             
             img.style.width = newW + 'px';
             img.style.height = newH + 'px';
@@ -1342,8 +1366,8 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
         isPinching = false; 
         initialLeft = parseFloat(img.style.left) || 0;
         initialTop = parseFloat(img.style.top) || 0;
-        initialWidth = img.offsetWidth;
-        initialHeight = img.offsetHeight;
+        initialWidth = img.offsetWidth - 40;
+        initialHeight = img.offsetHeight - 40;
     };
 
     img.addEventListener('mousedown', startDrag);
