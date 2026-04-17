@@ -36,26 +36,48 @@
     }
     /* 🟢 ADVANCED EDITOR STYLES */
     #drawTools {
-      position: absolute; bottom: 85px; width: 100%; display: none; 
-      justify-content: center; align-items: center; gap: 15px; z-index: 10;
-      background: rgba(0,0,0,0.5); padding: 10px; backdrop-filter: blur(5px);
+      position: absolute; bottom: 0; width: 100%; display: none; 
+      justify-content: center; align-items: center; gap: 20px; z-index: 10;
+      background: rgba(15,15,15,0.9); padding: 15px 10px max(15px, env(safe-area-inset-bottom)) 10px; 
+      backdrop-filter: blur(10px); border-top: 1px solid #333;
     }
-    #doodleColor { width: 40px; height: 40px; border: none; border-radius: 50%; cursor: pointer; background: transparent; }
+    .draw-tool-group { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #ccc; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
+    #doodleColor { width: 36px; height: 36px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0; }
     #doodleColor::-webkit-color-swatch { border-radius: 50%; border: 2px solid white; }
-    #doodleWidth { width: 150px; accent-color: #0d9488; }
+    #doodleWidth { width: 120px; accent-color: #0d9488; }
     
+    .editor-toolbar {
+      padding: 15px; background: #111; display: flex; justify-content: space-around;
+      padding-bottom: max(15px, env(safe-area-inset-bottom)); z-index: 11;
+    }
+    .tool-btn { background: #222; color: white; border: 1px solid #333; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; justify-content: center; align-items: center; transition: 0.2s; cursor: pointer; }
+    .tool-btn.active { background: #0d9488; border-color: #5eead4; }
+
+    /* TEXT LIGHTBOX */
     .text-sticker-modal {
       background: #1e1e1e; border-radius: 20px; padding: 24px; width: 90%; max-width: 350px;
-      text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); color: white;
+      text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); color: white; border: 1px solid #333;
     }
     .text-sticker-modal textarea {
-      width: 100%; background: #111; color: white; border: 1px solid #333;
-      border-radius: 10px; padding: 15px; font-size: 18px; resize: none; outline: none;
+      width: 100%; background: #111; color: white; border: 1px solid #444;
+      border-radius: 10px; padding: 15px; font-size: 18px; resize: none; outline: none; margin-bottom: 15px; box-sizing: border-box;
     }
-    .text-sticker-modal select {
-      width: 100%; background: #333; color: white; border: none; padding: 12px;
-      border-radius: 10px; margin-top: 10px; font-size: 16px; outline: none;
+    .text-sticker-modal select, .text-sticker-modal input[type="color"] {
+      width: 100%; background: #333; color: white; border: 1px solid #444; padding: 10px;
+      border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box;
     }
+    .text-sticker-modal input[type="color"] { height: 40px; cursor: pointer; padding: 2px; }
+    .text-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; margin-bottom: 15px; }
+    .text-controls-grid label { font-size: 11px; color: #aaa; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; display: block; }
+    .text-checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; color: #ddd; margin-bottom: 15px; justify-content: center; cursor: pointer; }
+
+    /* STICKER DRAWER TABS */
+    #stickerDrawer { height: 400px; }
+    .sticker-tabs { display: flex; overflow-x: auto; background: #1a1a1a; padding: 10px 15px; gap: 10px; border-bottom: 1px solid #333; scrollbar-width: none; }
+    .sticker-tabs::-webkit-scrollbar { display: none; }
+    .sticker-tab { background: #333; color: #aaa; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: 0.2s; }
+    .sticker-tab.active { background: #0d9488; color: white; }
+    .sticker-grid { display: flex; flex-wrap: wrap; gap: 15px; padding: 20px; overflow-y: auto; justify-content: center; flex: 1; align-content: flex-start; }
 /* 🟢 PHOTO EDITOR MODAL STYLES */
     #photoEditorModal {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -402,31 +424,59 @@
       </div>
       
       <div id="drawTools">
-        <input type="color" id="doodleColor" value="#ffffff" onchange="updateDrawSettings()">
-        <input type="range" id="doodleWidth" min="2" max="30" value="6" oninput="updateDrawSettings()">
+        <div class="draw-tool-group">
+          <label>Color</label>
+          <input type="color" id="doodleColor" value="#ffffff" onchange="updateDrawSettings()">
+        </div>
+        <div class="draw-tool-group">
+          <label>Thickness</label>
+          <input type="range" id="doodleWidth" min="2" max="30" value="6" oninput="updateDrawSettings()">
+        </div>
       </div>
     </div>
 
     <div class="editor-toolbar">
-      <div class="tool-btn active" id="btnDraw" onclick="toggleDrawMode()"><span style="font-size:24px;">🖍️</span></div>
-      <div class="tool-btn" onclick="openTextEditor()"><span style="font-size:24px;">🔤</span></div>
-      <div class="tool-btn" onclick="openStickerDrawer()"><span style="font-size:24px;">🌟</span></div>
-      <div class="tool-btn" onclick="clearDecorations()"><span style="font-size:24px;">🗑️</span></div>
+      <div class="tool-btn active" id="btnDraw" onclick="toggleDrawMode()" title="Draw"><span style="font-size:22px;">🖍️</span></div>
+      <div class="tool-btn" onclick="openTextEditor()" title="Add Text"><span style="font-size:22px;">🔤</span></div>
+      <div class="tool-btn" onclick="openStickerDrawer()" title="Stickers"><span style="font-size:22px;">🌟</span></div>
+      <div class="tool-btn" onclick="undoLastAction()" title="Undo"><span style="font-size:22px;">↩️</span></div>
+      <div class="tool-btn" onclick="clearDecorations()" title="Clear All"><span style="font-size:22px;">🗑️</span></div>
     </div>
   </div>
 
   <div id="textEditorModal" class="custom-modal-overlay" style="z-index: 100005;">
     <div class="text-sticker-modal">
-      <h3 style="margin-top:0;">Add Text</h3>
+      <h3 style="margin-top:0; margin-bottom: 15px;">Add Text</h3>
       <textarea id="textStickerInput" rows="2" placeholder="Type here..."></textarea>
-      <select id="textStickerFont">
-        <option value="Arial, sans-serif" style="font-family: Arial;">Classic (Arial)</option>
-        <option value="'Comic Sans MS', cursive" style="font-family: 'Comic Sans MS';">Playful (Comic)</option>
-        <option value="Impact, fantasy" style="font-family: Impact;">Bold (Impact)</option>
-        <option value="'Brush Script MT', cursive" style="font-family: 'Brush Script MT';">Elegant (Brush)</option>
-        <option value="'Courier New', monospace" style="font-family: 'Courier New';">Typewriter</option>
-      </select>
-      <div class="share-btn-row mt-3">
+      
+      <div class="text-controls-grid">
+        <div>
+          <label>Font Style</label>
+          <select id="textStickerFont">
+            <option value="Arial, sans-serif" style="font-family: Arial;">Classic</option>
+            <option value="'Comic Sans MS', cursive" style="font-family: 'Comic Sans MS';">Playful</option>
+            <option value="Impact, fantasy" style="font-family: Impact;">Bold</option>
+            <option value="'Brush Script MT', cursive" style="font-family: 'Brush Script MT';">Elegant</option>
+            <option value="'Courier New', monospace" style="font-family: 'Courier New';">Typewriter</option>
+          </select>
+        </div>
+        <div style="grid-row: span 2;"></div>
+        <div>
+          <label>Text Color</label>
+          <input type="color" id="textColor" value="#ffffff">
+        </div>
+        <div style="margin-top: -63px;">
+          <label>Outline Color</label>
+          <input type="color" id="textOutline" value="#000000">
+        </div>
+      </div>
+
+      <label class="text-checkbox-row">
+        <input type="checkbox" id="textShadow" checked style="width:18px; height:18px; accent-color:#0d9488;">
+        Add Drop Shadow
+      </label>
+
+      <div class="share-btn-row">
         <button class="btn-close-modal" style="background:#333; color:white;" onclick="closeTextEditor()">Cancel</button>
         <button class="btn-copy" onclick="applyTextSticker()">Add Text</button>
       </div>
@@ -437,6 +487,12 @@
     <div class="drawer-header">
       <strong style="color:white;">Photobooth Props</strong>
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
+    </div>
+    <div class="sticker-tabs" id="stickerTabs">
+      <button class="sticker-tab active" onclick="loadStickerCategory('props', this)">🎭 Props & Masks</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('faces', this)">😎 Glasses & Hats</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('emojis', this)">💖 Emojis & Bubbles</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('party', this)">🎉 Party & Food</button>
     </div>
     <div class="sticker-grid" id="stickerGrid"></div>
   </div>
@@ -1072,8 +1128,27 @@ doodleCanvas.addEventListener('touchstart', startDoodle, {passive: false});
 doodleCanvas.addEventListener('touchmove', drawDoodle, {passive: false});
 window.addEventListener('touchend', stopDoodle);
 
+// --- UNIVERSAL UNDO LOGIC ---
+function undoLastAction() {
+    // If they are actively drawing, clear the live doodle canvas
+    if (isDrawMode && isDrawing) return; // Prevent breaking active strokes
+    
+    if (isDrawMode) {
+        ctxDoodle.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+    }
+    
+    // Remove the most recently added sticker/doodle from the container
+    const container = document.getElementById('stickerContainer');
+    if (container.lastElementChild) {
+        container.removeChild(container.lastElementChild);
+    }
+}
+
 // --- TEXT STICKER LOGIC ---
-function openTextEditor() { document.getElementById('textEditorModal').style.display = 'flex'; }
+function openTextEditor() { 
+    if (isDrawMode) toggleDrawMode(); // Auto-off draw mode!
+    document.getElementById('textEditorModal').style.display = 'flex'; 
+}
 function closeTextEditor() { 
     document.getElementById('textEditorModal').style.display = 'none'; 
     document.getElementById('textStickerInput').value = '';
@@ -1082,16 +1157,18 @@ function closeTextEditor() {
 function applyTextSticker() {
     const text = document.getElementById('textStickerInput').value;
     const font = document.getElementById('textStickerFont').value;
+    const fillColor = document.getElementById('textColor').value;
+    const strokeColor = document.getElementById('textOutline').value;
+    const useShadow = document.getElementById('textShadow').checked;
+    
     if (!text || text.trim() === '') { closeTextEditor(); return; }
 
     const tempCanvas = document.createElement('canvas');
     const tCtx = tempCanvas.getContext('2d');
     
-    // Draw it massive for high quality
     const fontSize = 100; 
     tCtx.font = `bold ${fontSize}px ${font}`;
     
-    // Support multi-line text!
     const lines = text.split('\n');
     let maxLineWidth = 0;
     lines.forEach(line => {
@@ -1100,55 +1177,86 @@ function applyTextSticker() {
     });
     
     const textHeight = fontSize * 1.2; 
-    tempCanvas.width = maxLineWidth + 60; 
-    tempCanvas.height = (lines.length * textHeight) + 40;
+    tempCanvas.width = maxLineWidth + 80; // Extra padding for shadow/stroke
+    tempCanvas.height = (lines.length * textHeight) + 80;
     
     tCtx.font = `bold ${fontSize}px ${font}`;
     tCtx.textAlign = 'center';
     tCtx.textBaseline = 'middle';
-    tCtx.lineWidth = 12;
-    tCtx.strokeStyle = 'black';
-    tCtx.fillStyle = 'white';
+    
+    if (useShadow) {
+        tCtx.shadowColor = "rgba(0,0,0,0.7)";
+        tCtx.shadowBlur = 15;
+        tCtx.shadowOffsetX = 5;
+        tCtx.shadowOffsetY = 5;
+    }
 
     lines.forEach((line, i) => {
-        const yPos = (i * textHeight) + (textHeight / 2) + 20;
+        const yPos = (i * textHeight) + (textHeight / 2) + 40;
+        
+        // Draw Outline
+        tCtx.lineWidth = 14;
+        tCtx.strokeStyle = strokeColor;
         tCtx.strokeText(line, tempCanvas.width / 2, yPos);
+        
+        // Draw Fill (Reset shadow so it doesn't double up on the fill)
+        tCtx.shadowColor = "transparent";
+        tCtx.fillStyle = fillColor;
         tCtx.fillText(line, tempCanvas.width / 2, yPos);
     });
 
     closeTextEditor();
     
-    // Render text wider than normal stickers
     const displayWidth = Math.min(300, tempCanvas.width / 2);
     const displayHeight = tempCanvas.height * (displayWidth / tempCanvas.width);
     
     addSticker(tempCanvas.toDataURL('image/png'), displayWidth, displayHeight);
 }
 
-// --- 50+ PHOTOBOOTH STICKER GENERATOR ---
-function loadStickers() {
+// --- PHOTOBOOTH STICKER CATALOG ---
+const stickerCatalog = {
+    props: [
+        "1f3ad", "1f47d", "1f47b", "1f921", "1f9b9", "1f9b8", "1f47e", "1f479", "1f47a", "1f9df", 
+        "1f9db", "1f9da", "1f385", "1f936", "1f482", "1f575", "1f9d4", "1f468-200d-1f3a4", "1f469-200d-1f3a8", "1f9b4",
+        "1f9b7", "1f9e2", "1f9e3", "1f3b8", "1f3b7", "1f3fa", "1f3fb", "1f3c6", "1f48e", "1f484"
+    ],
+    faces: [
+        "1f3a9", "1f451", "1f380", "1f453", "1f576", "1f9d0", "1f97d", "1f913", "1f60e", "1f920", 
+        "1f978", "1f48b", "1f444", "1f440", "1f441", "1f443", "1f442", "1f9e0", "1f3b1", "1f9e1",
+        "1f9fc", "1f97f", "1f637", "1f912", "1f922", "1f92b", "1f92e", "1f927", "1f608", "1f47f"
+    ],
+    emojis: [
+        "1f4ac", "1f4ad", "1f4a2", "1f4a4", "1f5e8", "1f5ef", "1f496", "1f49e", "1f525", "1f4af", 
+        "1f4a5", "1f4a3", "2728", "1f31f", "1f49d", "1f497", "1f493", "2764", "1f9e1", "1f49b",
+        "1f49a", "1f499", "1f498", "1f5a4", "1f90e", "1f90d", "1f4a8", "1f4ab", "1f4a6", "1f4ab"
+    ],
+    party: [
+        "1f389", "1f388", "1f382", "1f37b", "1f37e", "1f377", "1f378", "1f379", "1f37a", "1f942", 
+        "1f943", "1f36b", "1f36c", "1f36d", "1f36e", "1f36f", "1f370", "1f371", "1f372", "1f373",
+        "1f355", "1f354", "1f35f", "1f366", "1f36a", "1f381", "1f38a", "1f387", "1f4e3", "1f680"
+    ]
+};
+
+function loadStickerCategory(category, btnElement) {
+    // UI Tab Switching
+    document.querySelectorAll('.sticker-tab').forEach(el => el.classList.remove('active'));
+    if (btnElement) btnElement.classList.add('active');
+
     const grid = document.getElementById('stickerGrid');
-    if (grid.innerHTML !== "") return; // Only load once
-
-    // 50 High-Quality Twemoji IDs (Masks, Hats, Glasses, Props, Bubbles)
-    const emojis = [
-        "1f3a9", "1f451", "1f380", "1f453", "1f576", "1f9d0", "1f3ad", "1f47d", "1f47b", "1f921",
-        "1f4aad", "1f4ac", "1f4a2", "1f4a4", "1f389", "1f388", "1f382", "1f31f", "2728", "1f496",
-        "1f49e", "1f525", "1f4af", "1f4a5", "1f4a3", "1f680", "1f3b8", "1f3b7", "1f3fa", "1f3fb",
-        "1f3c6", "1f48e", "1f484", "1f48b", "1f444", "1f440", "1f441", "1f443", "1f442", "1f9e0",
-        "1f9b4", "1f9b7", "1f9e2", "1f9e3", "1f34e", "1f349", "1f353", "1f34a", "1f34b", "1f34d"
-    ];
-
     let html = '';
-    emojis.forEach(code => {
+    
+    stickerCatalog[category].forEach(code => {
+        // High Quality Twemoji CDN
         const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
-        html += `<img class="sticker-item" src="${url}" onclick="addSticker('${url}', 100, 100)">`;
+        html += `<img class="sticker-item" src="${url}" onclick="addSticker('${url}', 120, 120)">`;
     });
+    
     grid.innerHTML = html;
 }
 
 function openStickerDrawer() {
-    loadStickers();
+    if (isDrawMode) toggleDrawMode(); // Auto-off draw mode!
+    loadStickerCategory('props', document.querySelector('.sticker-tab')); // Load first tab by default
     document.getElementById('stickerDrawer').style.display = 'flex';
     setTimeout(() => document.getElementById('stickerDrawer').classList.add('open'), 10);
 }
@@ -1158,7 +1266,7 @@ function closeStickerDrawer() {
 }
 
 // 🟢 MASTER STICKER ENGINE (With 2-Finger Pinch!)
-function addSticker(url, sWidth = 100, sHeight = 100, forceX = null, forceY = null) {
+function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
     closeStickerDrawer();
     if (isDrawMode) toggleDrawMode();
 
@@ -1170,7 +1278,6 @@ function addSticker(url, sWidth = 100, sHeight = 100, forceX = null, forceY = nu
 
     const container = document.getElementById('stickerContainer');
     
-    // Position it where they drew it, OR drop it in the center!
     if (forceX !== null && forceY !== null) {
         img.style.left = forceX + 'px';
         img.style.top = forceY + 'px';
@@ -1187,19 +1294,15 @@ function addSticker(url, sWidth = 100, sHeight = 100, forceX = null, forceY = nu
 
     const startDrag = (e) => {
         e.preventDefault();
-        
-        // Push the clicked sticker to the front!
-        container.appendChild(img); 
+        container.appendChild(img); // Bring to front!
 
         if (e.touches && e.touches.length === 2) {
-            // PINCH START
             isPinching = true;
             isDragging = false;
             initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             initialWidth = img.offsetWidth;
             initialHeight = img.offsetHeight;
         } else {
-            // DRAG START
             isDragging = true;
             isPinching = false;
             startX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -1214,23 +1317,19 @@ function addSticker(url, sWidth = 100, sHeight = 100, forceX = null, forceY = nu
         e.preventDefault();
         
         if (isPinching && e.touches && e.touches.length === 2) {
-            // PINCH MOVE (Scaling)
             const currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             const scale = currDist / initialDist;
             
-            // Prevent it from disappearing or getting wildly huge
-            const newW = Math.max(30, Math.min(initialWidth * scale, 1000));
-            const newH = Math.max(30, Math.min(initialHeight * scale, 1000));
+            const newW = Math.max(30, Math.min(initialWidth * scale, 1200));
+            const newH = Math.max(30, Math.min(initialHeight * scale, 1200));
             
             img.style.width = newW + 'px';
             img.style.height = newH + 'px';
             
-            // Adjust position slightly to scale from center
             img.style.left = (initialLeft - ((newW - initialWidth) / 2)) + 'px';
             img.style.top = (initialTop - ((newH - initialHeight) / 2)) + 'px';
             
         } else if (isDragging) {
-            // DRAG MOVE
             const currentX = e.touches ? e.touches[0].clientX : e.clientX;
             const currentY = e.touches ? e.touches[0].clientY : e.clientY;
             img.style.left = (initialLeft + (currentX - startX)) + 'px';
@@ -1241,8 +1340,6 @@ function addSticker(url, sWidth = 100, sHeight = 100, forceX = null, forceY = nu
     const stopDrag = () => { 
         isDragging = false; 
         isPinching = false; 
-        
-        // Update baseline coordinates for next interaction
         initialLeft = parseFloat(img.style.left) || 0;
         initialTop = parseFloat(img.style.top) || 0;
         initialWidth = img.offsetWidth;
