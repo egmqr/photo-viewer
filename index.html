@@ -364,7 +364,7 @@
           document.getElementById('communityUploadBtn').style.display = 'flex';
           document.getElementById('searchContainer').style.display = 'none';
           
-          // 🟢 NEW: Bulletproof Template Fetcher (In-App Browser Safe)
+          // 🟢 NEW: Clean Template Fetcher (No DOM hacks needed!)
           fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
           .then(res => res.json())
           .then(async res => {
@@ -378,10 +378,6 @@
                       for (let layer of imageLayers) {
                           await new Promise((resolve) => {
                               const tempImg = new Image();
-                              
-                              // 🟢 FORCE MESSENGER TO DECODE: Attach it invisibly to the page!
-                              tempImg.style.cssText = "position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; z-index: -1;";
-                              document.body.appendChild(tempImg);
                               
                               let rawSrc = layer.ImageBase64 || layer.base64 || layer.ImagePath || layer.src;
                               if (rawSrc) {
@@ -401,16 +397,11 @@
                                               isLandscape: tempImg.width > tempImg.height
                                           };
                                       }
-                                      document.body.removeChild(tempImg); // Clean up memory
                                       resolve();
                                   };
-                                  tempImg.onerror = function() { 
-                                      document.body.removeChild(tempImg); // Clean up memory
-                                      resolve(); 
-                                  };
+                                  tempImg.onerror = function() { resolve(); };
                                   tempImg.src = rawSrc;
                               } else {
-                                  document.body.removeChild(tempImg);
                                   resolve();
                               }
                           });
@@ -498,23 +489,17 @@
                 };
 
                // 3. Load Template and Execute (In-App Browser Safe)
+               // 3. Load Template and Execute
                 if (activeTemplateBase64) {
                     const overlayImg = new Image();
-                    
-                    // 🟢 FORCE MESSENGER TO DECODE: Attach it invisibly to the page!
-                    overlayImg.style.cssText = "position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; z-index: -1;";
-                    document.body.appendChild(overlayImg);
-                    
                     if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
                     
                     overlayImg.onload = function() {
                         drawAndUpload(overlayImg.width, overlayImg.height, overlayImg);
-                        document.body.removeChild(overlayImg); // Clean up memory
                     };
                     overlayImg.onerror = function() {
-                        alert("Messenger blocked the overlay. Uploading bare photo.");
+                        alert("Warning: Template corrupted. Uploading bare photo.");
                         drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
-                        document.body.removeChild(overlayImg); // Clean up memory
                     };
                     overlayImg.src = activeTemplateBase64;
                 } else {
