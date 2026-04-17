@@ -602,7 +602,9 @@
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
     <div class="sticker-tabs" id="stickerTabs">
-      <button class="sticker-tab active" onclick="loadStickerCategory('glasses', this)">🕶️ Glasses</button>
+      <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
+      
+      <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🕶️ Glasses</button>
       <button class="sticker-tab" onclick="loadStickerCategory('hats', this)">👑 Hats & Hair</button>
       <button class="sticker-tab" onclick="loadStickerCategory('masks', this)">🎭 Masks & Heads</button>
       <button class="sticker-tab" onclick="loadStickerCategory('props', this)">🎸 Handheld Props</button>
@@ -613,6 +615,7 @@
   <script>
     // IMPORTANT: Make sure this points to your unified backend Apps Script URL
     const API_URL = "https://script.google.com/macros/s/AKfycbwUzJHFrbKL-SWsfDig_Khh2dc-dRTmBIXXeAo7sMH9AhwTFy03B4OMJEuqI2BttJCC/exec"; 
+    const CUSTOM_STICKER_FOLDER_ID = "15JpqB4KghJ1pzEBRnaRgoTQ1xv_miOY0";
     const VIEWER_URL = "viewer.html";
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -706,6 +709,24 @@
               }
           })
           .catch(err => console.error("Template fetch error:", err));
+        // 🟢 NEW: Silently load your custom stickers in the background!
+      if (CUSTOM_STICKER_FOLDER_ID) {
+          fetch(`${API_URL}?api=getCustomStickers&folderId=${CUSTOM_STICKER_FOLDER_ID}`)
+          .then(res => res.json())
+          .then(res => {
+              if (res.success && res.data) {
+                  // Inject the dynamic links into the catalog
+                  stickerCatalog.custom = res.data;
+                  
+                  // If the user already opened the drawer before this finished downloading, refresh it instantly!
+                  if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Custom')) {
+                      delete stickerCache['custom']; 
+                      loadStickerCategory('custom', document.querySelector('.sticker-tab.active'));
+                  }
+              }
+          })
+          .catch(err => console.error("Failed to load custom stickers:", err));
+      }
       }
 
       if (!targetFolderId) {
@@ -1366,6 +1387,8 @@ function applyTextSticker() {
 
 // --- PHOTOBOOTH STICKER CATALOG ---
 const stickerCatalog = {
+    // 🟢 This will auto-fill from your Google Drive folder on page load!
+    custom: [], 
     glasses: [
         "1f576", // Dark Sunglasses
         "1f453", // Eyeglasses
