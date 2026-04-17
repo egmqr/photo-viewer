@@ -709,24 +709,24 @@
               }
           })
           .catch(err => console.error("Template fetch error:", err));
-        // 🟢 NEW: Silently load your custom stickers in the background!
-      if (CUSTOM_STICKER_FOLDER_ID) {
-          fetch(`${API_URL}?api=getCustomStickers&folderId=${CUSTOM_STICKER_FOLDER_ID}`)
-          .then(res => res.json())
-          .then(res => {
-              if (res.success && res.data) {
-                  // Inject the dynamic links into the catalog
-                  stickerCatalog.custom = res.data;
-                  
-                  // If the user already opened the drawer before this finished downloading, refresh it instantly!
-                  if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Custom')) {
-                      delete stickerCache['custom']; 
-                      loadStickerCategory('custom', document.querySelector('.sticker-tab.active'));
-                  }
-              }
-          })
-          .catch(err => console.error("Failed to load custom stickers:", err));
-      }
+        // 🟢 SILENT GITHUB FOLDER SCANNER
+      // Scans your repo folder and auto-generates blazing-fast jsDelivr CDN links!
+      fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers')
+        .then(res => res.json())
+        .then(files => {
+            if (Array.isArray(files)) {
+                stickerCatalog.custom = files
+                    .filter(file => file.name.toLowerCase().endsWith('.png'))
+                    .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers/${file.name}`);
+                
+                // If the drawer is already open and looking at the Custom tab, instantly refresh it!
+                if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Custom')) {
+                    delete stickerCache['custom']; 
+                    loadStickerCategory('custom', document.querySelector('.sticker-tab.active'));
+                }
+            }
+        })
+        .catch(err => console.error("Failed to load GitHub stickers:", err));
       }
 
       if (!targetFolderId) {
@@ -1470,16 +1470,16 @@ function loadStickerCategory(category, btnElement) {
         return;
     }
 
-    // 🟢 THE FIX: Show a loading message if Drive is still fetching the custom stickers!
+    // 🟢 The Loading State: Shown if the GitHub API is still scanning the folder
     if (category === 'custom' && stickerCatalog.custom.length === 0) {
         grid.innerHTML = '<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">Fetching Custom Props...<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>';
-        return; // Don't cache the loading state so it can be overwritten later!
+        return; 
     }
 
     let html = '';
     stickerCatalog[category].forEach(code => {
-        // 🟢 THE FIX: Allow data:image Base64 strings to pass through directly
-        const url = (code.startsWith('data:') || code.startsWith('http')) 
+        // Automatically detects your full jsDelivr URL OR a Twemoji hex code
+        const url = (code.startsWith('http')) 
             ? code 
             : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
         
