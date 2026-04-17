@@ -57,11 +57,20 @@
     .editor-sticker { 
       position: absolute; object-fit: contain; pointer-events: auto; 
       cursor: grab; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-      /* THE FIX: Add 20px of invisible padding to make tiny stickers pinchable! */
       padding: 20px; margin: -20px; 
       box-sizing: content-box; transition: outline 0.1s;
+      
+      /* 🟢 OPTIMIZATION 1: Force Hardware Acceleration (GPU) to prevent ghost trails */
+      will-change: left, top, transform;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform: translate3d(0,0,0); 
     }
-    .editor-sticker:active { cursor: grabbing; }
+    /* 🟢 OPTIMIZATION 2: Turn off the expensive shadow calculation while actively dragging! */
+    .editor-sticker.is-dragging {
+      filter: none;
+      cursor: grabbing;
+    }
     
     /* The Bounding Box for the Active Element */
     .editor-sticker.active {
@@ -1346,7 +1355,7 @@ function updateActiveSticker() {
     window.activeSticker.dataset.rot = rot;
 }
 
-// 🟢 MASTER STICKER ENGINE (With Slider Integration)
+// 🟢 MASTER STICKER ENGINE (With Slider Integration & Memory Optimization)
 function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
     closeStickerDrawer();
     if (isDrawMode) toggleDrawMode();
@@ -1382,9 +1391,9 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     const startDrag = (e) => {
         e.preventDefault();
         
-        // Select Sticker
+        // Select Sticker & Add dragging class to disable heavy CSS filters
         document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
-        img.classList.add('active');
+        img.classList.add('active', 'is-dragging');
         container.appendChild(img); // Bring to front
         
         // Sync & Show Sliders
@@ -1398,6 +1407,12 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
         startY = e.touches ? e.touches[0].clientY : e.clientY;
         initialLeft = parseFloat(img.style.left) || 0;
         initialTop = parseFloat(img.style.top) || 0;
+
+        // 🟢 CRITICAL FIX: Only attach global listeners WHEN a drag starts
+        window.addEventListener('mousemove', doDrag);
+        window.addEventListener('mouseup', stopDrag);
+        window.addEventListener('touchmove', doDrag, {passive: false});
+        window.addEventListener('touchend', stopDrag);
     };
 
     const doDrag = (e) => {
@@ -1410,14 +1425,19 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
         img.style.top = (initialTop + (currentY - startY)) + 'px';
     };
 
-    const stopDrag = () => { isDragging = false; };
+    const stopDrag = () => { 
+        isDragging = false; 
+        img.classList.remove('is-dragging'); // Restore drop-shadow
+
+        // 🟢 CRITICAL FIX: Kill the global listeners so they don't pile up and lag the phone!
+        window.removeEventListener('mousemove', doDrag);
+        window.removeEventListener('mouseup', stopDrag);
+        window.removeEventListener('touchmove', doDrag);
+        window.removeEventListener('touchend', stopDrag);
+    };
 
     img.addEventListener('mousedown', startDrag);
-    window.addEventListener('mousemove', doDrag);
-    window.addEventListener('mouseup', stopDrag);
     img.addEventListener('touchstart', startDrag, {passive: false});
-    window.addEventListener('touchmove', doDrag, {passive: false});
-    window.addEventListener('touchend', stopDrag);
 
     container.appendChild(img);
     
