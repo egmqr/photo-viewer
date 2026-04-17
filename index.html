@@ -450,6 +450,16 @@
       </div>
     </div>
   </div>
+  <div id="customDialogModal" class="custom-modal-overlay" style="z-index: 100010;">
+    <div class="custom-modal-box" style="background: #1e1e1e; border: 1px solid #333; color: white;">
+      <h3 id="dialogTitle" style="margin-top: 0;">Confirm</h3>
+      <p id="dialogMessage" style="font-size: 14px; color: #aaa; margin-bottom: 20px; line-height: 1.5;"></p>
+      <div class="share-btn-row">
+        <button class="btn-close-modal" id="btnDialogCancel" style="display:none; background:#333; color:white;">Cancel</button>
+        <button class="btn-copy" id="btnDialogConfirm">OK</button>
+      </div>
+    </div>
+  </div>
 <div id="photoEditorModal">
     <div class="editor-header">
       <button class="editor-btn" onclick="closePhotoEditor()">Cancel</button>
@@ -525,9 +535,9 @@
         </div>
         
         <div class="text-col">
-            <label>Outline Thickness</label>
-            <input type="range" id="textOutlineWidth" min="2" max="24" value="12" style="width: 100%; accent-color:#0d9488;">
-        </div>
+            <label><input type="checkbox" id="textEnableOutline" style="accent-color:#0d9488;"> Outline Color</label>
+            <input type="color" id="textOutline" value="#000000">
+          </div>
       </div>
 
       <label class="text-checkbox-row">
@@ -1201,17 +1211,38 @@ function undoLastAction() {
         }
     }
 }
+// 🟢 UNIVERSAL DIALOG ENGINE (Replaces Native Prompts)
+function showCustomDialog(title, message, isConfirm, onConfirmCallback) {
+    document.getElementById('dialogTitle').innerText = title;
+    document.getElementById('dialogMessage').innerText = message;
+    
+    const btnCancel = document.getElementById('btnDialogCancel');
+    const btnConfirm = document.getElementById('btnDialogConfirm');
+    const modal = document.getElementById('customDialogModal');
+    
+    btnCancel.style.display = isConfirm ? 'block' : 'none';
+    
+    // Clear old listeners so they don't fire multiple times
+    btnCancel.onclick = () => { modal.style.display = 'none'; };
+    btnConfirm.onclick = () => { 
+        modal.style.display = 'none'; 
+        if (onConfirmCallback) onConfirmCallback(); 
+    };
+    
+    modal.style.display = 'flex';
+}
+
 function handleDelete() {
-    // 🟢 1. Only delete the selected sticker
+    // 1. Only delete the selected sticker
     if (window.activeSticker) {
         window.activeSticker.remove();
         document.getElementById('stickerTools').style.display = 'none';
         window.activeSticker = null;
     } else {
-        // 2. Failsafe: If they click trash with nothing selected, ask to clear everything
-        if (confirm("Clear all decorations?")) {
+        // 2. Ask to clear everything using the NEW custom UI!
+        showCustomDialog("Clear Everything?", "Are you sure you want to delete all stickers and doodles?", true, () => {
             clearDecorations();
-        }
+        });
     }
 }
 // --- TEXT STICKER LOGIC ---
