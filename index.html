@@ -325,6 +325,13 @@
     const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
 
     window.onload = () => {
+      // Warn In-App Browser users
+      const isAppBrowser = /FBAN|FBAV|Messenger|Instagram|Line/i.test(navigator.userAgent);
+      if (isAppBrowser && isCommunityBooth) {
+          setTimeout(() => {
+              alert("⚠️ You are using an In-App Browser.\n\nFor the best camera experience and layouts, please tap the 3 dots in the corner and select 'Open in System Browser' or 'Open in Chrome/Safari'.");
+          }, 1000);
+      }
       // Show Community UI if applicable
       if (isCommunityBooth) {
           document.getElementById('communityUploadBtn').style.display = 'flex';
