@@ -711,13 +711,13 @@
           .catch(err => console.error("Template fetch error:", err));
         // 🟢 SILENT GITHUB FOLDER SCANNER
       // Scans your repo folder and auto-generates blazing-fast jsDelivr CDN links!
-      fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers')
+      fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers01')
         .then(res => res.json())
         .then(files => {
             if (Array.isArray(files)) {
                 stickerCatalog.custom = files
                     .filter(file => file.name.toLowerCase().endsWith('.png'))
-                    .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers/${file.name}`);
+                    .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers01/${file.name}`);
                 
                 // If the drawer is already open and looking at the Custom tab, instantly refresh it!
                 if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Custom')) {
