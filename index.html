@@ -1370,24 +1370,46 @@ const stickerCatalog = {
     ]
 };
 
+const stickerCache = {};
+
 function loadStickerCategory(category, btnElement) {
     document.querySelectorAll('.sticker-tab').forEach(el => el.classList.remove('active'));
     if (btnElement) btnElement.classList.add('active');
 
     const grid = document.getElementById('stickerGrid');
+    
+    // 🟢 OPTIMIZATION: If we already built this tab's HTML, just instantly inject it and stop!
+    if (stickerCache[category]) {
+        grid.innerHTML = stickerCache[category];
+        return;
+    }
+
     let html = '';
     stickerCatalog[category].forEach(code => {
         const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
-        html += `<img class="sticker-item" src="${url}" onclick="addSticker('${url}', 120, 120)">`;
+        // 🟢 OPTIMIZATION: Added loading="lazy" and decoding="async" to stop the main thread from freezing!
+        html += `<img class="sticker-item" src="${url}" loading="lazy" decoding="async" onclick="addSticker('${url}', 120, 120)">`;
     });
+    
+    stickerCache[category] = html; // Save it to the cache for next time
     grid.innerHTML = html;
 }
 
 function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
-    loadStickerCategory('props', document.querySelector('.sticker-tab')); 
+    
+    // 🟢 OPTIMIZATION: Only load the default tab if the drawer is completely empty!
+    const grid = document.getElementById('stickerGrid');
+    if (grid.innerHTML === '') {
+        loadStickerCategory('props', document.querySelector('.sticker-tab')); 
+    }
+    
     document.getElementById('stickerDrawer').style.display = 'flex';
-    setTimeout(() => document.getElementById('stickerDrawer').classList.add('open'), 10);
+    
+    // 🟢 OPTIMIZATION: requestAnimationFrame is much smoother than setTimeout for UI animations
+    requestAnimationFrame(() => {
+        document.getElementById('stickerDrawer').classList.add('open');
+    });
 }
 function closeStickerDrawer() {
     document.getElementById('stickerDrawer').classList.remove('open');
