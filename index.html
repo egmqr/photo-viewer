@@ -42,7 +42,41 @@
       backdrop-filter: blur(10px); border-top: 1px solid #333;
     }
     .tool-group { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #ccc; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
-    .tool-group input[type="range"] { width: 120px; accent-color: #0d9488; }
+    /* 🟢 FAT FINGER SLIDER UPGRADES */
+    .tool-group input[type="range"],
+    .text-sticker-modal input[type="range"] {
+      -webkit-appearance: none;
+      width: 160px; /* Made the sliders much longer */
+      height: 36px; /* Massive invisible touch padding */
+      background: transparent;
+      margin: 0;
+    }
+    
+    .text-sticker-modal input[type="range"] { 
+      width: 100%; /* Keeps text modal slider full width */
+    }
+
+    /* 1. The Track (Thicker and easier to see) */
+    .tool-group input[type="range"]::-webkit-slider-runnable-track,
+    .text-sticker-modal input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 10px; 
+      background: #444;
+      border-radius: 5px;
+    }
+
+    /* 2. The Thumb (Giant, branded, with a white border) */
+    .tool-group input[type="range"]::-webkit-slider-thumb,
+    .text-sticker-modal input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 30px; 
+      width: 30px; 
+      border-radius: 50%;
+      background: #0d9488;
+      border: 3px solid #fff;
+      margin-top: -10px; /* Centers the thumb perfectly on the 10px track */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
     
     #doodleColor { width: 36px; height: 36px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0; }
     #doodleColor::-webkit-color-swatch { border-radius: 50%; border: 2px solid white; }
