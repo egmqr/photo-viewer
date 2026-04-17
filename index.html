@@ -331,7 +331,7 @@
         </svg>
         Add Your Photo
       </button>
-      <input type="file" id="communityFileInput" accept="image/*" style="display:none;" onchange="handleCommunityPhotoCapture(event)">
+      <input type="file" id="communityFileInput" accept="image/*" style="display:none;" onchange="openPhotoEditor(event)">
 
       <button id="communityShareBtn" onclick="openShareModal()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -483,7 +483,7 @@
         });
     };
 
-    // 🟢 HTML5 CANVAS ENGINE: Merge Photo with Template (Scale-to-Fill & Orientation Aware)
+    /*/ 🟢 HTML5 CANVAS ENGINE: Merge Photo with Template (Scale-to-Fill & Orientation Aware)
     function handleCommunityPhotoCapture(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -552,7 +552,7 @@
         };
         reader.readAsDataURL(file);
         event.target.value = ''; // Reset input
-    }
+    }*/
 
     // 🟢 UPLOAD LOGIC
     function uploadProcessedPhoto(base64Data) {
@@ -1101,22 +1101,20 @@ function saveAndSubmitEdit() {
 
 // 🟢 THIS EXTRACTS YOUR ORIGINAL TEMPLATE LOGIC SO THE EDITOR CAN CALL IT!
 function processFinalTemplateLayout(editedBase64, isLandscape) {
+    // 🟢 Define the active template based on orientation
+    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
+
     if (activeTemplateBase64) {
         const overlayImg = new Image();
-        overlayImg.style.cssText = "position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; z-index: -1;";
-        document.body.appendChild(overlayImg);
         
         if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
         
         overlayImg.onload = function() {
-            // Modify your drawAndUpload function to accept the editedBase64 instead of a live video feed!
             executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
-            document.body.removeChild(overlayImg); 
         };
         overlayImg.onerror = function() {
             alert("Overlay failed. Uploading your edited photo bare.");
             executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
-            document.body.removeChild(overlayImg);
         };
         overlayImg.src = activeTemplateBase64;
     } else {
@@ -1131,14 +1129,21 @@ function executeCanvasUpload(cW, cH, overlayImg, sourceBase64) {
     
     const sourceImg = new Image();
     sourceImg.onload = function() {
-        // Draw the user's edited photo
-        ctx.drawImage(sourceImg, 0, 0, cW, cH);
+        // Draw the user's edited photo (We use scale-to-fill math here to ensure it covers the canvas)
+        const scale = Math.max(cW / sourceImg.width, cH / sourceImg.height);
+        const drawWidth = sourceImg.width * scale;
+        const drawHeight = sourceImg.height * scale;
+        const offsetX = (cW - drawWidth) / 2;
+        const offsetY = (cH - drawHeight) / 2;
+
+        ctx.drawImage(sourceImg, offsetX, offsetY, drawWidth, drawHeight);
+        
         // Draw the master template overlay
         if (overlayImg) ctx.drawImage(overlayImg, 0, 0, cW, cH);
         
-        // Upload to Cloudinary (Your original upload logic)
-        const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        uploadToCloudinary(finalDataUrl); 
+        // 🟢 Pass it to your existing upload function!
+        const finalDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        uploadProcessedPhoto(finalDataUrl); 
     };
     sourceImg.src = sourceBase64;
 }
