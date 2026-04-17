@@ -209,17 +209,19 @@
         const now = Date.now(); 
         if (now - lastPreviewFetch > 120) { imgEl.src = scrubUrl; lastPreviewFetch = now; } 
         else { clearTimeout(popoutImgTimer); popoutImgTimer = setTimeout(() => { imgEl.src = scrubUrl; lastPreviewFetch = Date.now(); }, 120); }
-      } else { 
+     } else { 
         preloadNeighbors(currentIndex);
 
-        imgEl.style.opacity = 0; 
         const renderIndex = currentIndex; 
         
-        fadeTimer = setTimeout(() => { 
-          
-          imgEl.onload = () => {
-            imgEl.onload = null; 
+        // 🟢 THE FIX: Load the preview in memory first so it doesn't blink black!
+        const preloader = new Image();
+        
+        preloader.onload = () => {
             if (currentIndex !== renderIndex) return;
+            
+            // Swap the image source instantly without dropping opacity
+            imgEl.src = previewUrl; 
             imgEl.style.opacity = 1; 
             
             idleHdTimer = setTimeout(() => {
@@ -242,18 +244,15 @@
               activeHdLoader.onerror = () => { if (!isData) showHint("Failed to load HD photo", false); };
               activeHdLoader.src = hdUrl;
             }, 800);
-          };
-          
-          imgEl.onerror = () => {
-             imgEl.onerror = null;
+        };
+        
+        preloader.onerror = () => {
              if (currentIndex !== renderIndex) return;
              showHint("Photo unavailable or deleted", false);
-          };
-          
-          imgEl.src = previewUrl; 
-          
-        }, 20); 
-      } 
+        };
+        
+        preloader.src = previewUrl; 
+      }
     }
 
     async function triggerDownload() {
