@@ -365,7 +365,41 @@
     </div>
   <div class="gallery-container" id="gallery"></div>
   <div id="sentinel"></div>
+<div id="photoEditorModal">
+    <div class="editor-header">
+      <button class="editor-btn" onclick="closePhotoEditor()">Cancel</button>
+      <div style="font-weight: bold; letter-spacing: 1px;">Decorate</div>
+      <button class="editor-btn editor-btn-submit" onclick="saveAndSubmitEdit()">Submit</button>
+    </div>
+    
+    <div id="editorWorkspace">
+      <div id="editorCanvasContainer">
+        <canvas id="baseCanvas"></canvas>
+        <canvas id="doodleCanvas"></canvas>
+        <div id="stickerContainer"></div>
+      </div>
+    </div>
 
+    <div class="editor-toolbar">
+      <div class="tool-btn active" id="btnDraw" onclick="toggleDrawMode()"><span style="font-size:24px;">🖍️</span></div>
+      <div class="tool-btn" onclick="openStickerDrawer()"><span style="font-size:24px;">🌟</span></div>
+      <div class="tool-btn" onclick="clearDecorations()"><span style="font-size:24px;">🗑️</span></div>
+    </div>
+  </div>
+
+  <div id="stickerDrawer">
+    <div class="drawer-header">
+      <strong style="color:white;">Select a Sticker</strong>
+      <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
+    </div>
+    <div class="sticker-grid" id="stickerGrid">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/7903/7903846.png" onclick="addSticker(this.src)">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2550/2550293.png" onclick="addSticker(this.src)">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055818.png" onclick="addSticker(this.src)">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/763/763781.png" onclick="addSticker(this.src)">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2850/2850756.png" onclick="addSticker(this.src)">
+    </div>
+  </div>
   <script>
     // IMPORTANT: Make sure this points to your unified backend Apps Script URL
     const API_URL = "https://script.google.com/macros/s/AKfycbwUzJHFrbKL-SWsfDig_Khh2dc-dRTmBIXXeAo7sMH9AhwTFy03B4OMJEuqI2BttJCC/exec"; 
@@ -831,41 +865,7 @@
       // ==============================================================================
 // 🎨 PHOTO EDITOR ENGINE (UI, Canvas, Stickers)
 // ==============================================================================
-  <div id="photoEditorModal">
-    <div class="editor-header">
-      <button class="editor-btn" onclick="closePhotoEditor()">Cancel</button>
-      <div style="font-weight: bold; letter-spacing: 1px;">Decorate</div>
-      <button class="editor-btn editor-btn-submit" onclick="saveAndSubmitEdit()">Submit</button>
-    </div>
-    
-    <div id="editorWorkspace">
-      <div id="editorCanvasContainer">
-        <canvas id="baseCanvas"></canvas>
-        <canvas id="doodleCanvas"></canvas>
-        <div id="stickerContainer"></div>
-      </div>
-    </div>
-
-    <div class="editor-toolbar">
-      <div class="tool-btn active" id="btnDraw" onclick="toggleDrawMode()"><span style="font-size:24px;">🖍️</span></div>
-      <div class="tool-btn" onclick="openStickerDrawer()"><span style="font-size:24px;">🌟</span></div>
-      <div class="tool-btn" onclick="clearDecorations()"><span style="font-size:24px;">🗑️</span></div>
-    </div>
-  </div>
-
-  <div id="stickerDrawer">
-    <div class="drawer-header">
-      <strong style="color:white;">Select a Sticker</strong>
-      <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
-    </div>
-    <div class="sticker-grid" id="stickerGrid">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/7903/7903846.png" onclick="addSticker(this.src)">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2550/2550293.png" onclick="addSticker(this.src)">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055818.png" onclick="addSticker(this.src)">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/763/763781.png" onclick="addSticker(this.src)">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2850/2850756.png" onclick="addSticker(this.src)">
-    </div>
-  </div>
+  
   <script>
     // ==============================================================================
 // 🟢 SNAPCHAT-STYLE PHOTO EDITOR ENGINE
@@ -883,8 +883,13 @@ function openPhotoEditor(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         editorBaseImage.onload = function() {
-            setupEditorWorkspace();
+            // 🟢 THE FIX: Unhide the modal FIRST so the browser knows its physical size!
             document.getElementById('photoEditorModal').style.display = 'flex';
+            
+            // Give the browser 10 milliseconds to draw the flexbox before doing the math
+            setTimeout(() => {
+                setupEditorWorkspace();
+            }, 10);
         };
         editorBaseImage.src = e.target.result;
     };
