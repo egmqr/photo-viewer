@@ -1465,20 +1465,28 @@ function loadStickerCategory(category, btnElement) {
 
     const grid = document.getElementById('stickerGrid');
     
-    // 🟢 OPTIMIZATION: If we already built this tab's HTML, just instantly inject it and stop!
     if (stickerCache[category]) {
         grid.innerHTML = stickerCache[category];
         return;
     }
 
+    // 🟢 THE FIX: Show a loading message if Drive is still fetching the custom stickers!
+    if (category === 'custom' && stickerCatalog.custom.length === 0) {
+        grid.innerHTML = '<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">Fetching Custom Props...<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>';
+        return; // Don't cache the loading state so it can be overwritten later!
+    }
+
     let html = '';
     stickerCatalog[category].forEach(code => {
-        const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
-        // 🟢 OPTIMIZATION: Added loading="lazy" and decoding="async" to stop the main thread from freezing!
+        // 🟢 THE FIX: Allow data:image Base64 strings to pass through directly
+        const url = (code.startsWith('data:') || code.startsWith('http')) 
+            ? code 
+            : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
+        
         html += `<img class="sticker-item" src="${url}" loading="lazy" decoding="async" onclick="addSticker('${url}', 120, 120)">`;
     });
     
-    stickerCache[category] = html; // Save it to the cache for next time
+    stickerCache[category] = html;
     grid.innerHTML = html;
 }
 
@@ -1487,8 +1495,9 @@ function openStickerDrawer() {
     
     const grid = document.getElementById('stickerGrid');
     if (grid.innerHTML === '') {
-        // 🟢 THE FIX: Changed 'props' to 'glasses' to match the new first tab
-        loadStickerCategory('glasses', document.querySelector('.sticker-tab')); 
+        // 🟢 THE FIX: Strictly find and click the "Custom" tab button!
+        const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
+        loadStickerCategory('custom', customTabBtn); 
     }
     
     document.getElementById('stickerDrawer').style.display = 'flex';
