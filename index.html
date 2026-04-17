@@ -330,7 +330,7 @@
           document.getElementById('communityUploadBtn').style.display = 'flex';
           document.getElementById('searchContainer').style.display = 'none';
           
-          // 🟢 NEW: Ask the backend for the template overlays!
+          // 🟢 NEW: Bulletproof Template Fetcher (In-App Browser Safe)
           fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
           .then(res => res.json())
           .then(async res => {
@@ -339,35 +339,44 @@
                       let largestImage = null;
                       let maxArea = 0;
                       
-                      // Filter to only ImageLayers (Extremely forgiving checks)
-                      let imageLayers = t.Layers.filter(l => l.LayerType === 'ImageLayer');
+                      let imageLayers = t.Layers.filter(l => l.ImageBase64 || l.base64 || l.ImagePath || l.src);
                       
                       for (let layer of imageLayers) {
                           await new Promise((resolve) => {
                               const tempImg = new Image();
                               
-                              tempImg.onload = function() {
-                                  const area = tempImg.width * tempImg.height;
-                                  if (area > maxArea) {
-                                      maxArea = area;
-                                      largestImage = {
-                                          src: tempImg.src, 
-                                          isLandscape: tempImg.width > tempImg.height
-                                      };
-                                  }
-                                  resolve();
-                              };
+                              // 🟢 FORCE MESSENGER TO DECODE: Attach it invisibly to the page!
+                              tempImg.style.cssText = "position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; z-index: -1;";
+                              document.body.appendChild(tempImg);
                               
-                              tempImg.onerror = function() { resolve(); }; // Skip broken images cleanly
-                              
-                              // Safely handle raw base64 strings by forcing the prefix!
                               let rawSrc = layer.ImageBase64 || layer.base64 || layer.ImagePath || layer.src;
                               if (rawSrc) {
-                                  if (!rawSrc.startsWith('data:image') && !rawSrc.startsWith('http')) {
-                                      rawSrc = 'data:image/png;base64,' + rawSrc;
+                                  if (rawSrc.startsWith('http')) {
+                                      tempImg.crossOrigin = "anonymous";
+                                  } else if (!rawSrc.startsWith('data:image')) {
+                                      let mime = rawSrc.charAt(0) === '/' ? 'jpeg' : 'png';
+                                      rawSrc = `data:image/${mime};base64,` + rawSrc;
                                   }
+                                  
+                                  tempImg.onload = function() {
+                                      const area = tempImg.width * tempImg.height;
+                                      if (area > maxArea) {
+                                          maxArea = area;
+                                          largestImage = {
+                                              src: tempImg.src, 
+                                              isLandscape: tempImg.width > tempImg.height
+                                          };
+                                      }
+                                      document.body.removeChild(tempImg); // Clean up memory
+                                      resolve();
+                                  };
+                                  tempImg.onerror = function() { 
+                                      document.body.removeChild(tempImg); // Clean up memory
+                                      resolve(); 
+                                  };
                                   tempImg.src = rawSrc;
                               } else {
+                                  document.body.removeChild(tempImg);
                                   resolve();
                               }
                           });
@@ -382,7 +391,7 @@
                   if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
                   if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
                   
-                  console.log("Template Overlays mapped!", templateOverlays);
+                  showToast("Layout Template Ready!");
               }
           })
           .catch(err => console.error("Template fetch error:", err));
@@ -454,15 +463,24 @@
                     uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
                 };
 
-                // 3. Load Template and Execute (Removed CORS trap for Base64)
+               // 3. Load Template and Execute (In-App Browser Safe)
                 if (activeTemplateBase64) {
                     const overlayImg = new Image();
+                    
+                    // 🟢 FORCE MESSENGER TO DECODE: Attach it invisibly to the page!
+                    overlayImg.style.cssText = "position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; z-index: -1;";
+                    document.body.appendChild(overlayImg);
+                    
+                    if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
+                    
                     overlayImg.onload = function() {
                         drawAndUpload(overlayImg.width, overlayImg.height, overlayImg);
+                        document.body.removeChild(overlayImg); // Clean up memory
                     };
                     overlayImg.onerror = function() {
-                        console.warn("Template failed to load on canvas. Falling back to default dimensions.");
+                        alert("Messenger blocked the overlay. Uploading bare photo.");
                         drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
+                        document.body.removeChild(overlayImg); // Clean up memory
                     };
                     overlayImg.src = activeTemplateBase64;
                 } else {
