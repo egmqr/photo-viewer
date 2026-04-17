@@ -64,7 +64,23 @@
       width: 100%; 
       flex-grow: 1;
     }
-
+/* 🟢 IN-APP BROWSER WARNING SCREEN */
+    #inAppBrowserWarning {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #111111; color: white; z-index: 10000;
+      display: none; flex-direction: column; align-items: center; 
+      justify-content: center; padding: 30px; text-align: center;
+    }
+    .warning-icon { font-size: 60px; margin-bottom: 15px; }
+    .warning-title { font-size: 24px; font-weight: 700; margin: 0 0 10px 0; }
+    .warning-text { font-size: 16px; color: #aaaaaa; line-height: 1.5; margin-bottom: 25px; }
+    .warning-highlight { color: #0d9488; font-weight: bold; }
+    .warning-btn {
+      background: #0d9488; color: white; border: none; padding: 16px 30px;
+      font-size: 16px; border-radius: 30px; font-weight: bold; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(13, 148, 136, 0.4); transition: 0.2s; width: 100%; max-width: 300px;
+    }
+    .warning-btn:active { transform: scale(0.95); background: #0f766e; }
     #timeSearch { 
       width: 100%; 
       padding: 12px 40px 12px 20px; 
@@ -243,7 +259,14 @@
   </style>
 </head>
 <body>
-
+<div id="inAppBrowserWarning">
+    <div class="warning-icon">⚠️</div>
+    <h2 class="warning-title">Action Required</h2>
+    <p class="warning-text">You are viewing this inside an app (like Messenger or Instagram) which blocks our photo layout features.</p>
+    <p class="warning-text" style="color: #ffffff;">Please tap the <strong>3 dots</strong> in the corner of your screen and select <br><br><span class="warning-highlight">"Open in System Browser"</span><br>or<br><span class="warning-highlight">"Open in Chrome / Safari"</span></p>
+    
+    <button class="warning-btn" id="copyExternalLinkBtn" onclick="copyForExternalBrowser()">📋 Copy Gallery Link</button>
+  </div>
   <div id="status-toast">Gallery is up to date</div>
 
   <div id="uploadOverlay">
@@ -325,12 +348,16 @@
     const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
 
     window.onload = () => {
-      // Warn In-App Browser users
-      const isAppBrowser = /FBAN|FBAV|Messenger|Instagram|Line/i.test(navigator.userAgent);
-      if (isAppBrowser && isCommunityBooth) {
-          setTimeout(() => {
-              alert("⚠️ You are using an In-App Browser.\n\nFor the best camera experience and layouts, please tap the 3 dots in the corner and select 'Open in System Browser' or 'Open in Chrome/Safari'.");
-          }, 1000);
+      // 🟢 THE FIX: Aggressive In-App Browser Detection
+      const isAppBrowser = /FBAN|FBAV|Messenger|Instagram|Line|Snapchat|TikTok|MicroMessenger/i.test(navigator.userAgent);
+      
+      if (isAppBrowser) {
+          // Instantly show the warning and kill the background loaders
+          document.getElementById('inAppBrowserWarning').style.display = 'flex';
+          const bgLoader = document.getElementById('background-loader');
+          if (bgLoader) bgLoader.style.display = 'none';
+          
+          return; // 🛑 CRITICAL: This stops the rest of window.onload from executing, saving memory!
       }
       // Show Community UI if applicable
       if (isCommunityBooth) {
@@ -760,6 +787,18 @@
             document.getElementById('manual-sync-btn').classList.remove('spinning');
           }
         });
+    }
+    // 🟢 COPY LINK FOR EXTERNAL BROWSER
+    function copyForExternalBrowser() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            const btn = document.getElementById('copyExternalLinkBtn');
+            btn.innerText = "✅ Link Copied! Paste in Safari/Chrome";
+            btn.style.background = "#16a34a"; // Turn green
+            setTimeout(() => {
+                btn.innerText = "📋 Copy Gallery Link";
+                btn.style.background = "#0d9488";
+            }, 3000);
+        }).catch(err => alert("Please manually copy the link from the top of the screen."));
     }
   </script>
 </body>
