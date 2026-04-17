@@ -492,7 +492,7 @@
       <div class="tool-btn" onclick="openTextEditor()" title="Add Text"><span style="font-size:22px;">🔤</span></div>
       <div class="tool-btn" onclick="openStickerDrawer()" title="Stickers"><span style="font-size:22px;">🌟</span></div>
       <div class="tool-btn" onclick="undoLastAction()" title="Undo"><span style="font-size:22px;">↩️</span></div>
-      <div class="tool-btn" onclick="clearDecorations()" title="Clear All"><span style="font-size:22px;">🗑️</span></div>
+      <div class="tool-btn" onclick="handleDelete()" title="Delete"><span style="font-size:22px;">🗑️</span></div>
     </div>
   </div>
 
@@ -675,76 +675,6 @@
         });
     };
 
-    /*/ 🟢 HTML5 CANVAS ENGINE: Merge Photo with Template (Scale-to-Fill & Orientation Aware)
-    function handleCommunityPhotoCapture(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const overlayUI = document.getElementById('uploadOverlay');
-        const statusText = document.getElementById('uploadStatusText');
-        overlayUI.style.display = 'flex';
-        statusText.innerText = "Applying Layout...";
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.onload = function() {
-                // 1. Strictly detect the User's Photo Orientation
-                const isLandscape = img.width > img.height;
-                const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
-
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-
-                // 2. Helper to perform the actual drawing and upload
-                const drawAndUpload = (templateWidth, templateHeight, overlayImg = null) => {
-                    // Force canvas to match template dimensions EXACTLY
-                    canvas.width = templateWidth;
-                    canvas.height = templateHeight;
-
-                    // 🟢 Scale-to-Fill Math (Crop excess off sides or top/bottom perfectly)
-                    const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
-                    const drawWidth = img.width * scale;
-                    const drawHeight = img.height * scale;
-                    
-                    // Center the crop automatically
-                    const offsetX = (canvas.width - drawWidth) / 2;
-                    const offsetY = (canvas.height - drawHeight) / 2;
-
-                    // Draw Photo (Perfectly Cropped & Centered)
-                    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-                    // Draw Template Overlay directly on top (if it exists)
-                    if (overlayImg) {
-                        ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
-                    }
-
-                    uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85));
-                };
-
-               // 3. Load Template and Execute (In-App Browser Safe)
-               // 3. Load Template and Execute
-                if (activeTemplateBase64) {
-                    const overlayImg = new Image();
-                    if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
-                    
-                    overlayImg.onload = function() {
-                        drawAndUpload(overlayImg.width, overlayImg.height, overlayImg);
-                    };
-                    overlayImg.onerror = function() {
-                        alert("Warning: Template corrupted. Uploading bare photo.");
-                        drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
-                    };
-                    overlayImg.src = activeTemplateBase64;
-                } else {
-                    drawAndUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800);
-                }
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-        event.target.value = ''; // Reset input
-    }*/
 
     // 🟢 UPLOAD LOGIC
     function uploadProcessedPhoto(base64Data) {
@@ -1026,6 +956,7 @@ let editorBaseImage = new Image();
 let isDrawMode = true;
 let isDrawing = false;
 let ctxDoodle;
+let actionHistory = [];
 
 // 1. Intercept the Photo Upload & Ask User
 function openPhotoEditor(event) {
@@ -1125,9 +1056,17 @@ function updateDrawSettings() {
 }
 
 function closePhotoEditor() { document.getElementById('photoEditorModal').style.display = 'none'; }
+
 function clearDecorations() {
+    ctxDoodle.save();
+    ctxDoodle.setTransform(1, 0, 0, 1, 0, 0); // Reset Retina scaling safely
     ctxDoodle.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+    ctxDoodle.restore();
+    
     document.getElementById('stickerContainer').innerHTML = '';
+    document.getElementById('stickerTools').style.display = 'none';
+    window.activeSticker = null;
+    actionHistory = []; // 🟢 Clear the history when the board is wiped
 }
 
 
@@ -1240,20 +1179,41 @@ window.addEventListener('touchend', stopDoodle);
 
 // --- UNIVERSAL UNDO LOGIC ---
 function undoLastAction() {
-    // If they are actively drawing, clear the live doodle canvas
-    if (isDrawMode && isDrawing) return; // Prevent breaking active strokes
-    
+    // 🟢 1. If actively drawing, immediately toggle OFF to convert the doodle to a sticker!
     if (isDrawMode) {
-        ctxDoodle.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+        toggleDrawMode(); 
     }
     
-    // Remove the most recently added sticker/doodle from the container
-    const container = document.getElementById('stickerContainer');
-    if (container.lastElementChild) {
-        container.removeChild(container.lastElementChild);
+    // 🟢 2. Pop the last created element from our history array, ignoring HTML DOM order!
+    while (actionHistory.length > 0) {
+        let lastEl = actionHistory.pop();
+        
+        // Ensure the element still exists (in case the user manually deleted it earlier)
+        if (lastEl && lastEl.parentNode) {
+            lastEl.remove();
+            
+            // Hide the slider tools if we just undid the sticker we were actively touching
+            if (window.activeSticker === lastEl) {
+                window.activeSticker = null;
+                document.getElementById('stickerTools').style.display = 'none';
+            }
+            break; // Stop after successfully undoing exactly 1 action!
+        }
     }
 }
-
+function handleDelete() {
+    // 🟢 1. Only delete the selected sticker
+    if (window.activeSticker) {
+        window.activeSticker.remove();
+        document.getElementById('stickerTools').style.display = 'none';
+        window.activeSticker = null;
+    } else {
+        // 2. Failsafe: If they click trash with nothing selected, ask to clear everything
+        if (confirm("Clear all decorations?")) {
+            clearDecorations();
+        }
+    }
+}
 // --- TEXT STICKER LOGIC ---
 function openTextEditor() { 
     if (isDrawMode) toggleDrawMode(); // Auto-off draw mode!
@@ -1494,6 +1454,9 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     img.addEventListener('touchstart', startDrag, {passive: false});
 
     container.appendChild(img);
+    
+    // 🟢 NEW: Log this sticker into our chronological history tracker!
+    actionHistory.push(img);
     
     // Auto-select immediately upon adding
     window.activeSticker = img;
