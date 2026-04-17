@@ -602,13 +602,11 @@
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
     <div class="sticker-tabs" id="stickerTabs">
-      <button class="sticker-tab active" onclick="loadStickerCategory('props', this)">🎭 Props</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('faces', this)">😎 Faces</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('food', this)">🍔 Food</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('travel', this)">✈️ Travel</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('corporate', this)">💼 Office</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('symbols', this)">💯 Symbols</button>
-      <button class="sticker-tab" onclick="loadStickerCategory('emojis', this)">💖 Hearts</button>
+      <button class="sticker-tab active" onclick="loadStickerCategory('glasses', this)">🕶️ Glasses</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('hats', this)">👑 Hats & Hair</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('masks', this)">🎭 Masks & Heads</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('props', this)">🎸 Handheld Props</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('decor', this)">💬 Bubbles & FX</button>
     </div>
     <div class="sticker-grid" id="stickerGrid"></div>
   </div>
@@ -1368,49 +1366,71 @@ function applyTextSticker() {
 
 // --- PHOTOBOOTH STICKER CATALOG ---
 const stickerCatalog = {
+    glasses: [
+        "1f576", // Dark Sunglasses
+        "1f453", // Eyeglasses
+        "1f97d", // Goggles
+        "1f9d0", // Disguise (Nose & Mustache glasses)
+        "1f913", // Nerd Face (often used as a mask)
+        "1f60e"  // Cool Face
+    ],
+    hats: [
+        "1f451", // Crown
+        "1f3a9", // Top Hat
+        "1f9e2", // Billed Cap
+        "1f452", // Woman's Hat
+        "1f393", // Graduation Cap
+        "1faa6", // Military Helmet
+        "26d1",  // Rescue Helmet
+        "1f380", // Pink Ribbon/Bow
+        "1f9e3"  // Scarf
+    ],
+    masks: [
+        "1f3ad", // Drama Masks
+        "1f47d", // Alien
+        "1f47b", // Ghost
+        "1f480", // Skull
+        "1f921", // Clown
+        "1f383", // Jack-O-Lantern
+        "1f47a", // Goblin mask
+        "1f479", // Ogre mask
+        "1f916", // Robot
+        "1f435", // Monkey Head
+        "1f436", // Dog Head
+        "1f431", // Cat Head
+        "1f42f", // Tiger Head
+        "1f984"  // Unicorn Head
+    ],
     props: [
-        // Classic Photobooth Props & Objects
-        "1f3ad", "1f47d", "1f47b", "1f921", "1f9b9", "1f9b8", "1f47e", "1f479", "1f47a", "1f9df", 
-        "1f9db", "1f9da", "1f385", "1f936", "1f482", "1f575", "1f9d4", "1f3b8", "1f3b7", "1f3fa", 
-        "1f3fb", "1f3c6", "1f48e", "1f484", "1f389", "1f388", "1f382",
-        // NEW PROPS: Weapons, Magic, Music, & Gadgets
-        "2694", "1f6e1", "1f3f9", "1f3ba", "1f941", "1f393", "1f52e", "1f48d", "2602", "1f52d", 
-        "1f3d3", "1f3af", "1f3b1", "1f3b2", "1f3b3", "1f3a4", "1f3a7", "1f4fb", "1f4f7", "1f4a1", 
-        "1f50d", "1f511", "1f52b", "1f4a3"
+        "1f3a4", // Microphone
+        "1f3a7", // Headphones
+        "1f3b8", // Guitar
+        "1f3b7", // Saxophone
+        "1f4f7", // Camera
+        "1fa84", // Magic Wand
+        "2694",  // Crossed Swords
+        "1f3c6", // Trophy
+        "1f3c5", // Gold Medal
+        "1f52d", // Telescope
+        "1f37e", // Champagne Bottle
+        "1f378"  // Cocktail Glass
     ],
-    faces: [
-        // Hats, Glasses, & Features
-        "1f3a9", "1f451", "1f380", "1f453", "1f576", "1f9d0", "1f97d", "1f913", "1f60e", "1f920", 
-        "1f978", "1f48b", "1f444", "1f440", "1f441", "1f443", "1f442", "1f9e0", "1f9e1", "1f9fc", 
-        "1f97f", "1f637", "1f912", "1f922", "1f92b",
-        // NEW FACES: Animal Heads & Crazy Expressions
-        "1f435", "1f436", "1f431", "1f437", "1f438", "1f43b", "1f430", "1f43a", "1f984", "1f981", 
-        "1f42f", "1f42e", "1f43d", "1f92a", "1f92f", "1f911", "1f97a", "1f631", "1f60d", "1f929", 
-        "1f973", "1f976", "1f975", "1f632"
-    ],
-    food: [
-        "1f354", "1f355", "1f35f", "1f32d", "1f37f", "1f369", "1f36a", "1f382", "1f9c1", "1f36b", 
-        "1f36c", "1f36d", "1f378", "2615", "1f32e", "1f32f", "1f35c", "1f363", "1f951", "1f353", 
-        "1f349", "1f37b", "1f37e", "1f377", "1f942", "1f943"
-    ],
-    travel: [
-        "2708", "1f697", "1f6f3", "1f3dd", "1f5fd", "1f5fc", "1f3ef", "1f3d6", "1f3d5", "1f682", 
-        "1f680", "1f681", "1f6f8", "1f30d", "1f5fa", "1f3d4", "1f30b", "1f9f3", "26f1", "1f3a2", 
-        "1f3a1", "1f3a0"
-    ],
-    corporate: [
-        "1f4bc", "1f4c8", "1f4bb", "1f5a5", "2328", "1f4f1", "1f4de", "1f4e0", "1f4c5", "1f4ca", 
-        "1f4cb", "1f4c1", "1f4c2", "1f4dd", "1f4cc", "1f4ce", "1f4a1", "1f4b0", "1f4b5", "1f91d", 
-        "1f3c6", "1f3c5"
-    ],
-    symbols: [
-        "1f3c1", "1f6a9", "1f38c", "1f3f4", "1f3f3", "1f4af", "1f4a2", "1f4ac", "1f5ef", "1f4ad", 
-        "1f4a4", "2755", "2757", "2753", "274c", "2b55", "1f6d1", "26d4", "2668"
-    ],
-    emojis: [
-        "1f496", "1f49e", "1f525", "1f4a5", "1f4a3", "2728", "1f31f", "1f49d", "1f497", "1f493", 
-        "2764", "1f9e1", "1f49b", "1f49a", "1f499", "1f498", "1f5a4", "1f90e", "1f90d", "1f4a8", 
-        "1f4ab", "1f4a6"
+    decor: [
+        "1f4ac", // Speech Bubble
+        "1f4ad", // Thought Bubble
+        "1f5ef", // Anger Bubble
+        "1f48b", // Kiss Mark (Lips)
+        "1f444", // Mouth
+        "1f445", // Tongue
+        "1f496", // Sparkling Heart
+        "2728",  // Sparkles
+        "1f4a5", // Collision/Explosion
+        "1f4a4", // Zzz (Sleeping)
+        "1f388", // Balloon
+        "1f389", // Party Popper
+        "1f48e", // Gemstone
+        "1f338", // Cherry Blossom
+        "1f33b"  // Sunflower
     ]
 };
 
@@ -1442,15 +1462,13 @@ function loadStickerCategory(category, btnElement) {
 function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     
-    // 🟢 OPTIMIZATION: Only load the default tab if the drawer is completely empty!
     const grid = document.getElementById('stickerGrid');
     if (grid.innerHTML === '') {
-        loadStickerCategory('props', document.querySelector('.sticker-tab')); 
+        // 🟢 THE FIX: Changed 'props' to 'glasses' to match the new first tab
+        loadStickerCategory('glasses', document.querySelector('.sticker-tab')); 
     }
     
     document.getElementById('stickerDrawer').style.display = 'flex';
-    
-    // 🟢 OPTIMIZATION: requestAnimationFrame is much smoother than setTimeout for UI animations
     requestAnimationFrame(() => {
         document.getElementById('stickerDrawer').classList.add('open');
     });
