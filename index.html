@@ -34,6 +34,28 @@
       user-select: none;
       padding-bottom: calc(60px + var(--safe-bottom)); 
     }
+    /* 🟢 ADVANCED EDITOR STYLES */
+    #drawTools {
+      position: absolute; bottom: 85px; width: 100%; display: none; 
+      justify-content: center; align-items: center; gap: 15px; z-index: 10;
+      background: rgba(0,0,0,0.5); padding: 10px; backdrop-filter: blur(5px);
+    }
+    #doodleColor { width: 40px; height: 40px; border: none; border-radius: 50%; cursor: pointer; background: transparent; }
+    #doodleColor::-webkit-color-swatch { border-radius: 50%; border: 2px solid white; }
+    #doodleWidth { width: 150px; accent-color: #0d9488; }
+    
+    .text-sticker-modal {
+      background: #1e1e1e; border-radius: 20px; padding: 24px; width: 90%; max-width: 350px;
+      text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); color: white;
+    }
+    .text-sticker-modal textarea {
+      width: 100%; background: #111; color: white; border: 1px solid #333;
+      border-radius: 10px; padding: 15px; font-size: 18px; resize: none; outline: none;
+    }
+    .text-sticker-modal select {
+      width: 100%; background: #333; color: white; border: none; padding: 12px;
+      border-radius: 10px; margin-top: 10px; font-size: 16px; outline: none;
+    }
 /* 🟢 PHOTO EDITOR MODAL STYLES */
     #photoEditorModal {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -378,23 +400,45 @@
         <canvas id="doodleCanvas"></canvas>
         <div id="stickerContainer"></div>
       </div>
+      
+      <div id="drawTools">
+        <input type="color" id="doodleColor" value="#ffffff" onchange="updateDrawSettings()">
+        <input type="range" id="doodleWidth" min="2" max="30" value="6" oninput="updateDrawSettings()">
+      </div>
     </div>
 
     <div class="editor-toolbar">
       <div class="tool-btn active" id="btnDraw" onclick="toggleDrawMode()"><span style="font-size:24px;">🖍️</span></div>
-      <div class="tool-btn" onclick="addTextSticker()"><span style="font-size:24px;">🔤</span></div>
+      <div class="tool-btn" onclick="openTextEditor()"><span style="font-size:24px;">🔤</span></div>
       <div class="tool-btn" onclick="openStickerDrawer()"><span style="font-size:24px;">🌟</span></div>
       <div class="tool-btn" onclick="clearDecorations()"><span style="font-size:24px;">🗑️</span></div>
     </div>
   </div>
 
+  <div id="textEditorModal" class="custom-modal-overlay" style="z-index: 100005;">
+    <div class="text-sticker-modal">
+      <h3 style="margin-top:0;">Add Text</h3>
+      <textarea id="textStickerInput" rows="2" placeholder="Type here..."></textarea>
+      <select id="textStickerFont">
+        <option value="Arial, sans-serif" style="font-family: Arial;">Classic (Arial)</option>
+        <option value="'Comic Sans MS', cursive" style="font-family: 'Comic Sans MS';">Playful (Comic)</option>
+        <option value="Impact, fantasy" style="font-family: Impact;">Bold (Impact)</option>
+        <option value="'Brush Script MT', cursive" style="font-family: 'Brush Script MT';">Elegant (Brush)</option>
+        <option value="'Courier New', monospace" style="font-family: 'Courier New';">Typewriter</option>
+      </select>
+      <div class="share-btn-row mt-3">
+        <button class="btn-close-modal" style="background:#333; color:white;" onclick="closeTextEditor()">Cancel</button>
+        <button class="btn-copy" onclick="applyTextSticker()">Add Text</button>
+      </div>
+    </div>
+  </div>
+
   <div id="stickerDrawer">
     <div class="drawer-header">
-      <strong style="color:white;">Select a Sticker</strong>
+      <strong style="color:white;">Photobooth Props</strong>
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
-    <div class="sticker-grid" id="stickerGrid">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/8371/8371383.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055661.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/7903/7903846.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2550/2550293.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055818.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/763/763781.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2850/2850756.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055648.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055673.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055663.png" onclick="addSticker(this.src)"> </div>
+    <div class="sticker-grid" id="stickerGrid"></div>
   </div>
   <script>
     // IMPORTANT: Make sure this points to your unified backend Apps Script URL
@@ -857,15 +901,14 @@
             }, 3000);
         }).catch(err => alert("Please manually copy the link from the top of the screen."));
     }
-     // ==============================================================================
-// PHOTO EDITOR ENGINE (UI, Canvas, Stickers)
+    // ==============================================================================
+// 🟢 SNAPCHAT-STYLE PHOTO EDITOR ENGINE
 // ==============================================================================
 let editorBaseImage = new Image();
 let isDrawMode = true;
 let isDrawing = false;
 let ctxDoodle;
 
-// 1. Intercept the Photo Upload
 function openPhotoEditor(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -873,83 +916,131 @@ function openPhotoEditor(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         editorBaseImage.onload = function() {
-            // 🟢 THE FIX: Unhide the modal FIRST so the browser knows its physical size!
             document.getElementById('photoEditorModal').style.display = 'flex';
-            
-            // Give the browser 10 milliseconds to draw the flexbox before doing the math
-            setTimeout(() => {
-                setupEditorWorkspace();
-            }, 10);
+            setTimeout(() => { setupEditorWorkspace(); }, 10);
         };
         editorBaseImage.src = e.target.result;
     };
     reader.readAsDataURL(file);
-    event.target.value = ''; // Reset input
+    event.target.value = ''; 
 }
 
-// 2. Scale the Canvas to Fit the Screen Perfectly
 function setupEditorWorkspace() {
     const workspace = document.getElementById('editorWorkspace');
     const container = document.getElementById('editorCanvasContainer');
     const baseCanvas = document.getElementById('baseCanvas');
     const doodleCanvas = document.getElementById('doodleCanvas');
-    const stickerContainer = document.getElementById('stickerContainer');
     
-    // Max available space (with padding)
     const maxWidth = workspace.clientWidth - 40; 
     const maxHeight = workspace.clientHeight - 40;
 
     let targetW = editorBaseImage.width;
     let targetH = editorBaseImage.height;
-
-    // Calculate Aspect Ratio Fit
     const ratio = Math.min(maxWidth / targetW, maxHeight / targetH);
     const finalW = targetW * ratio;
     const finalH = targetH * ratio;
 
-    // Apply dimensions to DOM container
     container.style.width = finalW + 'px';
     container.style.height = finalH + 'px';
-
-    // Apply dimensions to Canvases
     baseCanvas.width = finalW; baseCanvas.height = finalH;
     doodleCanvas.width = finalW; doodleCanvas.height = finalH;
 
-    // Draw the base image
     const ctxBase = baseCanvas.getContext('2d');
     ctxBase.drawImage(editorBaseImage, 0, 0, finalW, finalH);
 
-    // Setup Doodle Context
     ctxDoodle = doodleCanvas.getContext('2d');
-    ctxDoodle.lineCap = 'round';
-    ctxDoodle.lineJoin = 'round';
-    ctxDoodle.strokeStyle = '#ffffff'; // White pen default
-    ctxDoodle.lineWidth = 6;
+    updateDrawSettings(); // Initialize pen settings
     
     clearDecorations();
+    
+    // Force draw mode ON initially
+    isDrawMode = false; 
+    toggleDrawMode();
 }
 
-function closePhotoEditor() {
-    document.getElementById('photoEditorModal').style.display = 'none';
-}
-
+function closePhotoEditor() { document.getElementById('photoEditorModal').style.display = 'none'; }
 function clearDecorations() {
-    const dCanvas = document.getElementById('doodleCanvas');
-    ctxDoodle.clearRect(0, 0, dCanvas.width, dCanvas.height);
+    ctxDoodle.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
     document.getElementById('stickerContainer').innerHTML = '';
+}
+
+// --- DRAWING & COLOR LOGIC ---
+function updateDrawSettings() {
+    ctxDoodle.lineCap = 'round';
+    ctxDoodle.lineJoin = 'round';
+    ctxDoodle.strokeStyle = document.getElementById('doodleColor').value;
+    ctxDoodle.lineWidth = document.getElementById('doodleWidth').value;
 }
 
 function toggleDrawMode() {
     isDrawMode = !isDrawMode;
-    document.getElementById('btnDraw').classList.toggle('active', isDrawMode);
-    document.getElementById('doodleCanvas').style.pointerEvents = isDrawMode ? 'auto' : 'none';
+    const btn = document.getElementById('btnDraw');
+    const tools = document.getElementById('drawTools');
+    const dCanvas = document.getElementById('doodleCanvas');
+    
+    btn.classList.toggle('active', isDrawMode);
+    
+    if (isDrawMode) {
+        dCanvas.style.pointerEvents = 'auto';
+        tools.style.display = 'flex';
+    } else {
+        dCanvas.style.pointerEvents = 'none';
+        tools.style.display = 'none';
+        // 🟢 MAGIC: When turning off draw mode, bundle the drawing into a sticker!
+        makeDoodleSticker(); 
+    }
 }
 
-// --- DOODLE LOGIC (Touch & Mouse) ---
-const dCanvas = document.getElementById('doodleCanvas');
+// 🟢 MATHEMATICAL AUTO-CROP FOR DOODLES
+function makeDoodleSticker() {
+    const w = doodleCanvas.width;
+    const h = doodleCanvas.height;
+    const imgData = ctxDoodle.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    
+    let minX = w, minY = h, maxX = 0, maxY = 0;
+    let hasPixels = false;
+
+    // Scan the canvas for non-transparent pixels to find the bounding box
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const alpha = data[(y * w + x) * 4 + 3];
+            if (alpha > 0) {
+                hasPixels = true;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+    }
+
+    if (!hasPixels) return;
+
+    // Add padding to the crop
+    const padding = 10;
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(w, maxX + padding);
+    maxY = Math.min(h, maxY + padding);
+    
+    const cropW = maxX - minX;
+    const cropH = maxY - minY;
+
+    // Create a temporary canvas matching the cropped size
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropW;
+    cropCanvas.height = cropH;
+    const cropCtx = cropCanvas.getContext('2d');
+    cropCtx.putImageData(ctxDoodle.getImageData(minX, minY, cropW, cropH), 0, 0);
+
+    // Convert to sticker, place it exactly where they drew it, then clear the main board!
+    addSticker(cropCanvas.toDataURL('image/png'), cropW, cropH, minX, minY);
+    ctxDoodle.clearRect(0, 0, w, h);
+}
 
 function getPointerPos(e) {
-    const rect = dCanvas.getBoundingClientRect();
+    const rect = doodleCanvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return { x: clientX - rect.left, y: clientY - rect.top };
@@ -972,19 +1063,92 @@ function drawDoodle(e) {
     ctxDoodle.stroke();
 }
 
-function stopDoodle(e) {
-    if (isDrawing) { e.preventDefault(); isDrawing = false; }
-}
+function stopDoodle(e) { if (isDrawing) { e.preventDefault(); isDrawing = false; } }
 
-dCanvas.addEventListener('mousedown', startDoodle);
-dCanvas.addEventListener('mousemove', drawDoodle);
+doodleCanvas.addEventListener('mousedown', startDoodle);
+doodleCanvas.addEventListener('mousemove', drawDoodle);
 window.addEventListener('mouseup', stopDoodle);
-dCanvas.addEventListener('touchstart', startDoodle, {passive: false});
-dCanvas.addEventListener('touchmove', drawDoodle, {passive: false});
+doodleCanvas.addEventListener('touchstart', startDoodle, {passive: false});
+doodleCanvas.addEventListener('touchmove', drawDoodle, {passive: false});
 window.addEventListener('touchend', stopDoodle);
 
-// --- STICKER LOGIC ---
+// --- TEXT STICKER LOGIC ---
+function openTextEditor() { document.getElementById('textEditorModal').style.display = 'flex'; }
+function closeTextEditor() { 
+    document.getElementById('textEditorModal').style.display = 'none'; 
+    document.getElementById('textStickerInput').value = '';
+}
+
+function applyTextSticker() {
+    const text = document.getElementById('textStickerInput').value;
+    const font = document.getElementById('textStickerFont').value;
+    if (!text || text.trim() === '') { closeTextEditor(); return; }
+
+    const tempCanvas = document.createElement('canvas');
+    const tCtx = tempCanvas.getContext('2d');
+    
+    // Draw it massive for high quality
+    const fontSize = 100; 
+    tCtx.font = `bold ${fontSize}px ${font}`;
+    
+    // Support multi-line text!
+    const lines = text.split('\n');
+    let maxLineWidth = 0;
+    lines.forEach(line => {
+        const w = tCtx.measureText(line).width;
+        if (w > maxLineWidth) maxLineWidth = w;
+    });
+    
+    const textHeight = fontSize * 1.2; 
+    tempCanvas.width = maxLineWidth + 60; 
+    tempCanvas.height = (lines.length * textHeight) + 40;
+    
+    tCtx.font = `bold ${fontSize}px ${font}`;
+    tCtx.textAlign = 'center';
+    tCtx.textBaseline = 'middle';
+    tCtx.lineWidth = 12;
+    tCtx.strokeStyle = 'black';
+    tCtx.fillStyle = 'white';
+
+    lines.forEach((line, i) => {
+        const yPos = (i * textHeight) + (textHeight / 2) + 20;
+        tCtx.strokeText(line, tempCanvas.width / 2, yPos);
+        tCtx.fillText(line, tempCanvas.width / 2, yPos);
+    });
+
+    closeTextEditor();
+    
+    // Render text wider than normal stickers
+    const displayWidth = Math.min(300, tempCanvas.width / 2);
+    const displayHeight = tempCanvas.height * (displayWidth / tempCanvas.width);
+    
+    addSticker(tempCanvas.toDataURL('image/png'), displayWidth, displayHeight);
+}
+
+// --- 50+ PHOTOBOOTH STICKER GENERATOR ---
+function loadStickers() {
+    const grid = document.getElementById('stickerGrid');
+    if (grid.innerHTML !== "") return; // Only load once
+
+    // 50 High-Quality Twemoji IDs (Masks, Hats, Glasses, Props, Bubbles)
+    const emojis = [
+        "1f3a9", "1f451", "1f380", "1f453", "1f576", "1f9d0", "1f3ad", "1f47d", "1f47b", "1f921",
+        "1f4aad", "1f4ac", "1f4a2", "1f4a4", "1f389", "1f388", "1f382", "1f31f", "2728", "1f496",
+        "1f49e", "1f525", "1f4af", "1f4a5", "1f4a3", "1f680", "1f3b8", "1f3b7", "1f3fa", "1f3fb",
+        "1f3c6", "1f48e", "1f484", "1f48b", "1f444", "1f440", "1f441", "1f443", "1f442", "1f9e0",
+        "1f9b4", "1f9b7", "1f9e2", "1f9e3", "1f34e", "1f349", "1f353", "1f34a", "1f34b", "1f34d"
+    ];
+
+    let html = '';
+    emojis.forEach(code => {
+        const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
+        html += `<img class="sticker-item" src="${url}" onclick="addSticker('${url}', 100, 100)">`;
+    });
+    grid.innerHTML = html;
+}
+
 function openStickerDrawer() {
+    loadStickers();
     document.getElementById('stickerDrawer').style.display = 'flex';
     setTimeout(() => document.getElementById('stickerDrawer').classList.add('open'), 10);
 }
@@ -993,86 +1157,97 @@ function closeStickerDrawer() {
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
 }
 
-function addTextSticker() {
-    const text = prompt("Enter your text:");
-    if (!text || text.trim() === '') return;
-
-    // 1. Create an invisible canvas to act as our text printer
-    const tempCanvas = document.createElement('canvas');
-    const tCtx = tempCanvas.getContext('2d');
-    
-    // 2. Set the font so we can measure how wide the word is
-    const fontSize = 80; // Render it huge so it stays crisp!
-    tCtx.font = `bold ${fontSize}px sans-serif`;
-    
-    const metrics = tCtx.measureText(text);
-    const textWidth = metrics.width;
-    const textHeight = fontSize * 1.5; 
-
-    // 3. Size the canvas perfectly to the word
-    tempCanvas.width = textWidth + 40; 
-    tempCanvas.height = textHeight + 20;
-    
-    // 4. Draw a thick black outline so it's visible on light backgrounds
-    tCtx.font = `bold ${fontSize}px sans-serif`;
-    tCtx.textAlign = 'center';
-    tCtx.textBaseline = 'middle';
-    tCtx.lineWidth = 10;
-    tCtx.strokeStyle = 'black';
-    tCtx.strokeText(text, tempCanvas.width / 2, tempCanvas.height / 2);
-    
-    // 5. Fill it with white
-    tCtx.fillStyle = 'white';
-    tCtx.fillText(text, tempCanvas.width / 2, tempCanvas.height / 2);
-
-    // 6. Convert it to an image and send it to our sticker engine!
-    const textStickerUrl = tempCanvas.toDataURL('image/png');
-    addSticker(textStickerUrl, true); 
-}
-
-function addSticker(url, isText = false) {
+// 🟢 MASTER STICKER ENGINE (With 2-Finger Pinch!)
+function addSticker(url, sWidth = 100, sHeight = 100, forceX = null, forceY = null) {
     closeStickerDrawer();
-    
     if (isDrawMode) toggleDrawMode();
 
     const img = document.createElement('img');
     img.src = url;
     img.className = 'editor-sticker';
-    
-    // 🟢 NEW: If it's text, let it be wide. If it's a sticker, lock it to a square.
-    if (isText) {
-        img.style.width = 'auto';
-        img.style.height = '60px'; // Scales the huge 80px font down to fit the phone screen comfortably
-    }
+    img.style.width = sWidth + 'px';
+    img.style.height = sHeight + 'px';
 
     const container = document.getElementById('stickerContainer');
-    img.style.left = (container.clientWidth / 2 - 50) + 'px';
-    img.style.top = (container.clientHeight / 2 - 50) + 'px';
+    
+    // Position it where they drew it, OR drop it in the center!
+    if (forceX !== null && forceY !== null) {
+        img.style.left = forceX + 'px';
+        img.style.top = forceY + 'px';
+    } else {
+        img.style.left = (container.clientWidth / 2 - (sWidth / 2)) + 'px';
+        img.style.top = (container.clientHeight / 2 - (sHeight / 2)) + 'px';
+    }
 
-    // Dragging Logic
+    // Advanced Multi-Touch State
     let isDragging = false;
+    let isPinching = false;
     let startX, startY, initialLeft, initialTop;
+    let initialDist, initialWidth, initialHeight;
 
     const startDrag = (e) => {
         e.preventDefault();
-        isDragging = true;
-        startX = e.touches ? e.touches[0].clientX : e.clientX;
-        startY = e.touches ? e.touches[0].clientY : e.clientY;
-        initialLeft = parseInt(img.style.left, 10) || 0;
-        initialTop = parseInt(img.style.top, 10) || 0;
+        
+        // Push the clicked sticker to the front!
+        container.appendChild(img); 
+
+        if (e.touches && e.touches.length === 2) {
+            // PINCH START
+            isPinching = true;
+            isDragging = false;
+            initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            initialWidth = img.offsetWidth;
+            initialHeight = img.offsetHeight;
+        } else {
+            // DRAG START
+            isDragging = true;
+            isPinching = false;
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            initialLeft = parseFloat(img.style.left) || 0;
+            initialTop = parseFloat(img.style.top) || 0;
+        }
     };
 
     const doDrag = (e) => {
-        if (!isDragging) return;
+        if (!isDragging && !isPinching) return;
         e.preventDefault();
-        const currentX = e.touches ? e.touches[0].clientX : e.clientX;
-        const currentY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        img.style.left = (initialLeft + (currentX - startX)) + 'px';
-        img.style.top = (initialTop + (currentY - startY)) + 'px';
+        if (isPinching && e.touches && e.touches.length === 2) {
+            // PINCH MOVE (Scaling)
+            const currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const scale = currDist / initialDist;
+            
+            // Prevent it from disappearing or getting wildly huge
+            const newW = Math.max(30, Math.min(initialWidth * scale, 1000));
+            const newH = Math.max(30, Math.min(initialHeight * scale, 1000));
+            
+            img.style.width = newW + 'px';
+            img.style.height = newH + 'px';
+            
+            // Adjust position slightly to scale from center
+            img.style.left = (initialLeft - ((newW - initialWidth) / 2)) + 'px';
+            img.style.top = (initialTop - ((newH - initialHeight) / 2)) + 'px';
+            
+        } else if (isDragging) {
+            // DRAG MOVE
+            const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+            const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+            img.style.left = (initialLeft + (currentX - startX)) + 'px';
+            img.style.top = (initialTop + (currentY - startY)) + 'px';
+        }
     };
 
-    const stopDrag = () => { isDragging = false; };
+    const stopDrag = () => { 
+        isDragging = false; 
+        isPinching = false; 
+        
+        // Update baseline coordinates for next interaction
+        initialLeft = parseFloat(img.style.left) || 0;
+        initialTop = parseFloat(img.style.top) || 0;
+        initialWidth = img.offsetWidth;
+        initialHeight = img.offsetHeight;
+    };
 
     img.addEventListener('mousedown', startDrag);
     window.addEventListener('mousemove', doDrag);
@@ -1086,11 +1261,13 @@ function addSticker(url, isText = false) {
 
 // --- FINAL MERGE & HANDOFF ---
 function saveAndSubmitEdit() {
-    const ov = document.getElementById('submitOverlay');
-    document.getElementById('overlayText').innerText = "Processing Edits...";
+    // Force the final doodle to crop and convert if they forgot to turn off Draw Mode!
+    if (isDrawMode) makeDoodleSticker();
+
+    const ov = document.getElementById('uploadOverlay');
+    document.getElementById('uploadStatusText').innerText = "Processing Edits...";
     if(ov) ov.style.display = 'flex';
 
-    // 1. Create a High-Res Canvas based on the original photo size
     const origW = editorBaseImage.width;
     const origH = editorBaseImage.height;
     
@@ -1099,13 +1276,10 @@ function saveAndSubmitEdit() {
     finalCanvas.height = origH;
     const ctxFinal = finalCanvas.getContext('2d');
 
-    // 2. Draw Base Image
+    // Draw Base Image
     ctxFinal.drawImage(editorBaseImage, 0, 0, origW, origH);
 
-    // 3. Scale and Draw Doodles
-    ctxFinal.drawImage(document.getElementById('doodleCanvas'), 0, 0, origW, origH);
-
-    // 4. Calculate and Draw Stickers mathematically
+    // Calculate Sticker Math relative to the high-res original
     const containerRect = document.getElementById('editorCanvasContainer').getBoundingClientRect();
     const scaleX = origW / containerRect.width;
     const scaleY = origH / containerRect.height;
@@ -1113,8 +1287,6 @@ function saveAndSubmitEdit() {
     const stickers = document.querySelectorAll('.editor-sticker');
     stickers.forEach(sticker => {
         const sRect = sticker.getBoundingClientRect();
-        
-        // Find exact X/Y relative to the container, then scale up to High-Res
         const relativeX = sRect.left - containerRect.left;
         const relativeY = sRect.top - containerRect.top;
         
@@ -1126,23 +1298,16 @@ function saveAndSubmitEdit() {
         ctxFinal.drawImage(sticker, finalX, finalY, finalStickerW, finalStickerH);
     });
 
-    // 5. Convert to Base64 and handoff to the original Gallery Template Engine!
     const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
-    
     closePhotoEditor();
-    
-    // Execute the original flow, but feed it our custom Base64 image!
     processFinalTemplateLayout(finalBase64, origW > origH);
 }
 
-// 🟢 THIS EXTRACTS YOUR ORIGINAL TEMPLATE LOGIC SO THE EDITOR CAN CALL IT!
 function processFinalTemplateLayout(editedBase64, isLandscape) {
-    // 🟢 Define the active template based on orientation
     const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
 
     if (activeTemplateBase64) {
         const overlayImg = new Image();
-        
         if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
         
         overlayImg.onload = function() {
@@ -1165,7 +1330,6 @@ function executeCanvasUpload(cW, cH, overlayImg, sourceBase64) {
     
     const sourceImg = new Image();
     sourceImg.onload = function() {
-        // Draw the user's edited photo (We use scale-to-fill math here to ensure it covers the canvas)
         const scale = Math.max(cW / sourceImg.width, cH / sourceImg.height);
         const drawWidth = sourceImg.width * scale;
         const drawHeight = sourceImg.height * scale;
@@ -1173,13 +1337,9 @@ function executeCanvasUpload(cW, cH, overlayImg, sourceBase64) {
         const offsetY = (cH - drawHeight) / 2;
 
         ctx.drawImage(sourceImg, offsetX, offsetY, drawWidth, drawHeight);
-        
-        // Draw the master template overlay
         if (overlayImg) ctx.drawImage(overlayImg, 0, 0, cW, cH);
         
-        // 🟢 Pass it to your existing upload function!
-        const finalDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        uploadProcessedPhoto(finalDataUrl); 
+        uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85)); 
     };
     sourceImg.src = sourceBase64;
 }
