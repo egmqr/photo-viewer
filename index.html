@@ -35,16 +35,17 @@
       padding-bottom: calc(60px + var(--safe-bottom)); 
     }
     /* 🟢 ADVANCED EDITOR STYLES */
-    #drawTools {
+    #drawTools, #stickerTools {
       position: absolute; bottom: 0; width: 100%; display: none; 
       justify-content: center; align-items: center; gap: 20px; z-index: 10;
       background: rgba(15,15,15,0.9); padding: 15px 10px max(15px, env(safe-area-inset-bottom)) 10px; 
       backdrop-filter: blur(10px); border-top: 1px solid #333;
     }
-    .draw-tool-group { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #ccc; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
+    .tool-group { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #ccc; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
+    .tool-group input[type="range"] { width: 120px; accent-color: #0d9488; }
+    
     #doodleColor { width: 36px; height: 36px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0; }
     #doodleColor::-webkit-color-swatch { border-radius: 50%; border: 2px solid white; }
-    #doodleWidth { width: 120px; accent-color: #0d9488; }
     
     .editor-toolbar {
       padding: 15px; background: #111; display: flex; justify-content: space-around;
@@ -71,7 +72,7 @@
       z-index: 100 !important;
     }
     /* TEXT LIGHTBOX */
-    .text-sticker-modal {
+   .text-sticker-modal {
       background: #1e1e1e; border-radius: 20px; padding: 24px; width: 90%; max-width: 350px;
       text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); color: white; border: 1px solid #333;
     }
@@ -84,8 +85,12 @@
       border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box;
     }
     .text-sticker-modal input[type="color"] { height: 40px; cursor: pointer; padding: 2px; }
-    .text-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; margin-bottom: 15px; }
-    .text-controls-grid label { font-size: 11px; color: #aaa; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; display: block; }
+    
+    .text-controls-flex { display: flex; flex-direction: column; gap: 12px; text-align: left; margin-bottom: 15px; }
+    .text-row { display: flex; gap: 15px; align-items: flex-end; }
+    .text-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .text-col label { font-size: 11px; color: #aaa; text-transform: uppercase; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+    
     .text-checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; color: #ddd; margin-bottom: 15px; justify-content: center; cursor: pointer; }
 
     /* STICKER DRAWER TABS */
@@ -441,13 +446,24 @@
       </div>
       
       <div id="drawTools">
-        <div class="draw-tool-group">
+        <div class="tool-group">
           <label>Color</label>
           <input type="color" id="doodleColor" value="#ffffff" onchange="updateDrawSettings()">
         </div>
-        <div class="draw-tool-group">
+        <div class="tool-group">
           <label>Thickness</label>
           <input type="range" id="doodleWidth" min="2" max="30" value="6" oninput="updateDrawSettings()">
+        </div>
+      </div>
+      
+      <div id="stickerTools">
+        <div class="tool-group">
+          <label>Scale</label>
+          <input type="range" id="stickerScale" min="0.2" max="4" step="0.1" value="1" oninput="updateActiveSticker()">
+        </div>
+        <div class="tool-group">
+          <label>Rotate</label>
+          <input type="range" id="stickerRotate" min="-180" max="180" value="0" oninput="updateActiveSticker()">
         </div>
       </div>
     </div>
@@ -466,8 +482,8 @@
       <h3 style="margin-top:0; margin-bottom: 15px;">Add Text</h3>
       <textarea id="textStickerInput" rows="2" placeholder="Type here..."></textarea>
       
-      <div class="text-controls-grid">
-        <div>
+      <div class="text-controls-flex">
+        <div class="text-col">
           <label>Font Style</label>
           <select id="textStickerFont">
             <option value="Arial, sans-serif" style="font-family: Arial;">Classic</option>
@@ -477,14 +493,21 @@
             <option value="'Courier New', monospace" style="font-family: 'Courier New';">Typewriter</option>
           </select>
         </div>
-        <div style="grid-row: span 2;"></div>
-        <div>
-          <label>Text Color</label>
-          <input type="color" id="textColor" value="#ffffff">
+        
+        <div class="text-row">
+          <div class="text-col">
+            <label>Text Color</label>
+            <input type="color" id="textColor" value="#ffffff">
+          </div>
+          <div class="text-col">
+            <label><input type="checkbox" id="textEnableOutline" checked style="accent-color:#0d9488;"> Outline Color</label>
+            <input type="color" id="textOutline" value="#000000">
+          </div>
         </div>
-        <div style="margin-top: -63px;">
-          <label>Outline Color</label>
-          <input type="color" id="textOutline" value="#000000">
+        
+        <div class="text-col">
+            <label>Outline Thickness</label>
+            <input type="range" id="textOutlineWidth" min="2" max="24" value="12" style="width: 100%; accent-color:#0d9488;">
         </div>
       </div>
 
@@ -1178,7 +1201,9 @@ function applyTextSticker() {
     const text = document.getElementById('textStickerInput').value;
     const font = document.getElementById('textStickerFont').value;
     const fillColor = document.getElementById('textColor').value;
+    const useOutline = document.getElementById('textEnableOutline').checked;
     const strokeColor = document.getElementById('textOutline').value;
+    const strokeWidth = document.getElementById('textOutlineWidth').value;
     const useShadow = document.getElementById('textShadow').checked;
     
     if (!text || text.trim() === '') { closeTextEditor(); return; }
@@ -1197,7 +1222,7 @@ function applyTextSticker() {
     });
     
     const textHeight = fontSize * 1.2; 
-    tempCanvas.width = maxLineWidth + 80; // Extra padding for shadow/stroke
+    tempCanvas.width = maxLineWidth + 80; 
     tempCanvas.height = (lines.length * textHeight) + 80;
     
     tCtx.font = `bold ${fontSize}px ${font}`;
@@ -1214,13 +1239,13 @@ function applyTextSticker() {
     lines.forEach((line, i) => {
         const yPos = (i * textHeight) + (textHeight / 2) + 40;
         
-        // Draw Outline
-        tCtx.lineWidth = 14;
-        tCtx.strokeStyle = strokeColor;
-        tCtx.strokeText(line, tempCanvas.width / 2, yPos);
+        if (useOutline) {
+            tCtx.lineWidth = strokeWidth;
+            tCtx.strokeStyle = strokeColor;
+            tCtx.strokeText(line, tempCanvas.width / 2, yPos);
+        }
         
-        // Draw Fill (Reset shadow so it doesn't double up on the fill)
-        tCtx.shadowColor = "transparent";
+        tCtx.shadowColor = "transparent"; // Reset shadow for fill
         tCtx.fillStyle = fillColor;
         tCtx.fillText(line, tempCanvas.width / 2, yPos);
     });
@@ -1250,12 +1275,10 @@ function loadStickerCategory(category, btnElement) {
 
     const grid = document.getElementById('stickerGrid');
     let html = '';
-    
     stickerCatalog[category].forEach(code => {
         const url = `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
         html += `<img class="sticker-item" src="${url}" onclick="addSticker('${url}', 120, 120)">`;
     });
-    
     grid.innerHTML = html;
 }
 
@@ -1270,16 +1293,56 @@ function closeStickerDrawer() {
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
 }
 
-// 🟢 DESELECT STICKERS WHEN CLICKING BACKGROUND
+// 🟢 DESELECT STICKERS & HIDE TOOLS
 document.getElementById('editorCanvasContainer').addEventListener('mousedown', (e) => {
-    if (e.target.id === 'doodleCanvas') document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+    if (e.target.id === 'doodleCanvas') {
+        document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+        document.getElementById('stickerTools').style.display = 'none';
+        window.activeSticker = null;
+    }
 });
 document.getElementById('editorCanvasContainer').addEventListener('touchstart', (e) => {
-    if (e.target.id === 'doodleCanvas') document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+    if (e.target.id === 'doodleCanvas') {
+        document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+        document.getElementById('stickerTools').style.display = 'none';
+        window.activeSticker = null;
+    }
 }, {passive: true});
 
+window.activeSticker = null;
 
-// 🟢 MASTER STICKER ENGINE (With Bounding Boxes & Touch Targets!)
+// 🟢 SLIDER SYNC LOGIC
+function updateActiveSticker() {
+    if (!window.activeSticker) return;
+    
+    const scale = parseFloat(document.getElementById('stickerScale').value);
+    const rot = parseFloat(document.getElementById('stickerRotate').value);
+    
+    const baseW = parseFloat(window.activeSticker.dataset.baseW);
+    const baseH = parseFloat(window.activeSticker.dataset.baseH);
+    
+    const oldW = parseFloat(window.activeSticker.style.width);
+    const oldH = parseFloat(window.activeSticker.style.height);
+    
+    const newW = baseW * scale;
+    const newH = baseH * scale;
+    
+    // Adjust Left/Top to keep it centered while scaling
+    let currentLeft = parseFloat(window.activeSticker.style.left);
+    let currentTop = parseFloat(window.activeSticker.style.top);
+    
+    window.activeSticker.style.left = (currentLeft - ((newW - oldW) / 2)) + 'px';
+    window.activeSticker.style.top = (currentTop - ((newH - oldH) / 2)) + 'px';
+    
+    window.activeSticker.style.width = newW + 'px';
+    window.activeSticker.style.height = newH + 'px';
+    window.activeSticker.style.transform = `rotate(${rot}deg)`;
+    
+    window.activeSticker.dataset.scale = scale;
+    window.activeSticker.dataset.rot = rot;
+}
+
+// 🟢 MASTER STICKER ENGINE (With Slider Integration)
 function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
     closeStickerDrawer();
     if (isDrawMode) toggleDrawMode();
@@ -1287,13 +1350,18 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     const img = document.createElement('img');
     img.crossOrigin = "anonymous"; 
     img.src = url;
-    img.className = 'editor-sticker active'; // Make it active immediately
+    img.className = 'editor-sticker active';
     img.style.width = sWidth + 'px';
     img.style.height = sHeight + 'px';
+    
+    // Store original sizes for slider math
+    img.dataset.baseW = sWidth;
+    img.dataset.baseH = sHeight;
+    img.dataset.scale = 1;
+    img.dataset.rot = 0;
 
     const container = document.getElementById('stickerContainer');
     
-    // Deselect all other stickers
     document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
 
     if (forceX !== null && forceY !== null) {
@@ -1305,70 +1373,40 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     }
 
     let isDragging = false;
-    let isPinching = false;
     let startX, startY, initialLeft, initialTop;
-    let initialDist, initialWidth, initialHeight;
 
     const startDrag = (e) => {
         e.preventDefault();
         
-        // Deselect others and highlight this one
+        // Select Sticker
         document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
         img.classList.add('active');
-        container.appendChild(img); // Bring to front!
+        container.appendChild(img); // Bring to front
+        
+        // Sync & Show Sliders
+        window.activeSticker = img;
+        document.getElementById('stickerTools').style.display = 'flex';
+        document.getElementById('stickerScale').value = img.dataset.scale || 1;
+        document.getElementById('stickerRotate').value = img.dataset.rot || 0;
 
-        if (e.touches && e.touches.length === 2) {
-            isPinching = true;
-            isDragging = false;
-            initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            
-            // Because of our invisible CSS padding, we need to subtract it to get the visual width
-            initialWidth = img.offsetWidth - 40; 
-            initialHeight = img.offsetHeight - 40;
-        } else {
-            isDragging = true;
-            isPinching = false;
-            startX = e.touches ? e.touches[0].clientX : e.clientX;
-            startY = e.touches ? e.touches[0].clientY : e.clientY;
-            initialLeft = parseFloat(img.style.left) || 0;
-            initialTop = parseFloat(img.style.top) || 0;
-        }
+        isDragging = true;
+        startX = e.touches ? e.touches[0].clientX : e.clientX;
+        startY = e.touches ? e.touches[0].clientY : e.clientY;
+        initialLeft = parseFloat(img.style.left) || 0;
+        initialTop = parseFloat(img.style.top) || 0;
     };
 
     const doDrag = (e) => {
-        if (!isDragging && !isPinching) return;
+        if (!isDragging) return;
         e.preventDefault();
         
-        if (isPinching && e.touches && e.touches.length === 2) {
-            const currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            const scale = currDist / initialDist;
-            
-            // 🟢 THE PINCH FIX: Prevent it from scaling below 60px visual width!
-            const newW = Math.max(60, Math.min(initialWidth * scale, 1200));
-            const newH = Math.max(60, Math.min(initialHeight * scale, 1200));
-            
-            img.style.width = newW + 'px';
-            img.style.height = newH + 'px';
-            
-            img.style.left = (initialLeft - ((newW - initialWidth) / 2)) + 'px';
-            img.style.top = (initialTop - ((newH - initialHeight) / 2)) + 'px';
-            
-        } else if (isDragging) {
-            const currentX = e.touches ? e.touches[0].clientX : e.clientX;
-            const currentY = e.touches ? e.touches[0].clientY : e.clientY;
-            img.style.left = (initialLeft + (currentX - startX)) + 'px';
-            img.style.top = (initialTop + (currentY - startY)) + 'px';
-        }
+        const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+        const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+        img.style.left = (initialLeft + (currentX - startX)) + 'px';
+        img.style.top = (initialTop + (currentY - startY)) + 'px';
     };
 
-    const stopDrag = () => { 
-        isDragging = false; 
-        isPinching = false; 
-        initialLeft = parseFloat(img.style.left) || 0;
-        initialTop = parseFloat(img.style.top) || 0;
-        initialWidth = img.offsetWidth - 40;
-        initialHeight = img.offsetHeight - 40;
-    };
+    const stopDrag = () => { isDragging = false; };
 
     img.addEventListener('mousedown', startDrag);
     window.addEventListener('mousemove', doDrag);
@@ -1378,11 +1416,16 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     window.addEventListener('touchend', stopDrag);
 
     container.appendChild(img);
+    
+    // Auto-select immediately upon adding
+    window.activeSticker = img;
+    document.getElementById('stickerTools').style.display = 'flex';
+    document.getElementById('stickerScale').value = 1;
+    document.getElementById('stickerRotate').value = 0;
 }
 
 // --- FINAL MERGE & HANDOFF ---
 function saveAndSubmitEdit() {
-    // Force the final doodle to crop and convert if they forgot to turn off Draw Mode!
     if (isDrawMode) makeDoodleSticker();
 
     const ov = document.getElementById('uploadOverlay');
@@ -1397,26 +1440,39 @@ function saveAndSubmitEdit() {
     finalCanvas.height = origH;
     const ctxFinal = finalCanvas.getContext('2d');
 
-    // Draw Base Image
+    // 1. Draw Base Image
     ctxFinal.drawImage(editorBaseImage, 0, 0, origW, origH);
 
-    // Calculate Sticker Math relative to the high-res original
     const containerRect = document.getElementById('editorCanvasContainer').getBoundingClientRect();
     const scaleX = origW / containerRect.width;
     const scaleY = origH / containerRect.height;
 
+    // 2. Draw Stickers (With Rotation Math)
     const stickers = document.querySelectorAll('.editor-sticker');
     stickers.forEach(sticker => {
-        const sRect = sticker.getBoundingClientRect();
-        const relativeX = sRect.left - containerRect.left;
-        const relativeY = sRect.top - containerRect.top;
+        // Get true position relative to container
+        // Note: CSS padding is 20px, so we add it back to find the true visual center
+        const pad = 20; 
+        const sLeft = parseFloat(sticker.style.left) + pad;
+        const sTop = parseFloat(sticker.style.top) + pad;
+        const sW = parseFloat(sticker.style.width); // Excludes padding
+        const sH = parseFloat(sticker.style.height);
         
-        const finalX = relativeX * scaleX;
-        const finalY = relativeY * scaleY;
-        const finalStickerW = sRect.width * scaleX;
-        const finalStickerH = sRect.height * scaleY;
+        const centerX = sLeft + (sW / 2);
+        const centerY = sTop + (sH / 2);
+        
+        const finalCenterX = centerX * scaleX;
+        const finalCenterY = centerY * scaleY;
+        const finalStickerW = sW * scaleX;
+        const finalStickerH = sH * scaleY;
+        
+        const rot = parseFloat(sticker.dataset.rot || 0) * (Math.PI / 180);
 
-        ctxFinal.drawImage(sticker, finalX, finalY, finalStickerW, finalStickerH);
+        ctxFinal.save();
+        ctxFinal.translate(finalCenterX, finalCenterY);
+        ctxFinal.rotate(rot);
+        ctxFinal.drawImage(sticker, -finalStickerW / 2, -finalStickerH / 2, finalStickerW, finalStickerH);
+        ctxFinal.restore();
     });
 
     const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
