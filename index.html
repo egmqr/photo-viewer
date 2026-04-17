@@ -415,8 +415,6 @@
                   
                   if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
                   if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
-                  
-                  showToast("Layout Template Ready!");
               }
           })
           .catch(err => console.error("Template fetch error:", err));
