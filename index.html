@@ -409,6 +409,13 @@
     }
 
     #sentinel { height: 40px; }
+    /* 🟢 THE FIX: PREVENT SCROLL BLEEDING / CHAINING */
+    #photoEditorModal, #stickerDrawer {
+      overscroll-behavior: none; /* Stops the modal from tugging the background */
+    }
+    .sticker-grid {
+      overscroll-behavior: contain; /* Traps the scroll momentum inside the drawer */
+    }
   </style>
 </head>
 <body>
@@ -1113,7 +1120,6 @@ function setupEditorWorkspace() {
     container.style.width = finalW + 'px';
     container.style.height = finalH + 'px';
 
-    // 🟢 HIGH-RES FIX: Multiply internal canvas pixels by device density
     const dpr = window.devicePixelRatio || 1;
     baseCanvas.width = finalW * dpr; 
     baseCanvas.height = finalH * dpr;
@@ -1136,6 +1142,22 @@ function setupEditorWorkspace() {
     clearDecorations();
     isDrawMode = false; 
     toggleDrawMode();
+    
+    // 🟢 THE FIX: Trigger the silent background preloader!
+    preloadDynamicStickers();
+}
+
+    // 🟢 NEW: Silently downloads GitHub stickers into the browser cache while the user is looking at the editor!
+function preloadDynamicStickers() {
+    // Combine both dynamic GitHub arrays
+    const allDynamicStickers = [...(stickerCatalog.custom || []), ...(stickerCatalog.glasses || [])];
+    
+    allDynamicStickers.forEach(url => {
+        // Creating an Image object in JavaScript without adding it to the HTML 
+        // forces the browser to silently download and cache it in the background!
+        const img = new Image();
+        img.src = url;
+    });
 }
 
 // 3. Ultra-Smooth Brush Settings
