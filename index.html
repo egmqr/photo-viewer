@@ -440,6 +440,16 @@
     </div>
   <div class="gallery-container" id="gallery"></div>
   <div id="sentinel"></div>
+  <div id="decoratePromptModal" class="custom-modal-overlay" style="z-index: 100000;">
+    <div class="custom-modal-box">
+      <h3>Decorate Photo?</h3>
+      <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Would you like to add text, stickers, or doodles to your photo before uploading?</p>
+      <div class="share-btn-row">
+        <button class="btn-close-modal" id="btnSubmitAsIs">No, Submit</button>
+        <button class="btn-copy" id="btnDecoratePhoto">Yes, Decorate</button>
+      </div>
+    </div>
+  </div>
 <div id="photoEditorModal">
     <div class="editor-header">
       <button class="editor-btn" onclick="closePhotoEditor()">Cancel</button>
@@ -1017,6 +1027,7 @@ let isDrawMode = true;
 let isDrawing = false;
 let ctxDoodle;
 
+// 1. Intercept the Photo Upload & Ask User
 function openPhotoEditor(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1024,8 +1035,30 @@ function openPhotoEditor(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         editorBaseImage.onload = function() {
-            document.getElementById('photoEditorModal').style.display = 'flex';
-            setTimeout(() => { setupEditorWorkspace(); }, 10);
+            
+            // 🟢 Show the prompt asking if they want to decorate
+            const promptModal = document.getElementById('decoratePromptModal');
+            promptModal.style.display = 'flex';
+            
+            // If NO: Submit instantly
+            document.getElementById('btnSubmitAsIs').onclick = function() {
+                promptModal.style.display = 'none';
+                const isLandscape = editorBaseImage.width > editorBaseImage.height;
+                
+                const ov = document.getElementById('uploadOverlay');
+                document.getElementById('uploadStatusText').innerText = "Processing Photo...";
+                if(ov) ov.style.display = 'flex';
+                
+                processFinalTemplateLayout(e.target.result, isLandscape);
+            };
+            
+            // If YES: Open Editor
+            document.getElementById('btnDecoratePhoto').onclick = function() {
+                promptModal.style.display = 'none';
+                document.getElementById('photoEditorModal').style.display = 'flex';
+                setTimeout(() => { setupEditorWorkspace(); }, 10);
+            };
+
         };
         editorBaseImage.src = e.target.result;
     };
@@ -1033,6 +1066,7 @@ function openPhotoEditor(event) {
     event.target.value = ''; 
 }
 
+// 2. Scale the Canvas to Fit the Screen (With Retina High-Res Math)
 function setupEditorWorkspace() {
     const workspace = document.getElementById('editorWorkspace');
     const container = document.getElementById('editorCanvasContainer');
@@ -1045,25 +1079,49 @@ function setupEditorWorkspace() {
     let targetW = editorBaseImage.width;
     let targetH = editorBaseImage.height;
     const ratio = Math.min(maxWidth / targetW, maxHeight / targetH);
+    
+    // Physical CSS size on the screen
     const finalW = targetW * ratio;
     const finalH = targetH * ratio;
 
     container.style.width = finalW + 'px';
     container.style.height = finalH + 'px';
-    baseCanvas.width = finalW; baseCanvas.height = finalH;
-    doodleCanvas.width = finalW; doodleCanvas.height = finalH;
+
+    // 🟢 HIGH-RES FIX: Multiply internal canvas pixels by device density
+    const dpr = window.devicePixelRatio || 1;
+    baseCanvas.width = finalW * dpr; 
+    baseCanvas.height = finalH * dpr;
+    doodleCanvas.width = finalW * dpr; 
+    doodleCanvas.height = finalH * dpr;
+    
+    baseCanvas.style.width = finalW + 'px'; 
+    baseCanvas.style.height = finalH + 'px';
+    doodleCanvas.style.width = finalW + 'px'; 
+    doodleCanvas.style.height = finalH + 'px';
 
     const ctxBase = baseCanvas.getContext('2d');
+    ctxBase.scale(dpr, dpr);
     ctxBase.drawImage(editorBaseImage, 0, 0, finalW, finalH);
 
     ctxDoodle = doodleCanvas.getContext('2d');
-    updateDrawSettings(); // Initialize pen settings
+    ctxDoodle.scale(dpr, dpr);
+    updateDrawSettings(); 
     
     clearDecorations();
-    
-    // Force draw mode ON initially
     isDrawMode = false; 
     toggleDrawMode();
+}
+
+// 3. Ultra-Smooth Brush Settings
+function updateDrawSettings() {
+    ctxDoodle.lineCap = 'round';
+    ctxDoodle.lineJoin = 'round';
+    ctxDoodle.strokeStyle = document.getElementById('doodleColor').value;
+    ctxDoodle.lineWidth = document.getElementById('doodleWidth').value;
+    
+    // Add a microscopic shadow to eliminate jagged pixels
+    ctxDoodle.shadowBlur = 1; 
+    ctxDoodle.shadowColor = ctxDoodle.strokeStyle;
 }
 
 function closePhotoEditor() { document.getElementById('photoEditorModal').style.display = 'none'; }
@@ -1072,13 +1130,6 @@ function clearDecorations() {
     document.getElementById('stickerContainer').innerHTML = '';
 }
 
-// --- DRAWING & COLOR LOGIC ---
-function updateDrawSettings() {
-    ctxDoodle.lineCap = 'round';
-    ctxDoodle.lineJoin = 'round';
-    ctxDoodle.strokeStyle = document.getElementById('doodleColor').value;
-    ctxDoodle.lineWidth = document.getElementById('doodleWidth').value;
-}
 
 function toggleDrawMode() {
     isDrawMode = !isDrawMode;
@@ -1105,7 +1156,8 @@ function toggleDrawMode() {
 
 // 🟢 MATHEMATICAL AUTO-CROP FOR DOODLES
 function makeDoodleSticker() {
-    const w = doodleCanvas.width;
+    const dpr = window.devicePixelRatio || 1;
+    const w = doodleCanvas.width; // Internal high-res width
     const h = doodleCanvas.height;
     const imgData = ctxDoodle.getImageData(0, 0, w, h);
     const data = imgData.data;
@@ -1113,7 +1165,6 @@ function makeDoodleSticker() {
     let minX = w, minY = h, maxX = 0, maxY = 0;
     let hasPixels = false;
 
-    // Scan the canvas for non-transparent pixels to find the bounding box
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
             const alpha = data[(y * w + x) * 4 + 3];
@@ -1129,8 +1180,7 @@ function makeDoodleSticker() {
 
     if (!hasPixels) return;
 
-    // Add padding to the crop
-    const padding = 10;
+    const padding = 10 * dpr;
     minX = Math.max(0, minX - padding);
     minY = Math.max(0, minY - padding);
     maxX = Math.min(w, maxX + padding);
@@ -1139,16 +1189,20 @@ function makeDoodleSticker() {
     const cropW = maxX - minX;
     const cropH = maxY - minY;
 
-    // Create a temporary canvas matching the cropped size
     const cropCanvas = document.createElement('canvas');
     cropCanvas.width = cropW;
     cropCanvas.height = cropH;
     const cropCtx = cropCanvas.getContext('2d');
     cropCtx.putImageData(ctxDoodle.getImageData(minX, minY, cropW, cropH), 0, 0);
 
-    // Convert to sticker, place it exactly where they drew it, then clear the main board!
-    addSticker(cropCanvas.toDataURL('image/png'), cropW, cropH, minX, minY);
+    // Divide by DPR to get the true physical screen size
+    addSticker(cropCanvas.toDataURL('image/png'), cropW / dpr, cropH / dpr, minX / dpr, minY / dpr);
+    
+    // Clear the high-res canvas cleanly
+    ctxDoodle.save();
+    ctxDoodle.setTransform(1, 0, 0, 1, 0, 0);
     ctxDoodle.clearRect(0, 0, w, h);
+    ctxDoodle.restore();
 }
 
 function getPointerPos(e) {
@@ -1449,9 +1503,9 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
 }
 
 // --- FINAL MERGE & HANDOFF ---
-// --- FINAL MERGE & HANDOFF ---
 function saveAndSubmitEdit() {
-    if (isDrawMode) makeDoodleSticker();
+    // 🟢 THE FIX: We deliberately do NOT call makeDoodleSticker() here. 
+    // We just leave the doodle on the canvas so it gets baked instantly!
 
     const ov = document.getElementById('uploadOverlay');
     document.getElementById('uploadStatusText').innerText = "Processing Edits...";
@@ -1468,15 +1522,16 @@ function saveAndSubmitEdit() {
     // 1. Draw Base Image
     ctxFinal.drawImage(editorBaseImage, 0, 0, origW, origH);
 
+    // 2. Draw the live Doodle Canvas perfectly scaled over the image
+    ctxFinal.drawImage(document.getElementById('doodleCanvas'), 0, 0, origW, origH);
+
     const containerRect = document.getElementById('editorCanvasContainer').getBoundingClientRect();
     const scaleX = origW / containerRect.width;
     const scaleY = origH / containerRect.height;
 
-    // 2. Draw Stickers (With Rotation Math)
+    // 3. Draw Stickers (With Rotation Math)
     const stickers = document.querySelectorAll('.editor-sticker');
     stickers.forEach(sticker => {
-        // 🟢 THE FIX: Strip out the fake padding math! HTML5 Canvas drawImage ignores CSS padding, 
-        // so we just use the raw style.left and style.top to find the exact visual center!
         const sLeft = parseFloat(sticker.style.left) || 0;
         const sTop = parseFloat(sticker.style.top) || 0;
         const sW = parseFloat(sticker.style.width); 
