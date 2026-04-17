@@ -382,6 +382,7 @@
 
     <div class="editor-toolbar">
       <div class="tool-btn active" id="btnDraw" onclick="toggleDrawMode()"><span style="font-size:24px;">🖍️</span></div>
+      <div class="tool-btn" onclick="addTextSticker()"><span style="font-size:24px;">🔤</span></div>
       <div class="tool-btn" onclick="openStickerDrawer()"><span style="font-size:24px;">🌟</span></div>
       <div class="tool-btn" onclick="clearDecorations()"><span style="font-size:24px;">🗑️</span></div>
     </div>
@@ -393,12 +394,7 @@
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
     <div class="sticker-grid" id="stickerGrid">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/7903/7903846.png" onclick="addSticker(this.src)">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2550/2550293.png" onclick="addSticker(this.src)">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055818.png" onclick="addSticker(this.src)">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/763/763781.png" onclick="addSticker(this.src)">
-      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2850/2850756.png" onclick="addSticker(this.src)">
-    </div>
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/8371/8371383.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055661.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/7903/7903846.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2550/2550293.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055818.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/763/763781.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2850/2850756.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055648.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055673.png" onclick="addSticker(this.src)"> <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055663.png" onclick="addSticker(this.src)"> </div>
   </div>
   <script>
     // IMPORTANT: Make sure this points to your unified backend Apps Script URL
@@ -997,17 +993,58 @@ function closeStickerDrawer() {
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
 }
 
-function addSticker(url) {
+function addTextSticker() {
+    const text = prompt("Enter your text:");
+    if (!text || text.trim() === '') return;
+
+    // 1. Create an invisible canvas to act as our text printer
+    const tempCanvas = document.createElement('canvas');
+    const tCtx = tempCanvas.getContext('2d');
+    
+    // 2. Set the font so we can measure how wide the word is
+    const fontSize = 80; // Render it huge so it stays crisp!
+    tCtx.font = `bold ${fontSize}px sans-serif`;
+    
+    const metrics = tCtx.measureText(text);
+    const textWidth = metrics.width;
+    const textHeight = fontSize * 1.5; 
+
+    // 3. Size the canvas perfectly to the word
+    tempCanvas.width = textWidth + 40; 
+    tempCanvas.height = textHeight + 20;
+    
+    // 4. Draw a thick black outline so it's visible on light backgrounds
+    tCtx.font = `bold ${fontSize}px sans-serif`;
+    tCtx.textAlign = 'center';
+    tCtx.textBaseline = 'middle';
+    tCtx.lineWidth = 10;
+    tCtx.strokeStyle = 'black';
+    tCtx.strokeText(text, tempCanvas.width / 2, tempCanvas.height / 2);
+    
+    // 5. Fill it with white
+    tCtx.fillStyle = 'white';
+    tCtx.fillText(text, tempCanvas.width / 2, tempCanvas.height / 2);
+
+    // 6. Convert it to an image and send it to our sticker engine!
+    const textStickerUrl = tempCanvas.toDataURL('image/png');
+    addSticker(textStickerUrl, true); 
+}
+
+function addSticker(url, isText = false) {
     closeStickerDrawer();
     
-    // Turn off draw mode so they can drag the sticker
     if (isDrawMode) toggleDrawMode();
 
     const img = document.createElement('img');
     img.src = url;
     img.className = 'editor-sticker';
     
-    // Drop it in the center of the canvas
+    // 🟢 NEW: If it's text, let it be wide. If it's a sticker, lock it to a square.
+    if (isText) {
+        img.style.width = 'auto';
+        img.style.height = '60px'; // Scales the huge 80px font down to fit the phone screen comfortably
+    }
+
     const container = document.getElementById('stickerContainer');
     img.style.left = (container.clientWidth / 2 - 50) + 'px';
     img.style.top = (container.clientHeight / 2 - 50) + 'px';
@@ -1021,8 +1058,8 @@ function addSticker(url) {
         isDragging = true;
         startX = e.touches ? e.touches[0].clientX : e.clientX;
         startY = e.touches ? e.touches[0].clientY : e.clientY;
-        initialLeft = parseInt(img.style.left, 10);
-        initialTop = parseInt(img.style.top, 10);
+        initialLeft = parseInt(img.style.left, 10) || 0;
+        initialTop = parseInt(img.style.top, 10) || 0;
     };
 
     const doDrag = (e) => {
