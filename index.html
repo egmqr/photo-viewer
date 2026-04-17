@@ -434,7 +434,7 @@
 <div id="photoEditorModal">
     <div class="editor-header">
       <button class="editor-btn" onclick="closePhotoEditor()">Cancel</button>
-      <div style="font-weight: bold; letter-spacing: 1px;">Decorate</div>
+      <div style="font-weight: bold; letter-spacing: 1px; color:#fff !important;">Decorate</div>
       <button class="editor-btn editor-btn-submit" onclick="saveAndSubmitEdit()">Submit</button>
     </div>
     
@@ -1082,10 +1082,14 @@ function toggleDrawMode() {
     if (isDrawMode) {
         dCanvas.style.pointerEvents = 'auto';
         tools.style.display = 'flex';
+        
+        // 🟢 THE FIX: Aggressively hide sticker tools and deselect stickers when drawing!
+        document.getElementById('stickerTools').style.display = 'none';
+        document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+        window.activeSticker = null;
     } else {
         dCanvas.style.pointerEvents = 'none';
         tools.style.display = 'none';
-        // 🟢 MAGIC: When turning off draw mode, bundle the drawing into a sticker!
         makeDoodleSticker(); 
     }
 }
@@ -1425,6 +1429,7 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
 }
 
 // --- FINAL MERGE & HANDOFF ---
+// --- FINAL MERGE & HANDOFF ---
 function saveAndSubmitEdit() {
     if (isDrawMode) makeDoodleSticker();
 
@@ -1450,12 +1455,11 @@ function saveAndSubmitEdit() {
     // 2. Draw Stickers (With Rotation Math)
     const stickers = document.querySelectorAll('.editor-sticker');
     stickers.forEach(sticker => {
-        // Get true position relative to container
-        // Note: CSS padding is 20px, so we add it back to find the true visual center
-        const pad = 20; 
-        const sLeft = parseFloat(sticker.style.left) + pad;
-        const sTop = parseFloat(sticker.style.top) + pad;
-        const sW = parseFloat(sticker.style.width); // Excludes padding
+        // 🟢 THE FIX: Strip out the fake padding math! HTML5 Canvas drawImage ignores CSS padding, 
+        // so we just use the raw style.left and style.top to find the exact visual center!
+        const sLeft = parseFloat(sticker.style.left) || 0;
+        const sTop = parseFloat(sticker.style.top) || 0;
+        const sW = parseFloat(sticker.style.width); 
         const sH = parseFloat(sticker.style.height);
         
         const centerX = sLeft + (sW / 2);
@@ -1477,6 +1481,8 @@ function saveAndSubmitEdit() {
 
     const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
     closePhotoEditor();
+    
+    // Pass the completely baked image to the final template processor
     processFinalTemplateLayout(finalBase64, origW > origH);
 }
 
