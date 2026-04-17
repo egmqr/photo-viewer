@@ -604,7 +604,8 @@
     <div class="sticker-tabs" id="stickerTabs">
       <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
       
-      <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🕶️ Glasses</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🖼️ Placeholders</button>
+      
       <button class="sticker-tab" onclick="loadStickerCategory('hats', this)">👑 Hats & Hair</button>
       <button class="sticker-tab" onclick="loadStickerCategory('masks', this)">🎭 Masks & Heads</button>
       <button class="sticker-tab" onclick="loadStickerCategory('props', this)">🎸 Handheld Props</button>
@@ -614,8 +615,7 @@
   </div>
   <script>
     // IMPORTANT: Make sure this points to your unified backend Apps Script URL
-    const API_URL = "https://script.google.com/macros/s/AKfycbwUzJHFrbKL-SWsfDig_Khh2dc-dRTmBIXXeAo7sMH9AhwTFy03B4OMJEuqI2BttJCC/exec"; 
-    const CUSTOM_STICKER_FOLDER_ID = "15JpqB4KghJ1pzEBRnaRgoTQ1xv_miOY0";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwUzJHFrbKL-SWsfDig_Khh2dc-dRTmBIXXeAo7sMH9AhwTFy03B4OMJEuqI2BttJCC/exec";
     const VIEWER_URL = "viewer.html";
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -727,6 +727,22 @@
             }
         })
         .catch(err => console.error("Failed to load GitHub stickers:", err));
+        fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers02')
+        .then(res => res.json())
+        .then(files => {
+            if (Array.isArray(files)) {
+                stickerCatalog.glasses = files
+                    .filter(file => file.name.toLowerCase().endsWith('.png'))
+                    .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers02/${file.name}`);
+                
+                // Refresh if the drawer is open to the Placeholders tab
+                if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Placeholders')) {
+                    delete stickerCache['glasses']; 
+                    loadStickerCategory('glasses', document.querySelector('.sticker-tab.active'));
+                }
+            }
+        })
+        .catch(err => console.error("Failed to load Placeholders:", err));
       }
 
       if (!targetFolderId) {
@@ -1389,14 +1405,7 @@ function applyTextSticker() {
 const stickerCatalog = {
     // 🟢 This will auto-fill from your Google Drive folder on page load!
     custom: [], 
-    glasses: [
-        "1f576", // Dark Sunglasses
-        "1f453", // Eyeglasses
-        "1f97d", // Goggles
-        "1f9d0", // Disguise (Nose & Mustache glasses)
-        "1f913", // Nerd Face (often used as a mask)
-        "1f60e"  // Cool Face
-    ],
+    glasses: [],
     hats: [
         "1f451", // Crown
         "1f3a9", // Top Hat
@@ -1470,15 +1479,15 @@ function loadStickerCategory(category, btnElement) {
         return;
     }
 
-    // 🟢 The Loading State: Shown if the GitHub API is still scanning the folder
-    if (category === 'custom' && stickerCatalog.custom.length === 0) {
-        grid.innerHTML = '<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">Fetching Custom Props...<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>';
+    // 🟢 THE FIX: Check if either of our dynamic tabs are still loading
+    if ((category === 'custom' || category === 'glasses') && stickerCatalog[category].length === 0) {
+        const loadingText = category === 'custom' ? 'Fetching Custom Props...' : 'Fetching Placeholders...';
+        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">${loadingText}<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>`;
         return; 
     }
 
     let html = '';
     stickerCatalog[category].forEach(code => {
-        // Automatically detects your full jsDelivr URL OR a Twemoji hex code
         const url = (code.startsWith('http')) 
             ? code 
             : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
