@@ -709,14 +709,16 @@
             document.getElementById('uploadOverlay').style.display = 'none';
             if (result.success) {
                 showToast("Photo added successfully!");
-                triggerManualSync(); // Immediately fetch the new photo to show it
+                triggerManualSync(); 
             } else {
-                alert("Failed to upload: " + (result.error || "Unknown error"));
+                // 🟢 REPLACED
+                showCustomDialog("Upload Failed", result.error || "Unknown error", false);
             }
         })
         .catch(err => {
             document.getElementById('uploadOverlay').style.display = 'none';
-            alert("Network error during upload.");
+            // 🟢 REPLACED
+            showCustomDialog("Network Error", "A network error occurred during upload.", false);
             console.error(err);
         });
     }
@@ -781,7 +783,8 @@
             showToast("Link copied to clipboard!");
             closeShareModal();
         }).catch(err => {
-            alert("Failed to copy link. Your browser might block this.");
+            // 🟢 REPLACED
+            showCustomDialog("Action Blocked", "Failed to copy link. Your browser might block this.", false);
         });
     }
     function handleDeepSync() {
@@ -948,16 +951,19 @@
         });
     }
     // 🟢 COPY LINK FOR EXTERNAL BROWSER
-    function copyForExternalBrowser() {
+   function copyForExternalBrowser() {
         navigator.clipboard.writeText(window.location.href).then(() => {
             const btn = document.getElementById('copyExternalLinkBtn');
             btn.innerText = "✅ Link Copied! Paste in Safari/Chrome";
-            btn.style.background = "#16a34a"; // Turn green
+            btn.style.background = "#16a34a";
             setTimeout(() => {
                 btn.innerText = "📋 Copy Gallery Link";
                 btn.style.background = "#0d9488";
             }, 3000);
-        }).catch(err => alert("Please manually copy the link from the top of the screen."));
+        }).catch(err => {
+            // 🟢 REPLACED
+            showCustomDialog("Action Blocked", "Please manually copy the link from the top of the screen.", false);
+        });
     }
     // ==============================================================================
 // 🟢 SNAPCHAT-STYLE PHOTO EDITOR ENGINE
@@ -1566,7 +1572,8 @@ function processFinalTemplateLayout(editedBase64, isLandscape) {
             executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
         };
         overlayImg.onerror = function() {
-            alert("Overlay failed. Uploading your edited photo bare.");
+            // 🟢 REPLACED
+            showCustomDialog("Template Warning", "Overlay failed. Uploading your edited photo bare.", false);
             executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
         };
         overlayImg.src = activeTemplateBase64;
