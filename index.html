@@ -34,7 +34,51 @@
       user-select: none;
       padding-bottom: calc(60px + var(--safe-bottom)); 
     }
+/* 🟢 PHOTO EDITOR MODAL STYLES */
+    #photoEditorModal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000; z-index: 100000; display: none; flex-direction: column;
+    }
+    .editor-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 15px 20px; background: #111; padding-top: max(15px, env(safe-area-inset-top));
+    }
+    .editor-btn { background: none; border: none; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .editor-btn-submit { color: #0d9488; background: #ccfbf1; padding: 6px 16px; border-radius: 20px; }
+    
+    #editorWorkspace {
+      flex: 1; position: relative; overflow: hidden; display: flex;
+      align-items: center; justify-content: center; touch-action: none;
+    }
+    
+    #editorCanvasContainer { position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    #baseCanvas { position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
+    #doodleCanvas { position: absolute; top: 0; left: 0; z-index: 2; touch-action: none; }
+    #stickerContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: hidden; }
+    
+    .editor-sticker { position: absolute; width: 100px; height: 100px; object-fit: contain; pointer-events: auto; cursor: grab; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+    .editor-sticker:active { cursor: grabbing; transform: scale(1.05); }
 
+    .editor-toolbar {
+      padding: 15px; background: #111; display: flex; justify-content: space-around;
+      padding-bottom: max(15px, env(safe-area-inset-bottom));
+    }
+    .tool-btn { background: #222; color: white; border: 1px solid #333; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; justify-content: center; align-items: center; transition: 0.2s; cursor: pointer; }
+    .tool-btn.active { background: #0d9488; border-color: #5eead4; }
+
+    /* STICKER DRAWER */
+    #stickerDrawer {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: 350px;
+      background: rgba(20,20,20,0.95); backdrop-filter: blur(10px);
+      z-index: 100001; display: none; flex-direction: column;
+      border-top-left-radius: 20px; border-top-right-radius: 20px;
+      transform: translateY(100%); transition: transform 0.3s ease-out;
+    }
+    #stickerDrawer.open { transform: translateY(0); }
+    .drawer-header { display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid #333; }
+    .sticker-grid { display: flex; flex-wrap: wrap; gap: 15px; padding: 20px; overflow-y: auto; justify-content: center; }
+    .sticker-item { width: 70px; height: 70px; object-fit: contain; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 5px; transition: 0.2s; }
+    .sticker-item:active { transform: scale(0.9); }
     /* MOBILE FLOATING SEARCH BAR & SYNC ROW */
     .search-wrapper { 
       position: sticky; 
@@ -783,6 +827,321 @@
             }, 3000);
         }).catch(err => alert("Please manually copy the link from the top of the screen."));
     }
+  </script>
+      // ==============================================================================
+// 🎨 PHOTO EDITOR ENGINE (UI, Canvas, Stickers)
+// ==============================================================================
+  <div id="photoEditorModal">
+    <div class="editor-header">
+      <button class="editor-btn" onclick="closePhotoEditor()">Cancel</button>
+      <div style="font-weight: bold; letter-spacing: 1px;">Decorate</div>
+      <button class="editor-btn editor-btn-submit" onclick="saveAndSubmitEdit()">Submit</button>
+    </div>
+    
+    <div id="editorWorkspace">
+      <div id="editorCanvasContainer">
+        <canvas id="baseCanvas"></canvas>
+        <canvas id="doodleCanvas"></canvas>
+        <div id="stickerContainer"></div>
+      </div>
+    </div>
+
+    <div class="editor-toolbar">
+      <div class="tool-btn active" id="btnDraw" onclick="toggleDrawMode()"><span style="font-size:24px;">🖍️</span></div>
+      <div class="tool-btn" onclick="openStickerDrawer()"><span style="font-size:24px;">🌟</span></div>
+      <div class="tool-btn" onclick="clearDecorations()"><span style="font-size:24px;">🗑️</span></div>
+    </div>
+  </div>
+
+  <div id="stickerDrawer">
+    <div class="drawer-header">
+      <strong style="color:white;">Select a Sticker</strong>
+      <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
+    </div>
+    <div class="sticker-grid" id="stickerGrid">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/7903/7903846.png" onclick="addSticker(this.src)">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2550/2550293.png" onclick="addSticker(this.src)">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/1055/1055818.png" onclick="addSticker(this.src)">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/763/763781.png" onclick="addSticker(this.src)">
+      <img class="sticker-item" src="https://cdn-icons-png.flaticon.com/512/2850/2850756.png" onclick="addSticker(this.src)">
+    </div>
+  </div>
+  <script>
+    // ==============================================================================
+// 🟢 SNAPCHAT-STYLE PHOTO EDITOR ENGINE
+// ==============================================================================
+let editorBaseImage = new Image();
+let isDrawMode = true;
+let isDrawing = false;
+let ctxDoodle;
+
+// 1. Intercept the Photo Upload
+function openPhotoEditor(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        editorBaseImage.onload = function() {
+            setupEditorWorkspace();
+            document.getElementById('photoEditorModal').style.display = 'flex';
+        };
+        editorBaseImage.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = ''; // Reset input
+}
+
+// 2. Scale the Canvas to Fit the Screen Perfectly
+function setupEditorWorkspace() {
+    const workspace = document.getElementById('editorWorkspace');
+    const container = document.getElementById('editorCanvasContainer');
+    const baseCanvas = document.getElementById('baseCanvas');
+    const doodleCanvas = document.getElementById('doodleCanvas');
+    const stickerContainer = document.getElementById('stickerContainer');
+    
+    // Max available space (with padding)
+    const maxWidth = workspace.clientWidth - 40; 
+    const maxHeight = workspace.clientHeight - 40;
+
+    let targetW = editorBaseImage.width;
+    let targetH = editorBaseImage.height;
+
+    // Calculate Aspect Ratio Fit
+    const ratio = Math.min(maxWidth / targetW, maxHeight / targetH);
+    const finalW = targetW * ratio;
+    const finalH = targetH * ratio;
+
+    // Apply dimensions to DOM container
+    container.style.width = finalW + 'px';
+    container.style.height = finalH + 'px';
+
+    // Apply dimensions to Canvases
+    baseCanvas.width = finalW; baseCanvas.height = finalH;
+    doodleCanvas.width = finalW; doodleCanvas.height = finalH;
+
+    // Draw the base image
+    const ctxBase = baseCanvas.getContext('2d');
+    ctxBase.drawImage(editorBaseImage, 0, 0, finalW, finalH);
+
+    // Setup Doodle Context
+    ctxDoodle = doodleCanvas.getContext('2d');
+    ctxDoodle.lineCap = 'round';
+    ctxDoodle.lineJoin = 'round';
+    ctxDoodle.strokeStyle = '#ffffff'; // White pen default
+    ctxDoodle.lineWidth = 6;
+    
+    clearDecorations();
+}
+
+function closePhotoEditor() {
+    document.getElementById('photoEditorModal').style.display = 'none';
+}
+
+function clearDecorations() {
+    const dCanvas = document.getElementById('doodleCanvas');
+    ctxDoodle.clearRect(0, 0, dCanvas.width, dCanvas.height);
+    document.getElementById('stickerContainer').innerHTML = '';
+}
+
+function toggleDrawMode() {
+    isDrawMode = !isDrawMode;
+    document.getElementById('btnDraw').classList.toggle('active', isDrawMode);
+    document.getElementById('doodleCanvas').style.pointerEvents = isDrawMode ? 'auto' : 'none';
+}
+
+// --- DOODLE LOGIC (Touch & Mouse) ---
+const dCanvas = document.getElementById('doodleCanvas');
+
+function getPointerPos(e) {
+    const rect = dCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function startDoodle(e) {
+    if (!isDrawMode) return;
+    e.preventDefault();
+    isDrawing = true;
+    const pos = getPointerPos(e);
+    ctxDoodle.beginPath();
+    ctxDoodle.moveTo(pos.x, pos.y);
+}
+
+function drawDoodle(e) {
+    if (!isDrawing || !isDrawMode) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    ctxDoodle.lineTo(pos.x, pos.y);
+    ctxDoodle.stroke();
+}
+
+function stopDoodle(e) {
+    if (isDrawing) { e.preventDefault(); isDrawing = false; }
+}
+
+dCanvas.addEventListener('mousedown', startDoodle);
+dCanvas.addEventListener('mousemove', drawDoodle);
+window.addEventListener('mouseup', stopDoodle);
+dCanvas.addEventListener('touchstart', startDoodle, {passive: false});
+dCanvas.addEventListener('touchmove', drawDoodle, {passive: false});
+window.addEventListener('touchend', stopDoodle);
+
+// --- STICKER LOGIC ---
+function openStickerDrawer() {
+    document.getElementById('stickerDrawer').style.display = 'flex';
+    setTimeout(() => document.getElementById('stickerDrawer').classList.add('open'), 10);
+}
+function closeStickerDrawer() {
+    document.getElementById('stickerDrawer').classList.remove('open');
+    setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
+}
+
+function addSticker(url) {
+    closeStickerDrawer();
+    
+    // Turn off draw mode so they can drag the sticker
+    if (isDrawMode) toggleDrawMode();
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'editor-sticker';
+    
+    // Drop it in the center of the canvas
+    const container = document.getElementById('stickerContainer');
+    img.style.left = (container.clientWidth / 2 - 50) + 'px';
+    img.style.top = (container.clientHeight / 2 - 50) + 'px';
+
+    // Dragging Logic
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+
+    const startDrag = (e) => {
+        e.preventDefault();
+        isDragging = true;
+        startX = e.touches ? e.touches[0].clientX : e.clientX;
+        startY = e.touches ? e.touches[0].clientY : e.clientY;
+        initialLeft = parseInt(img.style.left, 10);
+        initialTop = parseInt(img.style.top, 10);
+    };
+
+    const doDrag = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+        const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        img.style.left = (initialLeft + (currentX - startX)) + 'px';
+        img.style.top = (initialTop + (currentY - startY)) + 'px';
+    };
+
+    const stopDrag = () => { isDragging = false; };
+
+    img.addEventListener('mousedown', startDrag);
+    window.addEventListener('mousemove', doDrag);
+    window.addEventListener('mouseup', stopDrag);
+    img.addEventListener('touchstart', startDrag, {passive: false});
+    window.addEventListener('touchmove', doDrag, {passive: false});
+    window.addEventListener('touchend', stopDrag);
+
+    container.appendChild(img);
+}
+
+// --- FINAL MERGE & HANDOFF ---
+function saveAndSubmitEdit() {
+    const ov = document.getElementById('submitOverlay');
+    document.getElementById('overlayText').innerText = "Processing Edits...";
+    if(ov) ov.style.display = 'flex';
+
+    // 1. Create a High-Res Canvas based on the original photo size
+    const origW = editorBaseImage.width;
+    const origH = editorBaseImage.height;
+    
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = origW;
+    finalCanvas.height = origH;
+    const ctxFinal = finalCanvas.getContext('2d');
+
+    // 2. Draw Base Image
+    ctxFinal.drawImage(editorBaseImage, 0, 0, origW, origH);
+
+    // 3. Scale and Draw Doodles
+    ctxFinal.drawImage(document.getElementById('doodleCanvas'), 0, 0, origW, origH);
+
+    // 4. Calculate and Draw Stickers mathematically
+    const containerRect = document.getElementById('editorCanvasContainer').getBoundingClientRect();
+    const scaleX = origW / containerRect.width;
+    const scaleY = origH / containerRect.height;
+
+    const stickers = document.querySelectorAll('.editor-sticker');
+    stickers.forEach(sticker => {
+        const sRect = sticker.getBoundingClientRect();
+        
+        // Find exact X/Y relative to the container, then scale up to High-Res
+        const relativeX = sRect.left - containerRect.left;
+        const relativeY = sRect.top - containerRect.top;
+        
+        const finalX = relativeX * scaleX;
+        const finalY = relativeY * scaleY;
+        const finalStickerW = sRect.width * scaleX;
+        const finalStickerH = sRect.height * scaleY;
+
+        ctxFinal.drawImage(sticker, finalX, finalY, finalStickerW, finalStickerH);
+    });
+
+    // 5. Convert to Base64 and handoff to the original Gallery Template Engine!
+    const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
+    
+    closePhotoEditor();
+    
+    // Execute the original flow, but feed it our custom Base64 image!
+    processFinalTemplateLayout(finalBase64, origW > origH);
+}
+
+// 🟢 THIS EXTRACTS YOUR ORIGINAL TEMPLATE LOGIC SO THE EDITOR CAN CALL IT!
+function processFinalTemplateLayout(editedBase64, isLandscape) {
+    if (activeTemplateBase64) {
+        const overlayImg = new Image();
+        overlayImg.style.cssText = "position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; z-index: -1;";
+        document.body.appendChild(overlayImg);
+        
+        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
+        
+        overlayImg.onload = function() {
+            // Modify your drawAndUpload function to accept the editedBase64 instead of a live video feed!
+            executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
+            document.body.removeChild(overlayImg); 
+        };
+        overlayImg.onerror = function() {
+            alert("Overlay failed. Uploading your edited photo bare.");
+            executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+            document.body.removeChild(overlayImg);
+        };
+        overlayImg.src = activeTemplateBase64;
+    } else {
+        executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+    }
+}
+
+function executeCanvasUpload(cW, cH, overlayImg, sourceBase64) {
+    const canvas = document.createElement('canvas');
+    canvas.width = cW; canvas.height = cH;
+    const ctx = canvas.getContext('2d');
+    
+    const sourceImg = new Image();
+    sourceImg.onload = function() {
+        // Draw the user's edited photo
+        ctx.drawImage(sourceImg, 0, 0, cW, cH);
+        // Draw the master template overlay
+        if (overlayImg) ctx.drawImage(overlayImg, 0, 0, cW, cH);
+        
+        // Upload to Cloudinary (Your original upload logic)
+        const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        uploadToCloudinary(finalDataUrl); 
+    };
+    sourceImg.src = sourceBase64;
+}
   </script>
 </body>
 </html>
