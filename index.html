@@ -189,6 +189,34 @@
       display: flex; /* Only show the X when the sticker is actively selected */
     }
 
+    /* 🟢 RESIZE HANDLES */
+    .resize-handle {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #ffffff;
+      border: 2px solid #0d9488; 
+      border-radius: 50%;
+      display: none; 
+      z-index: 102;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .editor-sticker.active .resize-handle {
+      display: block;
+    }
+
+    .nw { top: -7px; left: -7px; cursor: nw-resize; }
+    .ne { top: -7px; right: -7px; cursor: ne-resize; }
+    .sw { bottom: -7px; left: -7px; cursor: sw-resize; }
+    .se { bottom: -7px; right: -7px; cursor: se-resize; }
+
+    .resize-handle::after {
+      content: '';
+      position: absolute;
+      top: -10px; left: -10px; right: -10px; bottom: -10px;
+    }
+
     /* 🟢 INSTAGRAM-STYLE TEXT LIGHTBOX */
     .ig-text-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -871,6 +899,8 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
+      // 🟢 DYNAMIC USER STICKERS SCANNER (Strict URL Check)
+      // Only runs if the URL explicitly says userStickers=true
       const isUserStickersEnabled = window.location.search.toLowerCase().includes('userstickers=true');
 
       if (isUserStickersEnabled && window.globalEventId !== 'unknown') {
@@ -1827,12 +1857,50 @@ function deselectActiveSticker() {
     window.activeSticker = null;
 }
 
+// 🟢 MOUSE RESIZE ENGINE (Desktop Corner Handles)
+function startResizing(e, wrapper) {
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startScale = parseFloat(wrapper.dataset.scale) || 1;
+    
+    // Find the center of the sticker
+    const rect = wrapper.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    // Initial distance from mouse to center
+    const startDist = Math.hypot(startX - centerX, startY - centerY);
+
+    function doResize(moveEvent) {
+        const currentDist = Math.hypot(moveEvent.clientX - centerX, moveEvent.clientY - centerY);
+        
+        // New scale is the ratio of current distance vs starting distance
+        let newScale = (currentDist / startDist) * startScale;
+        
+        // Constrain scale between 0.2x and 6x
+        newScale = Math.max(0.2, Math.min(newScale, 6));
+        
+        wrapper.dataset.scale = newScale;
+        const currentRot = wrapper.dataset.rot || 0;
+        
+        // Apply transform while preserving rotation
+        wrapper.style.transform = `scale(${newScale}) rotate(${currentRot}deg)`;
+    }
+
+    function stopResize() {
+        window.removeEventListener('mousemove', doResize);
+        window.removeEventListener('mouseup', stopResize);
+    }
+
+    window.addEventListener('mousemove', doResize);
+    window.addEventListener('mouseup', stopResize);
+}
+
 // 🟢 MASTER STICKER ENGINE (With Wrapper & Inline Delete)
 function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
     closeStickerDrawer();
     if (isDrawMode) toggleDrawMode();
 
-    // 1. Create the Wrapper Box
     const wrapper = document.createElement('div');
     wrapper.className = 'editor-sticker active';
     wrapper.style.width = sWidth + 'px';
@@ -1842,19 +1910,17 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     wrapper.dataset.scale = 1;
     wrapper.dataset.rot = 0;
 
-    // 2. Create the Image
     const img = document.createElement('img');
     img.crossOrigin = "anonymous"; 
     img.src = url;
 
-    // 3. Create the Inline Delete Badge
     const delBtn = document.createElement('div');
     delBtn.className = 'sticker-delete-btn';
     delBtn.innerHTML = '✕';
     
-    // Wire up the delete logic strictly to the badge
+    // Wire up delete
     const deleteSticker = (e) => {
-        e.stopPropagation(); // Prevents it from accidentally triggering a drag
+        e.stopPropagation();
         e.preventDefault();
         wrapper.remove();
         deselectActiveSticker();
@@ -1862,9 +1928,21 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     delBtn.addEventListener('mousedown', deleteSticker);
     delBtn.addEventListener('touchstart', deleteSticker, {passive: false});
 
-    // Assemble the sticker
     wrapper.appendChild(img);
     wrapper.appendChild(delBtn);
+
+    // 🟢 ADD THE 4 CORNER HANDLES
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle ${pos}`;
+        wrapper.appendChild(handle);
+        
+        handle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            startResizing(e, wrapper);
+        });
+    });
 
     const container = document.getElementById('stickerContainer');
     
