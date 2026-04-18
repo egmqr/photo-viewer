@@ -814,14 +814,16 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 SMART AUTO-DETECT & URL SCANNER
-      // Looks specifically for the human-readable code (e.g., &code=egm15969)
-      const rawEventCode = urlParams.get('code') || urlParams.get('eventId') || '';
-      const galleryEventId = rawEventCode.toLowerCase().trim(); 
-      
-      const urlHasStickers = window.location.href.toLowerCase().includes('userstickers=true');
+      // 🟢 DYNAMIC USER STICKERS SCANNER (Strictly uses eventId)
+      const rawEventId = urlParams.get('eventId') || ''; 
+      const galleryEventId = rawEventId.toLowerCase().trim(); 
 
-      if (galleryEventId) {
+      const isUserStickersEnabled = urlParams.get('userStickers') === 'true' || window.location.href.toLowerCase().includes('userstickers=true');
+
+      if (isUserStickersEnabled && galleryEventId) {
+          const userTab = document.getElementById('tabUserStickers');
+          if (userTab) userTab.style.display = 'inline-block'; 
+
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
             .then(res => {
                 if (!res.ok) throw new Error("Folder not found.");
@@ -829,11 +831,7 @@
             })
             .then(files => {
                 if (Array.isArray(files) && files.length > 0) {
-                    // 🟢 GITHUB SUCCESS: Force the global flag to true
-                    window.githubStickersFound = true;
-                    
-                    const userTab = document.getElementById('tabUserStickers');
-                    if (userTab) userTab.style.setProperty('display', 'inline-block', 'important');
+                    window.githubStickersFound = true; // Global success flag
                     
                     stickerCatalog.userStickers = files
                         .filter(file => file.name.toLowerCase().endsWith('.png'))
@@ -853,15 +851,9 @@
                 if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                     grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${galleryEventId}' on GitHub.</span></div>`;
                 }
-                
-                // If GitHub failed BUT the URL says true, we still unhide the tab so they see the warning message!
-                if (urlHasStickers) {
-                    const userTab = document.getElementById('tabUserStickers');
-                    if (userTab) userTab.style.setProperty('display', 'inline-block', 'important');
-                }
             });
       } else {
-          // If there is no ?code= in the URL at all, flag it as failed
+          // If no valid eventId was found, flag it so the drawer doesn't spin infinitely
           window.userStickersFailed = true;
       }
 
@@ -1687,11 +1679,10 @@ function loadStickerCategory(category, btnElement) {
         return;
     }
 
-    // 🟢 THE FIX: Prevent infinite loading if the custom event folder doesn't exist yet!
+    // 🟢 THE FIX: Prevent infinite loading and explicitly show the eventId!
     if (category === 'userStickers' && window.userStickersFailed) {
-        // Extract the ID from anywhere in the URL safely
-        const match = window.location.href.match(/id=([a-zA-Z0-9_-]+)/i);
-        const evId = match ? match[1].toLowerCase() : 'UNKNOWN';
+        const rawEvId = new URLSearchParams(window.location.search).get('eventId') || 'UNKNOWN';
+        const evId = rawEvId.toLowerCase().trim();
         
         grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${evId}' on GitHub.</span></div>`;
         return;
