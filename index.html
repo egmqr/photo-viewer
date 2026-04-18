@@ -692,18 +692,17 @@
     const urlParams = new URLSearchParams(window.location.search);
     const targetFolderId = urlParams.get('folderId');
     
+    // 🟢 EXACT ID CATCHER
     function findMyEventId() {
         const params = new URLSearchParams(window.location.search);
         
-        // 1. Check all possible URL parameter names
-        let check = params.get('id') || params.get('eventId') || params.get('code');
-        
-        // 2. If it found something and it's not the massive 33-character Firebase string
-        if (check && check.length < 25) {
-            return check.toLowerCase().trim();
+        // 1. Directly grab the exact 'id' parameter passed from main.html
+        const exactId = params.get('id');
+        if (exactId) {
+            return exactId.toLowerCase().trim();
         }
 
-        // 3. Last Resort: Scan the raw URL text for "egm" followed by numbers
+        // 2. Failsafe: Just in case, scan the raw URL text for "egm" followed by numbers
         const rawMatch = window.location.href.match(/egm\d+/i);
         if (rawMatch) return rawMatch[0].toLowerCase();
 
