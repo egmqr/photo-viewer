@@ -672,7 +672,6 @@
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
     <div class="sticker-tabs" id="stickerTabs">
-      <button class="sticker-tab" id="tabUserStickers" style="display: none;" onclick="loadStickerCategory('userStickers', this)">📁 User Stickers</button>
       
       <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
       <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🖼️ Placeholders</button>
@@ -1679,9 +1678,12 @@ function loadStickerCategory(category, btnElement) {
         return;
     }
 
-    // 🟢 THE FIX: Prevent infinite loading if the custom event folder doesn't exist yet!
+   // 🟢 THE FIX: Prevent infinite loading if the custom event folder doesn't exist yet!
     if (category === 'userStickers' && window.userStickersFailed) {
-        const evId = new URLSearchParams(window.location.search).get('id');
+        // Extract the ID from anywhere in the URL safely
+        const match = window.location.href.match(/id=([a-zA-Z0-9_-]+)/i);
+        const evId = match ? match[1].toLowerCase() : 'UNKNOWN';
+        
         grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${evId}' on GitHub.</span></div>`;
         return;
     }
@@ -1709,43 +1711,6 @@ function loadStickerCategory(category, btnElement) {
 }
 
 function openStickerDrawer() {
-    if (isDrawMode) toggleDrawMode(); 
-    if (window.activeSticker) deselectActiveSticker(); 
-    
-    // 🟢 BULLETPROOF TAB UNHIDER
-    // 1. Is it in the URL?
-    const isUrlEnabled = window.location.search.toLowerCase().includes('userstickers=true');
-    // 2. Did GitHub find the folder?
-    const isApiEnabled = window.githubStickersFound === true;
-    
-    const shouldShowTab = isUrlEnabled || isApiEnabled;
-    const userTabBtn = document.getElementById('tabUserStickers');
-    
-    if (userTabBtn) {
-        if (shouldShowTab) {
-            // Brute force the CSS
-            userTabBtn.style.cssText = "display: inline-block !important;";
-        } else {
-            userTabBtn.style.cssText = "display: none !important;";
-        }
-    }
-    
-    const grid = document.getElementById('stickerGrid');
-    
-    if (grid.innerHTML === '') {
-        if (shouldShowTab && userTabBtn) {
-            loadStickerCategory('userStickers', userTabBtn); 
-        } else {
-            const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
-            loadStickerCategory('custom', customTabBtn); 
-        }
-    }
-    
-    document.getElementById('stickerDrawer').style.display = 'flex';
-    requestAnimationFrame(() => {
-        document.getElementById('stickerDrawer').classList.add('open');
-    });
-}
 function closeStickerDrawer() {
     document.getElementById('stickerDrawer').classList.remove('open');
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
