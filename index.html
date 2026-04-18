@@ -815,61 +815,53 @@
         .catch(err => console.error("Failed to load Placeholders:", err));
 
       // 🟢 SMART AUTO-DETECT & URL SCANNER
-      const rawEventCode = urlParams.get('code') || urlParams.get('id') || '';
+      // Looks specifically for the human-readable code (e.g., &code=egm15969)
+      const rawEventCode = urlParams.get('code') || urlParams.get('eventId') || '';
       const galleryEventId = rawEventCode.toLowerCase().trim(); 
+      
       const urlHasStickers = window.location.href.toLowerCase().includes('userstickers=true');
 
       if (galleryEventId) {
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
             .then(res => {
-                if (!res.ok) throw new Error("Folder not found or private.");
+                if (!res.ok) throw new Error("Folder not found.");
                 return res.json();
             })
             .then(files => {
-                // Safely filter for PNGs only
-                const pngFiles = Array.isArray(files) ? files.filter(f => f.name.toLowerCase().endsWith('.png')) : [];
-                
-                if (pngFiles.length > 0) {
-                    // 🟢 SUCCESS: We have images!
+                if (Array.isArray(files) && files.length > 0) {
+                    // 🟢 GITHUB SUCCESS: Force the global flag to true
                     window.githubStickersFound = true;
                     
                     const userTab = document.getElementById('tabUserStickers');
                     if (userTab) userTab.style.setProperty('display', 'inline-block', 'important');
                     
-                    stickerCatalog.userStickers = pngFiles.map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${galleryEventId}/${file.name}`);
+                    stickerCatalog.userStickers = files
+                        .filter(file => file.name.toLowerCase().endsWith('.png'))
+                        .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${galleryEventId}/${file.name}`);
                     
-                    // If the user is currently staring at the spinning text, update it instantly!
-                    const grid = document.getElementById('stickerGrid');
-                    const activeTab = document.querySelector('.sticker-tab.active');
-                    if (grid && activeTab && activeTab.innerText.includes('User')) {
+                    if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                         delete stickerCache['userStickers']; 
-                        loadStickerCategory('userStickers', activeTab);
+                        loadStickerCategory('userStickers', document.querySelector('.sticker-tab.active'));
                     }
-                } else {
-                    // The folder exists, but there are no PNGs inside it!
-                    throw new Error("Folder is empty.");
                 }
             })
             .catch(err => {
-                console.warn(`Dynamic stickers bypassed:`, err.message);
-                // 🛑 FAIL: Kill the infinite spinner!
+                console.warn(`Dynamic stickers-${galleryEventId} bypassed:`, err.message);
                 window.userStickersFailed = true;
                 
                 const grid = document.getElementById('stickerGrid');
-                const activeTab = document.querySelector('.sticker-tab.active');
-                
-                // If they are staring at the spinner, forcefully overwrite it with the warning message
-                if (grid && activeTab && activeTab.innerText.includes('User')) {
+                if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                     grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${galleryEventId}' on GitHub.</span></div>`;
                 }
                 
+                // If GitHub failed BUT the URL says true, we still unhide the tab so they see the warning message!
                 if (urlHasStickers) {
                     const userTab = document.getElementById('tabUserStickers');
                     if (userTab) userTab.style.setProperty('display', 'inline-block', 'important');
                 }
             });
       } else {
-          // If there is no ?id= in the URL at all, kill the spinner immediately!
+          // If there is no ?code= in the URL at all, flag it as failed
           window.userStickersFailed = true;
       }
 
