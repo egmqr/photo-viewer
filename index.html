@@ -1699,13 +1699,20 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
+    // 🟢 BULLETPROOF TAB UNHIDER
+    // We check the URL and force the tab visible the exact moment the drawer opens!
+    const isUserStickersEnabled = String(new URLSearchParams(window.location.search).get('userStickers')).toLowerCase() === 'true';
+    const userTabBtn = document.getElementById('tabUserStickers');
+    
+    if (isUserStickersEnabled && userTabBtn) {
+        userTabBtn.style.setProperty('display', 'inline-block', 'important');
+    }
+
     const grid = document.getElementById('stickerGrid');
+    
+    // 🟢 SMART DEFAULT SELECTION
     if (grid.innerHTML === '') {
-        // 🟢 THE FIX: Smart Default Tab Selection
-        const isUserStickersEnabled = new URLSearchParams(window.location.search).get('userStickers') === 'true';
-        
-        if (isUserStickersEnabled) {
-            const userTabBtn = document.getElementById('tabUserStickers');
+        if (isUserStickersEnabled && userTabBtn) {
             loadStickerCategory('userStickers', userTabBtn); 
         } else {
             const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
