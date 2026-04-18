@@ -1480,7 +1480,7 @@ function applyTextSticker() {
     const fillColor = document.getElementById('textColor').value;
     const useOutline = document.getElementById('textEnableOutline').checked;
     const strokeColor = document.getElementById('textOutline').value;
-    const strokeWidth = document.getElementById('textOutlineWidth').value;
+    const strokeWidth = parseFloat(document.getElementById('textOutlineWidth').value);
     const useShadow = document.getElementById('textShadow').checked;
     
     if (!text || text.trim() === '') { closeTextEditor(); return; }
@@ -1500,37 +1500,39 @@ function applyTextSticker() {
     
     const textHeight = fontSize * 1.2; 
     
-    // 🟢 Dynamic padding based on stroke width so thick outlines don't get clipped!
-    const padding = 80 + (useOutline ? strokeWidth * 2 : 0);
+    // 🟢 THE FIX: Massive padding to ensure thick strokes and shadows NEVER get cut off at the edge
+    const padding = 150 + (useOutline ? strokeWidth * 4 : 0);
     tempCanvas.width = maxLineWidth + padding; 
     tempCanvas.height = (lines.length * textHeight) + padding;
     
     tCtx.font = `bold ${fontSize}px ${font}`;
     tCtx.textAlign = 'center';
     tCtx.textBaseline = 'middle';
-    
-    if (useShadow) {
-        tCtx.shadowColor = "rgba(0,0,0,0.7)";
-        tCtx.shadowBlur = 15;
-        tCtx.shadowOffsetX = 5;
-        tCtx.shadowOffsetY = 5;
-    }
 
     lines.forEach((line, i) => {
         const yPos = (i * textHeight) + (textHeight / 2) + (padding / 2);
         
-        // 1. Draw the Outline FIRST
+        // 1. Setup Drop Shadow (Must be set BEFORE the stroke)
+        if (useShadow) {
+            tCtx.shadowColor = "rgba(0,0,0,0.7)";
+            tCtx.shadowBlur = 15;
+            tCtx.shadowOffsetX = 5;
+            tCtx.shadowOffsetY = 5;
+        } else {
+            tCtx.shadowColor = "transparent";
+        }
+        
+        // 2. Draw the Outline FIRST
         if (useOutline) {
-            tCtx.lineJoin = 'round'; // Prevents sharp jagged spikes
-            tCtx.miterLimit = 2;
-            // We double the thickness because the fill text will cover the inner half!
+            tCtx.lineJoin = 'round'; 
+            tCtx.lineCap = 'round'; // 🟢 THE FIX: Rounds off the physical ends of the lines
             tCtx.lineWidth = strokeWidth * 2; 
             tCtx.strokeStyle = strokeColor;
             tCtx.strokeText(line, tempCanvas.width / 2, yPos);
         }
         
-        // 2. Draw the Fill SECOND (Paints over the inner bleed)
-        tCtx.shadowColor = "transparent"; 
+        // 3. Draw the Fill SECOND
+        tCtx.shadowColor = "transparent"; // 🟢 Clear shadow so it doesn't double-apply to the fill!
         tCtx.fillStyle = fillColor;
         tCtx.fillText(line, tempCanvas.width / 2, yPos);
     });
