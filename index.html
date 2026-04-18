@@ -63,7 +63,43 @@
       background: transparent;
       margin: 0;
     }
-    
+    .confirm-sticker-btn {
+  /* Vibrant "Go Green" Gradient */
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  color: white !important;
+  border: none !important;
+  width: 56px !important;
+  height: 56px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  
+  /* Layered "Go" Glow Shadow */
+  box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.39), 
+              0 0 20px rgba(34, 197, 94, 0.2);
+  
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.confirm-sticker-btn:hover {
+  /* Brighten on hover */
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%) !important;
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+}
+
+.confirm-sticker-btn:active {
+  transform: scale(0.9);
+  filter: brightness(0.9);
+}
+
+.confirm-sticker-btn svg {
+  /* Makes the checkmark "pop" against the green */
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+}
     .text-sticker-modal input[type="range"] { 
       width: 100%; /* Keeps text modal slider full width */
     }
@@ -588,9 +624,11 @@
       </div>
       
       <div id="stickerTools" style="position: absolute;bottom: 0;width: 100%;display: flex;justify-content: center;z-index: 105;background: transparent;border-width: medium;border-style: none;border-color: currentcolor;border-image: initial;backdrop-filter: none;pointer-events: none;">
-        <button class="tool-btn" style="background: #16a34a; border-color: #4ade80; width: 50px; height: 50px; pointer-events: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5);" onclick="deselectActiveSticker()">
-          <span style="font-size:32px;">✔</span>
-        </button>
+        <button class="tool-btn confirm-sticker-btn" onclick="deselectActiveSticker()" aria-label="Confirm Sticker">
+  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+</button>
       </div>
     </div>
 
