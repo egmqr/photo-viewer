@@ -692,9 +692,27 @@
     const urlParams = new URLSearchParams(window.location.search);
     const targetFolderId = urlParams.get('folderId');
     
-    // 🟢 GLOBAL ID CATCHER: Safely grabs the short code no matter what the parameter is named!
-    const rawEventId = urlParams.get('eventId') || 'UNKNOWN';
-    window.globalEventId = rawEventId.toLowerCase().trim();
+    // 🟢 SEARCH & RESCUE ID CATCHER
+    // This manually scans the URL text for egmXXXX or anything assigned to id/eventId/code
+    function rescueId() {
+        const url = window.location.href;
+        
+        // 1. Try to find the pattern "egm" followed by numbers anywhere in the URL
+        const egmMatch = url.match(/egm\d+/i);
+        if (egmMatch) return egmMatch[0].toLowerCase();
+
+        // 2. Fallback: Search specifically for id=, eventId=, or code=
+        const fallbackMatch = url.match(/[?&](id|eventId|code)=([^&#]+)/i);
+        if (fallbackMatch && fallbackMatch[2]) {
+            const val = fallbackMatch[2];
+            // Only return it if it's a short code (rejecting 30+ char Firebase IDs)
+            if (val.length < 25) return val.toLowerCase();
+        }
+
+        return 'unknown';
+    }
+
+    window.globalEventId = rescueId();
     
     // 🟢 Read the new safe flag to identify the Community Booth, keeping legacy support just in case
     const isCommunityBooth = urlParams.get('isCommunity') === 'true' || urlParams.get('tab') === 'community';
