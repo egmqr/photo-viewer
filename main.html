@@ -359,7 +359,7 @@
                 // This forces the iframe to load exactly where the container is currently hosted
                 cleanLink = `index.html?folderId=${folderMatch[1]}`;
                 
-                // 🟢 Pass the Community tab tag down
+                // Pass the Community tab tag down
                 if (tabMatch) {
                     cleanLink += `&tab=${tabMatch[1]}`;
                     if (tabMatch[1] === 'community') {
@@ -367,10 +367,14 @@
                     }
                 }
 
-                // 🟢 THE FIX: Pass the Event ID and Sticker flags down to the iframe!
-                const eventIdMatch = rawLink.match(/eventId=([a-zA-Z0-9_-]+)/);
-                if (eventIdMatch) cleanLink += `&eventId=${eventIdMatch[1]}`;
+                // 🟢 THE FIX: Grab the EXACT 'id' from the main window URL and force it into the iframe!
+                const mainUrlParams = new URLSearchParams(window.location.search);
+                const exactId = mainUrlParams.get('id');
+                if (exactId) {
+                    cleanLink += `&id=${exactId}`;
+                }
                 
+                // Pass the stickers flag
                 const stickerMatch = rawLink.match(/userStickers=(true|false)/);
                 if (stickerMatch) cleanLink += `&userStickers=${stickerMatch[1]}`;
             }
