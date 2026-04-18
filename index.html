@@ -814,27 +814,29 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 DYNAMIC USER STICKERS SCANNER
+      // 🟢 SMART AUTO-DETECT STICKER SCANNER
+      // Bypasses fragile URL parameters. If the folder exists on GitHub, we show the tab automatically!
       const galleryEventId = urlParams.get('id');
-      const isUserStickersEnabled = urlParams.get('userStickers') === 'true';
 
-      if (isUserStickersEnabled && galleryEventId) {
-          const userTab = document.getElementById('tabUserStickers');
-          
-          // 🟢 THE FIX: Use inline-block so it sits perfectly next to the other Flexbox tabs!
-          if (userTab) userTab.style.display = 'inline-block'; 
-
+      if (galleryEventId) {
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
             .then(res => {
-                if (!res.ok) throw new Error("Folder not found or empty.");
+                if (!res.ok) throw new Error("Folder not found.");
                 return res.json();
             })
             .then(files => {
-                if (Array.isArray(files)) {
+                if (Array.isArray(files) && files.length > 0) {
+                    // 1. Folder exists and has files! Force the tab visible globally!
+                    document.body.classList.add('show-user-stickers');
+                    const userTab = document.getElementById('tabUserStickers');
+                    if (userTab) userTab.style.display = 'inline-block';
+                    
+                    // 2. Populate the catalog
                     stickerCatalog.userStickers = files
                         .filter(file => file.name.toLowerCase().endsWith('.png'))
                         .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${galleryEventId}/${file.name}`);
                     
+                    // 3. Auto-refresh if drawer is open
                     if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                         delete stickerCache['userStickers']; 
                         loadStickerCategory('userStickers', document.querySelector('.sticker-tab.active'));
@@ -842,14 +844,8 @@
                 }
             })
             .catch(err => {
-                console.warn(`Dynamic stickers-${galleryEventId} not loaded:`, err.message);
-                // 🟢 THE FIX: Flag it as failed so the drawer doesn't spin forever!
+                console.warn(`Dynamic stickers-${galleryEventId} bypassed:`, err.message);
                 window.userStickersFailed = true;
-                
-                const grid = document.getElementById('stickerGrid');
-                if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
-                    grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${galleryEventId}' on GitHub.</span></div>`;
-                }
             });
       }
 
@@ -1708,18 +1704,11 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
-    // 🟢 THE ULTIMATE OVERRIDE
-    // Reads the URL and applies the master CSS class to the entire website
-    const isUserStickersEnabled = new URLSearchParams(window.location.search).get('userStickers') === 'true';
-    if (isUserStickersEnabled) {
-        document.body.classList.add('show-user-stickers');
-    }
-
     const grid = document.getElementById('stickerGrid');
     
     if (grid.innerHTML === '') {
-        if (isUserStickersEnabled) {
-            // querySelectorAll guarantees we find the tab even if there are duplicate HTML tags!
+        // 🟢 THE FIX: If the GitHub scan was successful, it applied the class. Open the tab!
+        if (document.body.classList.contains('show-user-stickers')) {
             const userTabs = document.querySelectorAll('#tabUserStickers');
             if (userTabs.length > 0) {
                 loadStickerCategory('userStickers', userTabs[userTabs.length - 1]); 
