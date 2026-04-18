@@ -144,7 +144,7 @@
     /* 🟢 INSTAGRAM-STYLE TEXT LIGHTBOX */
     .ig-text-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
       z-index: 100005; display: none; flex-direction: column;
     }
     .ig-text-header {
@@ -609,7 +609,7 @@
       <div class="text-controls-flex">
         <div class="text-col">
           <label>Font Style</label>
-          <select id="textStickerFont" style="font-size: 16px;" onchange="document.getElementById('textStickerInput').style.fontFamily = this.options[this.selectedIndex].style.fontFamily">
+          <select id="textStickerFont" style="font-size: 16px;" onchange="updateTextPreview()">
             <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Classic</option>
             <option value="'Trebuchet MS', 'Lucida Grande', 'Avenir', sans-serif" style="font-family: 'Trebuchet MS', sans-serif;">Modern</option>
             <option value="Impact, Charcoal, 'Arial Black', sans-serif" style="font-family: Impact, sans-serif;">Strong</option>
@@ -624,21 +624,21 @@
         <div class="text-row">
           <div class="text-col">
             <label>Text Color</label>
-            <input type="color" id="textColor" value="#ffffff" oninput="document.getElementById('textStickerInput').style.color = this.value">
+            <input type="color" id="textColor" value="#ffffff" oninput="updateTextPreview()">
           </div>
           <div class="text-col">
-            <label><input type="checkbox" id="textEnableOutline" style="accent-color:#0d9488;"> Outline Color</label>
-            <input type="color" id="textOutline" value="#000000">
+            <label><input type="checkbox" id="textEnableOutline" style="accent-color:#0d9488;" onchange="updateTextPreview()"> Outline Color</label>
+            <input type="color" id="textOutline" value="#000000" oninput="updateTextPreview()">
           </div>
         </div>
 
         <div class="text-col">
             <label>Outline Thickness</label>
-            <input type="range" id="textOutlineWidth" min="2" max="24" value="12" style="width: 100%; accent-color:#0d9488;">
+            <input type="range" id="textOutlineWidth" min="2" max="24" value="12" style="width: 100%; accent-color:#0d9488;" oninput="updateTextPreview()">
         </div>
         
         <label class="text-checkbox-row" style="margin-bottom: 0;">
-          <input type="checkbox" id="textShadow" checked style="width:18px; height:18px; accent-color:#0d9488;">
+          <input type="checkbox" id="textShadow" checked style="width:18px; height:18px; accent-color:#0d9488;" onchange="updateTextPreview()">
           Add Drop Shadow
         </label>
       </div>
@@ -1398,19 +1398,57 @@ function handleDelete() {
     }
 }
 // --- TEXT STICKER LOGIC ---
+
+// 🟢 NEW: LIVE PREVIEW ENGINE
+function updateTextPreview() {
+    const input = document.getElementById('textStickerInput');
+    const fontSelect = document.getElementById('textStickerFont');
+    const font = fontSelect.options[fontSelect.selectedIndex].style.fontFamily;
+    const color = document.getElementById('textColor').value;
+    
+    const enableOutline = document.getElementById('textEnableOutline').checked;
+    const outlineColor = document.getElementById('textOutline').value;
+    const outlineWidth = document.getElementById('textOutlineWidth').value;
+    const enableShadow = document.getElementById('textShadow').checked;
+
+    // Apply Core Styles
+    input.style.fontFamily = font;
+    input.style.color = color;
+
+    // Apply Shadow
+    if (enableShadow) {
+        input.style.textShadow = '0 4px 15px rgba(0,0,0,0.7)';
+    } else {
+        input.style.textShadow = 'none';
+    }
+
+    // Apply Outline (Using -webkit-text-stroke to preview the canvas border)
+    // We divide by 2.5 so the CSS stroke doesn't completely swallow the text fill!
+    if (enableOutline) {
+        input.style.webkitTextStroke = `${outlineWidth / 2.5}px ${outlineColor}`;
+    } else {
+        input.style.webkitTextStroke = '0px transparent';
+    }
+}
+
 function openTextEditor() { 
     if (isDrawMode) toggleDrawMode(); // Auto-off draw mode!
     
-    // 🟢 Reset the visual input styles so it doesn't inherit canceled edits
+    // Hard reset the visual inputs so old edits don't bleed over
     const input = document.getElementById('textStickerInput');
     input.value = '';
-    input.style.height = 'auto'; // Reset height
-    input.style.fontFamily = "-apple-system, BlinkMacSystemFont, sans-serif";
-    input.style.color = "#ffffff";
+    input.style.height = 'auto'; 
     
-    // Reset controls
+    // Reset all controls to defaults
     document.getElementById('textStickerFont').selectedIndex = 0;
     document.getElementById('textColor').value = '#ffffff';
+    document.getElementById('textEnableOutline').checked = false;
+    document.getElementById('textOutline').value = '#000000';
+    document.getElementById('textOutlineWidth').value = 12;
+    document.getElementById('textShadow').checked = true;
+    
+    // 🟢 Instantly apply the defaults to the visual preview!
+    updateTextPreview();
     
     document.getElementById('textEditorModal').style.display = 'flex'; 
     
