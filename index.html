@@ -1714,42 +1714,33 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
-    // 1. 100% Case-Insensitive URL Check
-    const currentUrl = window.location.href.toLowerCase();
-    const isUrlEnabled = currentUrl.includes('userstickers=true');
-    const isApiEnabled = window.githubStickersFound === true;
-    const shouldShowTab = isUrlEnabled || isApiEnabled;
+    // 🟢 FORCED OVERRIDE: We are ignoring the URL and GitHub to prove the tab works!
+    const shouldShowTab = true; 
     
-    // 2. Find or Auto-Create the Tab!
     const tabsContainer = document.getElementById('stickerTabs');
     let userTabBtn = document.getElementById('tabUserStickers');
     
-    if (shouldShowTab && !userTabBtn && tabsContainer) {
-        // The button was missing from HTML, so we construct it instantly!
+    // Auto-build the button if it's missing from the HTML
+    if (!userTabBtn && tabsContainer) {
         userTabBtn = document.createElement('button');
         userTabBtn.id = 'tabUserStickers';
         userTabBtn.className = 'sticker-tab';
         userTabBtn.innerText = '📁 User Stickers';
         userTabBtn.onclick = function() { loadStickerCategory('userStickers', this); };
-        
-        // Inject it as the very first tab
         tabsContainer.insertBefore(userTabBtn, tabsContainer.firstChild);
     }
 
-    // Force it visible if it exists
+    // Force it visible!
     if (userTabBtn) {
-        userTabBtn.style.setProperty('display', shouldShowTab ? 'inline-block' : 'none', 'important');
+        userTabBtn.style.setProperty('display', 'inline-block', 'important');
     }
 
-    // 3. Load the correct sticker grid
     const grid = document.getElementById('stickerGrid');
     
     if (grid.innerHTML === '') {
-        if (shouldShowTab && userTabBtn) {
+        // Automatically click the User Stickers tab when opening!
+        if (userTabBtn) {
             loadStickerCategory('userStickers', userTabBtn); 
-        } else {
-            const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
-            if (customTabBtn) loadStickerCategory('custom', customTabBtn); 
         }
     }
     
