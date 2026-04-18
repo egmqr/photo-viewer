@@ -833,12 +833,11 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 DYNAMIC USER STICKERS SCANNER (Using Global ID)
-      const isUserStickersEnabled = urlParams.get('userStickers') === 'true' || window.location.href.toLowerCase().includes('userstickers=true');
+      const isUserStickersEnabled = window.location.search.toLowerCase().includes('userstickers=true');
 
       if (isUserStickersEnabled && window.globalEventId !== 'unknown') {
           const userTab = document.getElementById('tabUserStickers');
-          if (userTab) userTab.style.display = 'inline-block'; 
+          if (userTab) userTab.style.setProperty('display', 'inline-block', 'important'); 
 
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${window.globalEventId}`)
             .then(res => {
@@ -869,6 +868,7 @@
                 }
             });
       } else {
+          // If the URL parameter is missing, cleanly flag it as failed/disabled
           window.userStickersFailed = true;
       }
 
@@ -1726,14 +1726,14 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
-    // 🟢 FORCED OVERRIDE: We are ignoring the URL and GitHub to prove the tab works!
-    const shouldShowTab = true; 
+    // 🟢 STRICT URL CHECK: Only show if userStickers=true is in the URL!
+    const shouldShowTab = window.location.search.toLowerCase().includes('userstickers=true');
     
     const tabsContainer = document.getElementById('stickerTabs');
     let userTabBtn = document.getElementById('tabUserStickers');
     
     // Auto-build the button if it's missing from the HTML
-    if (!userTabBtn && tabsContainer) {
+    if (shouldShowTab && !userTabBtn && tabsContainer) {
         userTabBtn = document.createElement('button');
         userTabBtn.id = 'tabUserStickers';
         userTabBtn.className = 'sticker-tab';
@@ -1742,17 +1742,21 @@ function openStickerDrawer() {
         tabsContainer.insertBefore(userTabBtn, tabsContainer.firstChild);
     }
 
-    // Force it visible!
+    // Force it visible ONLY if it should show, otherwise hide it completely!
     if (userTabBtn) {
-        userTabBtn.style.setProperty('display', 'inline-block', 'important');
+        userTabBtn.style.setProperty('display', shouldShowTab ? 'inline-block' : 'none', 'important');
     }
 
     const grid = document.getElementById('stickerGrid');
     
     if (grid.innerHTML === '') {
-        // Automatically click the User Stickers tab when opening!
-        if (userTabBtn) {
+        // Automatically click the User Stickers tab if it's visible
+        if (shouldShowTab && userTabBtn) {
             loadStickerCategory('userStickers', userTabBtn); 
+        } else {
+            // Fallback to Custom Props if User Stickers are disabled
+            const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
+            if (customTabBtn) loadStickerCategory('custom', customTabBtn); 
         }
     }
     
