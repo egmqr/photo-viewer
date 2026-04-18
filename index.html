@@ -1403,7 +1403,7 @@ function handleDelete() {
 }
 // --- TEXT STICKER LOGIC ---
 
-// 🟢 NEW: LIVE PREVIEW ENGINE (Outer Stroke Fix)
+// 🟢 NEW: LIVE PREVIEW ENGINE (Smooth 36-Point Circular Shadow)
 function updateTextPreview() {
     const input = document.getElementById('textStickerInput');
     const fontSelect = document.getElementById('textStickerFont');
@@ -1418,15 +1418,19 @@ function updateTextPreview() {
     // Apply Core Styles
     input.style.fontFamily = font;
     input.style.color = color;
-    input.style.webkitTextStroke = '0px transparent'; // Turn off the crushing center-stroke!
+    input.style.webkitTextStroke = '0px transparent'; 
 
     let shadowLayers = [];
 
-    // 1. Build a solid Outer Outline using 8-directional text-shadows
+    // 1. Build a flawlessly smooth outer stroke using 36 angles of Trigonometry
     if (enableOutline) {
-        const w = (outlineWidth / 3).toFixed(1); // Scale it for the preview DOM
-        const c = outlineColor;
-        shadowLayers.push(`-${w}px -${w}px 0 ${c}, ${w}px -${w}px 0 ${c}, -${w}px ${w}px 0 ${c}, ${w}px ${w}px 0 ${c}, 0px -${w}px 0 ${c}, 0px ${w}px 0 ${c}, -${w}px 0px 0 ${c}, ${w}px 0px 0 ${c}`);
+        const w = parseFloat(outlineWidth) / 1.5; // Scale thickness for the DOM preview
+        for (let i = 0; i < 36; i++) {
+            const angle = (i * 2 * Math.PI) / 36;
+            const x = (Math.cos(angle) * w).toFixed(2);
+            const y = (Math.sin(angle) * w).toFixed(2);
+            shadowLayers.push(`${x}px ${y}px 0px ${outlineColor}`);
+        }
     }
 
     // 2. Add the Drop Shadow (Goes last so it falls behind the outline)
@@ -1435,11 +1439,7 @@ function updateTextPreview() {
     }
 
     // Apply the layers
-    if (shadowLayers.length > 0) {
-        input.style.textShadow = shadowLayers.join(', ');
-    } else {
-        input.style.textShadow = 'none';
-    }
+    input.style.textShadow = shadowLayers.length > 0 ? shadowLayers.join(', ') : 'none';
 }
 
 function openTextEditor() { 
