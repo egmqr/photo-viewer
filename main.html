@@ -351,7 +351,7 @@
             // 🔥 DOMAIN-AGNOSTIC FIX: Intercept the raw link from Firebase and force a relative path
             let cleanLink = rawLink;
             const folderMatch = rawLink.match(/folderId=([a-zA-Z0-9_-]+)/);
-            const tabMatch = rawLink.match(/tab=([a-zA-Z0-9_-]+)/); // 🟢 Grab the tab parameter from Firebase!
+            const tabMatch = rawLink.match(/tab=([a-zA-Z0-9_-]+)/); 
             
             let tabLabel = `Photobooth ${boothNum}`;
 
@@ -359,13 +359,20 @@
                 // This forces the iframe to load exactly where the container is currently hosted
                 cleanLink = `index.html?folderId=${folderMatch[1]}`;
                 
-                // 🟢 If Firebase says it's the community booth, pass the tag down and rename the UI!
+                // 🟢 Pass the Community tab tag down
                 if (tabMatch) {
                     cleanLink += `&tab=${tabMatch[1]}`;
                     if (tabMatch[1] === 'community') {
                         tabLabel = "Community Booth"; 
                     }
                 }
+
+                // 🟢 THE FIX: Pass the Event ID and Sticker flags down to the iframe!
+                const eventIdMatch = rawLink.match(/eventId=([a-zA-Z0-9_-]+)/);
+                if (eventIdMatch) cleanLink += `&eventId=${eventIdMatch[1]}`;
+                
+                const stickerMatch = rawLink.match(/userStickers=(true|false)/);
+                if (stickerMatch) cleanLink += `&userStickers=${stickerMatch[1]}`;
             }
 
             if (boothLinks.length > 1) {
