@@ -811,7 +811,9 @@
 
       if (isUserStickersEnabled && galleryEventId) {
           const userTab = document.getElementById('tabUserStickers');
-          if (userTab) userTab.style.display = 'block'; // 🟢 Force the tab visible!
+          
+          // 🟢 THE FIX: Use inline-block so it sits perfectly next to the other Flexbox tabs!
+          if (userTab) userTab.style.display = 'inline-block'; 
 
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
             .then(res => {
