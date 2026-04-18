@@ -141,27 +141,41 @@
       display: flex; /* Only show the X when the sticker is actively selected */
     }
 
-    /* TEXT LIGHTBOX */
-   .text-sticker-modal {
-      background: #1e1e1e; border-radius: 20px; padding: 24px; width: 90%; max-width: 350px;
-      text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); color: white; border: 1px solid #333;
+    /* 🟢 INSTAGRAM-STYLE TEXT LIGHTBOX */
+    .ig-text-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      z-index: 100005; display: none; flex-direction: column;
     }
-    .text-sticker-modal textarea {
-      width: 100%; background: #111; color: white; border: 1px solid #444;
-      border-radius: 10px; padding: 15px; font-size: 18px; resize: none; outline: none; margin-bottom: 15px; box-sizing: border-box;
+    .ig-text-header {
+      display: flex; justify-content: space-between; padding: max(15px, env(safe-area-inset-top)) 20px 10px;
     }
-    .text-sticker-modal select, .text-sticker-modal input[type="color"] {
+    .ig-text-input-wrapper {
+      flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; cursor: text;
+    }
+    #textStickerInput {
+      width: 100%; background: transparent; border: none; color: #ffffff; text-align: center;
+      font-size: 40px; font-weight: bold; outline: none; resize: none; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.2;
+      text-shadow: 0 4px 15px rgba(0,0,0,0.5); /* Helps visibility while typing */
+    }
+    #textStickerInput::placeholder { color: rgba(255,255,255,0.5); }
+    
+    .ig-text-controls {
+      background: rgba(20,20,20,0.95); border-top-left-radius: 20px; border-top-right-radius: 20px;
+      padding: 20px; padding-bottom: max(20px, env(safe-area-inset-bottom)); border-top: 1px solid #333;
+    }
+    
+    .text-controls-flex { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+    .text-row { display: flex; gap: 15px; align-items: flex-end; }
+    .text-col { flex: 1; display: flex; flex-direction: column; gap: 5px; color: white; }
+    .text-col label { font-size: 11px; color: #aaa; text-transform: uppercase; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+    .text-col select, .text-col input[type="color"] {
       width: 100%; background: #333; color: white; border: 1px solid #444; padding: 10px;
       border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box;
     }
-    .text-sticker-modal input[type="color"] { height: 40px; cursor: pointer; padding: 2px; }
-    
-    .text-controls-flex { display: flex; flex-direction: column; gap: 12px; text-align: left; margin-bottom: 15px; }
-    .text-row { display: flex; gap: 15px; align-items: flex-end; }
-    .text-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
-    .text-col label { font-size: 11px; color: #aaa; text-transform: uppercase; font-weight: bold; display: flex; align-items: center; gap: 5px; }
-    
-    .text-checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; color: #ddd; margin-bottom: 15px; justify-content: center; cursor: pointer; }
+    .text-col input[type="color"] { height: 40px; cursor: pointer; padding: 2px; }
+    .text-checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; color: #ddd; justify-content: center; cursor: pointer; }
 
     /* STICKER DRAWER TABS */
     #stickerDrawer { height: 400px; }
@@ -580,58 +594,53 @@
     </div>
   </div>
 
-  <div id="textEditorModal" class="custom-modal-overlay" style="z-index: 100005;">
-    <div class="text-sticker-modal">
-      <h3 style="margin-top:0; margin-bottom: 15px;">Add Text</h3>
-      <textarea id="textStickerInput" rows="2" placeholder="Type here..."></textarea>
-      
+  <div id="textEditorModal" class="ig-text-overlay">
+    
+    <div class="ig-text-header">
+      <button class="editor-btn" onclick="closeTextEditor()">Cancel</button>
+      <button class="editor-btn editor-btn-submit" onclick="applyTextSticker()">Done</button>
+    </div>
+
+    <div class="ig-text-input-wrapper" onclick="document.getElementById('textStickerInput').focus()">
+      <textarea id="textStickerInput" placeholder="Type here..." rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+    </div>
+
+    <div class="ig-text-controls">
       <div class="text-controls-flex">
         <div class="text-col">
           <label>Font Style</label>
-          <select id="textStickerFont" style="font-size: 16px;">
+          <select id="textStickerFont" style="font-size: 16px;" onchange="document.getElementById('textStickerInput').style.fontFamily = this.options[this.selectedIndex].style.fontFamily">
             <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Classic</option>
-            
             <option value="'Trebuchet MS', 'Lucida Grande', 'Avenir', sans-serif" style="font-family: 'Trebuchet MS', sans-serif;">Modern</option>
-            
             <option value="Impact, Charcoal, 'Arial Black', sans-serif" style="font-family: Impact, sans-serif;">Strong</option>
-            
             <option value="'Courier New', Courier, monospace" style="font-family: 'Courier New', monospace;">Typewriter</option>
-            
             <option value="'Brush Script MT', 'Apple Chancery', 'Snell Roundhand', cursive" style="font-family: 'Brush Script MT', cursive;">Neon / Script</option>
-            
             <option value="Georgia, 'Times New Roman', Times, serif" style="font-family: Georgia, serif;">Elegant</option>
-            
             <option value="'Comic Sans MS', 'Marker Felt', 'Chalkboard SE', sans-serif" style="font-family: 'Comic Sans MS', sans-serif;">Comic</option>
-            
             <option value="'Arial Black', Gadget, sans-serif" style="font-family: 'Arial Black', sans-serif;">Heavy</option>
           </select>
         </div>
-        
+
         <div class="text-row">
           <div class="text-col">
             <label>Text Color</label>
-            <input type="color" id="textColor" value="#ffffff">
+            <input type="color" id="textColor" value="#ffffff" oninput="document.getElementById('textStickerInput').style.color = this.value">
           </div>
           <div class="text-col">
             <label><input type="checkbox" id="textEnableOutline" style="accent-color:#0d9488;"> Outline Color</label>
             <input type="color" id="textOutline" value="#000000">
           </div>
         </div>
-        
+
         <div class="text-col">
             <label>Outline Thickness</label>
             <input type="range" id="textOutlineWidth" min="2" max="24" value="12" style="width: 100%; accent-color:#0d9488;">
         </div>
-      </div>
-
-      <label class="text-checkbox-row">
-        <input type="checkbox" id="textShadow" checked style="width:18px; height:18px; accent-color:#0d9488;">
-        Add Drop Shadow
-      </label>
-
-      <div class="share-btn-row">
-        <button class="btn-close-modal" style="background:#333; color:white;" onclick="closeTextEditor()">Cancel</button>
-        <button class="btn-copy" onclick="applyTextSticker()">Add Text</button>
+        
+        <label class="text-checkbox-row" style="margin-bottom: 0;">
+          <input type="checkbox" id="textShadow" checked style="width:18px; height:18px; accent-color:#0d9488;">
+          Add Drop Shadow
+        </label>
       </div>
     </div>
   </div>
@@ -1391,8 +1400,24 @@ function handleDelete() {
 // --- TEXT STICKER LOGIC ---
 function openTextEditor() { 
     if (isDrawMode) toggleDrawMode(); // Auto-off draw mode!
+    
+    // 🟢 Reset the visual input styles so it doesn't inherit canceled edits
+    const input = document.getElementById('textStickerInput');
+    input.value = '';
+    input.style.height = 'auto'; // Reset height
+    input.style.fontFamily = "-apple-system, BlinkMacSystemFont, sans-serif";
+    input.style.color = "#ffffff";
+    
+    // Reset controls
+    document.getElementById('textStickerFont').selectedIndex = 0;
+    document.getElementById('textColor').value = '#ffffff';
+    
     document.getElementById('textEditorModal').style.display = 'flex'; 
+    
+    // Auto-focus the text area so the mobile keyboard pops up instantly!
+    setTimeout(() => input.focus(), 100);
 }
+
 function closeTextEditor() { 
     document.getElementById('textEditorModal').style.display = 'none'; 
     document.getElementById('textStickerInput').value = '';
