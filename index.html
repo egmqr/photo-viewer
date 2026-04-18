@@ -663,8 +663,9 @@
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
     <div class="sticker-tabs" id="stickerTabs">
-      <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
+      <button class="sticker-tab" id="tabUserStickers" style="display: none;" onclick="loadStickerCategory('userStickers', this)">📁 User Stickers</button>
       
+      <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
       <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🖼️ Placeholders</button>
       
       <button class="sticker-tab" onclick="loadStickerCategory('hats', this)">👑 Hats & Hair</button>
@@ -1552,7 +1553,7 @@ function applyTextSticker() {
 
 // --- PHOTOBOOTH STICKER CATALOG ---
 const stickerCatalog = {
-    // 🟢 This will auto-fill from your Google Drive folder on page load!
+   userStickers: [], // 🟢 NEW: Will auto-fill if URL param is present
     custom: [], 
     glasses: [],
     hats: [
