@@ -359,7 +359,7 @@
                 // This forces the iframe to load exactly where the container is currently hosted
                 cleanLink = `index.html?folderId=${folderMatch[1]}`;
                 
-                // Pass the Community tab tag down
+                // 🟢 Pass the Community tab tag down
                 if (tabMatch) {
                     cleanLink += `&tab=${tabMatch[1]}`;
                     if (tabMatch[1] === 'community') {
@@ -367,16 +367,24 @@
                     }
                 }
 
-                // 🟢 THE FIX: Grab the EXACT 'id' from the main window URL and force it into the iframe!
+                // 🟢 THE FIX: Grab 'id' and 'userStickers' from the main window URL and force them into the iframe!
                 const mainUrlParams = new URLSearchParams(window.location.search);
+                
+                // Pass the exact ID
                 const exactId = mainUrlParams.get('id');
                 if (exactId) {
                     cleanLink += `&id=${exactId}`;
                 }
-                
-                // Pass the stickers flag
-                const stickerMatch = rawLink.match(/userStickers=(true|false)/);
-                if (stickerMatch) cleanLink += `&userStickers=${stickerMatch[1]}`;
+
+                // Pass the userStickers flag
+                const exactStickers = mainUrlParams.get('userStickers');
+                if (exactStickers) {
+                    cleanLink += `&userStickers=${exactStickers}`;
+                } else {
+                    // Fallback: Check if the database link has it saved
+                    const stickerMatch = rawLink.match(/userStickers=(true|false)/);
+                    if (stickerMatch) cleanLink += `&userStickers=${stickerMatch[1]}`;
+                }
             }
 
             if (boothLinks.length > 1) {
