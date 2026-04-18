@@ -692,7 +692,6 @@
     const urlParams = new URLSearchParams(window.location.search);
     const targetFolderId = urlParams.get('folderId');
     
-    // 🟢 GLOBAL ID CATCHER: Checks 'id', 'eventId', and 'code' to find egmXXXX
     function findMyEventId() {
         const params = new URLSearchParams(window.location.search);
         
@@ -710,6 +709,11 @@
 
         return 'unknown';
     }
+
+    window.globalEventId = findMyEventId();
+    
+    // 🟢 Read the new safe flag to identify the Community Booth, keeping legacy support just in case
+    const isCommunityBooth = urlParams.get('isCommunity') === 'true' || urlParams.get('tab') === 'community';
 
     window.globalEventId = findMyEventId();
 
