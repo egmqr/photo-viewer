@@ -16,6 +16,15 @@
   <link rel="preconnect" href="https://drive.google.com" crossorigin>
 
   <style>
+    /* 🟢 BULLETPROOF TAB UNHIDER */
+    #tabUserStickers {
+      display: none; 
+    }
+    
+    /* When this class is on the body, the tab HAS to show up! */
+    body.show-user-stickers #tabUserStickers {
+      display: inline-block !important;
+    }
     :root { 
       --primary: #202124; 
       --bg: transparent; 
@@ -663,7 +672,7 @@
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
     <div class="sticker-tabs" id="stickerTabs">
-      <button class="sticker-tab" id="tabUserStickers" style="display: none;" onclick="loadStickerCategory('userStickers', this)">📁 User Stickers</button>
+      <button class="sticker-tab" id="tabUserStickers" onclick="loadStickerCategory('userStickers', this)">📁 User Stickers</button>
       
       <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
       <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🖼️ Placeholders</button>
@@ -1699,21 +1708,22 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
-    // 🟢 BULLETPROOF TAB UNHIDER
-    // We check the URL and force the tab visible the exact moment the drawer opens!
-    const isUserStickersEnabled = String(new URLSearchParams(window.location.search).get('userStickers')).toLowerCase() === 'true';
-    const userTabBtn = document.getElementById('tabUserStickers');
-    
-    if (isUserStickersEnabled && userTabBtn) {
-        userTabBtn.style.setProperty('display', 'inline-block', 'important');
+    // 🟢 THE ULTIMATE OVERRIDE
+    // Reads the URL and applies the master CSS class to the entire website
+    const isUserStickersEnabled = new URLSearchParams(window.location.search).get('userStickers') === 'true';
+    if (isUserStickersEnabled) {
+        document.body.classList.add('show-user-stickers');
     }
 
     const grid = document.getElementById('stickerGrid');
     
-    // 🟢 SMART DEFAULT SELECTION
     if (grid.innerHTML === '') {
-        if (isUserStickersEnabled && userTabBtn) {
-            loadStickerCategory('userStickers', userTabBtn); 
+        if (isUserStickersEnabled) {
+            // querySelectorAll guarantees we find the tab even if there are duplicate HTML tags!
+            const userTabs = document.querySelectorAll('#tabUserStickers');
+            if (userTabs.length > 0) {
+                loadStickerCategory('userStickers', userTabs[userTabs.length - 1]); 
+            }
         } else {
             const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
             loadStickerCategory('custom', customTabBtn); 
