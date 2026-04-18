@@ -692,6 +692,10 @@
     const urlParams = new URLSearchParams(window.location.search);
     const targetFolderId = urlParams.get('folderId');
     
+    // 🟢 GLOBAL ID CATCHER: Safely grabs the short code no matter what the parameter is named!
+    const rawEventId = urlParams.get('id') || urlParams.get('eventId') || urlParams.get('code') || 'UNKNOWN';
+    window.globalEventId = rawEventId.toLowerCase().trim();
+    
     // 🟢 Read the new safe flag to identify the Community Booth, keeping legacy support just in case
     const isCommunityBooth = urlParams.get('isCommunity') === 'true' || urlParams.get('tab') === 'community';
 
@@ -814,17 +818,14 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 DYNAMIC USER STICKERS SCANNER (Using 'id' parameter)
-      const rawEventId = urlParams.get('id') || ''; 
-      const galleryEventId = rawEventId.toLowerCase().trim(); 
-
+      // 🟢 DYNAMIC USER STICKERS SCANNER (Using Global ID)
       const isUserStickersEnabled = urlParams.get('userStickers') === 'true' || window.location.href.toLowerCase().includes('userstickers=true');
 
-      if (isUserStickersEnabled && galleryEventId) {
+      if (isUserStickersEnabled && window.globalEventId !== 'unknown') {
           const userTab = document.getElementById('tabUserStickers');
           if (userTab) userTab.style.display = 'inline-block'; 
 
-          fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
+          fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${window.globalEventId}`)
             .then(res => {
                 if (!res.ok) throw new Error("Folder not found.");
                 return res.json();
@@ -835,7 +836,7 @@
                     
                     stickerCatalog.userStickers = files
                         .filter(file => file.name.toLowerCase().endsWith('.png'))
-                        .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${galleryEventId}/${file.name}`);
+                        .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${window.globalEventId}/${file.name}`);
                     
                     if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                         delete stickerCache['userStickers']; 
@@ -844,12 +845,12 @@
                 }
             })
             .catch(err => {
-                console.warn(`Dynamic stickers-${galleryEventId} bypassed:`, err.message);
+                console.warn(`Dynamic stickers bypassed:`, err.message);
                 window.userStickersFailed = true;
                 
                 const grid = document.getElementById('stickerGrid');
                 if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
-                    grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${galleryEventId}' on GitHub.</span></div>`;
+                    grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${window.globalEventId}' on GitHub.</span></div>`;
                 }
             });
       } else {
@@ -1678,12 +1679,9 @@ function loadStickerCategory(category, btnElement) {
         return;
     }
 
-   // 🟢 THE FIX: Prevent infinite loading and explicitly show the ID!
+   // 🟢 THE FIX: Prevent infinite loading and use the globally captured ID!
     if (category === 'userStickers' && window.userStickersFailed) {
-        const rawEvId = new URLSearchParams(window.location.search).get('id') || 'UNKNOWN';
-        const evId = rawEvId.toLowerCase().trim();
-        
-        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${evId}' on GitHub.</span></div>`;
+        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${window.globalEventId}' on GitHub.</span></div>`;
         return;
     }
 
