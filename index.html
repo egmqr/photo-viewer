@@ -692,25 +692,26 @@
     const urlParams = new URLSearchParams(window.location.search);
     const targetFolderId = urlParams.get('folderId');
     
-    // 🟢 SEARCH & RESCUE ID CATCHER
-    // This manually scans the URL text for egmXXXX or anything assigned to id/eventId/code
-    function rescueId() {
-        const url = window.location.href;
+    // 🟢 GLOBAL ID CATCHER: Checks 'id', 'eventId', and 'code' to find egmXXXX
+    function findMyEventId() {
+        const params = new URLSearchParams(window.location.search);
         
-        // 1. Try to find the pattern "egm" followed by numbers anywhere in the URL
-        const egmMatch = url.match(/egm\d+/i);
-        if (egmMatch) return egmMatch[0].toLowerCase();
-
-        // 2. Fallback: Search specifically for id=, eventId=, or code=
-        const fallbackMatch = url.match(/[?&](id|eventId|code)=([^&#]+)/i);
-        if (fallbackMatch && fallbackMatch[2]) {
-            const val = fallbackMatch[2];
-            // Only return it if it's a short code (rejecting 30+ char Firebase IDs)
-            if (val.length < 25) return val.toLowerCase();
+        // 1. Check all possible URL parameter names
+        let check = params.get('id') || params.get('eventId') || params.get('code');
+        
+        // 2. If it found something and it's not the massive 33-character Firebase string
+        if (check && check.length < 25) {
+            return check.toLowerCase().trim();
         }
+
+        // 3. Last Resort: Scan the raw URL text for "egm" followed by numbers
+        const rawMatch = window.location.href.match(/egm\d+/i);
+        if (rawMatch) return rawMatch[0].toLowerCase();
 
         return 'unknown';
     }
+
+    window.globalEventId = findMyEventId();
 
     window.globalEventId = rescueId();
     
