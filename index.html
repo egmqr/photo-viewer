@@ -815,8 +815,8 @@
         .catch(err => console.error("Failed to load Placeholders:", err));
 
       // 🟢 SMART AUTO-DETECT & URL SCANNER
-      const rawEventId = urlParams.get('id') || '';
-      const galleryEventId = rawEventId.toLowerCase().trim(); 
+      const rawEventCode = urlParams.get('code') || urlParams.get('id') || '';
+      const galleryEventId = rawEventCode.toLowerCase().trim(); 
       const urlHasStickers = window.location.href.toLowerCase().includes('userstickers=true');
 
       if (galleryEventId) {
