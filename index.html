@@ -806,14 +806,16 @@
             }
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
+      
+
         // 🟢 NEW: DYNAMIC USER STICKERS SCANNER
       const galleryEventId = urlParams.get('id');
       const isUserStickersEnabled = urlParams.get('userStickers') === 'true';
 
       if (isUserStickersEnabled && galleryEventId) {
-          // 1. Unhide the tab
+          // 1. Unhide the tab (use inline-block for flex compatibility)
           const userTab = document.getElementById('tabUserStickers');
-          if (userTab) userTab.style.display = 'block';
+          if (userTab) userTab.style.display = 'inline-block';
 
           // 2. Fetch from the dynamic URL (e.g., stickers-egm0015)
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
@@ -827,15 +829,21 @@
                         .filter(file => file.name.toLowerCase().endsWith('.png'))
                         .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${galleryEventId}/${file.name}`);
                     
-                    // Refresh if drawer is already open to this tab
                     if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                         delete stickerCache['userStickers']; 
                         loadStickerCategory('userStickers', document.querySelector('.sticker-tab.active'));
                     }
                 }
             })
-            .catch(err => console.warn(`Dynamic stickers-${galleryEventId} not loaded:`, err.message));
-         }
+            .catch(err => {
+                console.warn(`Dynamic stickers-${galleryEventId} not loaded:`, err.message);
+                // 🟢 THE FIX: Stop the infinite loading spinner if the folder doesn't exist yet!
+                const grid = document.getElementById('stickerGrid');
+                if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
+                    grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${galleryEventId}' on GitHub.</span></div>`;
+                }
+            });
+      }
       }
 
       if (!targetFolderId) {
