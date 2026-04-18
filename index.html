@@ -603,7 +603,7 @@
         <div class="tool-btn"><span style="font-size:22px;">🔤</span></div>
         <span class="tool-label">Text</span>
       </div>
-      <div class="toolbar-item" onclick="openStickerDrawer()">
+      <div class="toolbar-item" onclick="Drawer()">
         <div class="tool-btn"><span style="font-size:22px;">🌟</span></div>
         <span class="tool-label">Stickers</span>
       </div>
@@ -1711,6 +1711,60 @@ function loadStickerCategory(category, btnElement) {
 }
 
 function openStickerDrawer() {
+    if (isDrawMode) toggleDrawMode(); 
+    if (window.activeSticker) deselectActiveSticker(); 
+    
+    // 1. Bulletproof URL Check (Bypasses Hash Router issues)
+    const currentUrl = window.location.href.toLowerCase();
+    const isUrlEnabled = currentUrl.includes('userstickers=true');
+    const isApiEnabled = window.githubStickersFound === true;
+    const shouldShowTab = isUrlEnabled || isApiEnabled;
+    
+    // 2. The Nuclear Option: Dynamically inject the button into ALL tab containers
+    document.querySelectorAll('.sticker-tabs').forEach(tabsContainer => {
+        let userTab = tabsContainer.querySelector('.tab-user-stickers');
+        
+        if (shouldShowTab) {
+            // If it doesn't exist in this container, create it!
+            if (!userTab) {
+                userTab = document.createElement('button');
+                userTab.className = 'sticker-tab tab-user-stickers'; // Using a class instead of ID!
+                userTab.innerText = '📁 User Stickers';
+                userTab.onclick = function() { loadStickerCategory('userStickers', this); };
+                // Inject it at the very beginning of the tab list
+                tabsContainer.insertBefore(userTab, tabsContainer.firstChild);
+            }
+            userTab.style.setProperty('display', 'inline-block', 'important');
+        } else if (userTab) {
+            userTab.style.setProperty('display', 'none', 'important');
+        }
+    });
+
+    const grid = document.getElementById('stickerGrid');
+    
+    if (grid.innerHTML === '') {
+        if (shouldShowTab) {
+            // Find the newly injected tab in the active DOM and click it
+            const activeUserTabs = document.querySelectorAll('.tab-user-stickers');
+            if (activeUserTabs.length > 0) {
+                loadStickerCategory('userStickers', activeUserTabs[activeUserTabs.length - 1]);
+            }
+        } else {
+            const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
+            if (customTabBtn) loadStickerCategory('custom', customTabBtn); 
+        }
+    }
+    
+    document.getElementById('stickerDrawer').style.display = 'flex';
+    requestAnimationFrame(() => {
+        document.getElementById('stickerDrawer').classList.add('open');
+    });
+}
+
+function closeStickerDrawer() {
+    document.getElementById('stickerDrawer').classList.remove('open');
+    setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
+}
 function closeStickerDrawer() {
     document.getElementById('stickerDrawer').classList.remove('open');
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
