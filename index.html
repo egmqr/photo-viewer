@@ -1714,16 +1714,34 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
-    // 🟢 100% Case-Insensitive URL Check
-    const isUrlEnabled = window.location.href.toLowerCase().includes('userstickers=true');
+    // 1. 100% Case-Insensitive URL Check
+    const currentUrl = window.location.href.toLowerCase();
+    const isUrlEnabled = currentUrl.includes('userstickers=true');
     const isApiEnabled = window.githubStickersFound === true;
     const shouldShowTab = isUrlEnabled || isApiEnabled;
     
-    const userTabBtn = document.getElementById('tabUserStickers');
-    if (userTabBtn) {
-        userTabBtn.style.display = shouldShowTab ? 'inline-block' : 'none';
+    // 2. Find or Auto-Create the Tab!
+    const tabsContainer = document.getElementById('stickerTabs');
+    let userTabBtn = document.getElementById('tabUserStickers');
+    
+    if (shouldShowTab && !userTabBtn && tabsContainer) {
+        // The button was missing from HTML, so we construct it instantly!
+        userTabBtn = document.createElement('button');
+        userTabBtn.id = 'tabUserStickers';
+        userTabBtn.className = 'sticker-tab';
+        userTabBtn.innerText = '📁 User Stickers';
+        userTabBtn.onclick = function() { loadStickerCategory('userStickers', this); };
+        
+        // Inject it as the very first tab
+        tabsContainer.insertBefore(userTabBtn, tabsContainer.firstChild);
     }
 
+    // Force it visible if it exists
+    if (userTabBtn) {
+        userTabBtn.style.setProperty('display', shouldShowTab ? 'inline-block' : 'none', 'important');
+    }
+
+    // 3. Load the correct sticker grid
     const grid = document.getElementById('stickerGrid');
     
     if (grid.innerHTML === '') {
