@@ -82,11 +82,26 @@
     #doodleColor::-webkit-color-swatch { border-radius: 50%; border: 2px solid white; }
     
     .editor-toolbar {
-      padding: 15px; background: #111; display: flex; justify-content: space-around;
+      padding: 15px 10px; background: #111; display: flex; justify-content: space-around;
       padding-bottom: max(15px, env(safe-area-inset-bottom)); z-index: 11;
     }
-    .tool-btn { background: #222; color: white; border: 1px solid #333; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; justify-content: center; align-items: center; transition: 0.2s; cursor: pointer; }
+    .toolbar-item { 
+      display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; 
+    }
+    .tool-label { 
+      color: #aaa; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; 
+    }
+    .tool-btn { 
+      background: #222; color: white; border: 1px solid #333; padding: 10px; border-radius: 50%; 
+      width: 50px; height: 50px; font-size: 20px; display: flex; justify-content: center; 
+      align-items: center; transition: 0.2s; 
+    }
     .tool-btn.active { background: #0d9488; border-color: #5eead4; }
+
+    /* 🟢 THE FIX: When drawing is active, make stickers completely invisible to touch! */
+    #stickerContainer.drawing-locked .editor-sticker {
+      pointer-events: none !important;
+    }
 /* 🟢 STICKER LAYER CONTROLS & TOUCH TARGETS */
     .editor-sticker { 
       position: absolute; object-fit: contain; pointer-events: auto; 
@@ -539,11 +554,26 @@
     </div>
 
     <div class="editor-toolbar">
-      <div class="tool-btn active" id="btnDraw" onclick="toggleDrawMode()" title="Draw"><span style="font-size:22px;">🖍️</span></div>
-      <div class="tool-btn" onclick="openTextEditor()" title="Add Text"><span style="font-size:22px;">🔤</span></div>
-      <div class="tool-btn" onclick="openStickerDrawer()" title="Stickers"><span style="font-size:22px;">🌟</span></div>
-      <div class="tool-btn" onclick="undoLastAction()" title="Undo"><span style="font-size:22px;">↩️</span></div>
-      <div class="tool-btn" onclick="handleDelete()" title="Delete"><span style="font-size:22px;">🗑️</span></div>
+      <div class="toolbar-item" onclick="toggleDrawMode()">
+        <div class="tool-btn active" id="btnDraw"><span style="font-size:22px;">🖍️</span></div>
+        <span class="tool-label">Draw</span>
+      </div>
+      <div class="toolbar-item" onclick="openTextEditor()">
+        <div class="tool-btn"><span style="font-size:22px;">🔤</span></div>
+        <span class="tool-label">Text</span>
+      </div>
+      <div class="toolbar-item" onclick="openStickerDrawer()">
+        <div class="tool-btn"><span style="font-size:22px;">🌟</span></div>
+        <span class="tool-label">Stickers</span>
+      </div>
+      <div class="toolbar-item" onclick="undoLastAction()">
+        <div class="tool-btn"><span style="font-size:22px;">↩️</span></div>
+        <span class="tool-label">Undo</span>
+      </div>
+      <div class="toolbar-item" onclick="handleDelete()">
+        <div class="tool-btn"><span style="font-size:22px;">🗑️</span></div>
+        <span class="tool-label">Delete</span>
+      </div>
     </div>
   </div>
 
@@ -1192,6 +1222,7 @@ function toggleDrawMode() {
     const btn = document.getElementById('btnDraw');
     const tools = document.getElementById('drawTools');
     const dCanvas = document.getElementById('doodleCanvas');
+    const sContainer = document.getElementById('stickerContainer');
     
     btn.classList.toggle('active', isDrawMode);
     
@@ -1199,13 +1230,18 @@ function toggleDrawMode() {
         dCanvas.style.pointerEvents = 'auto';
         tools.style.display = 'flex';
         
-        // 🟢 THE FIX: Aggressively hide sticker tools and deselect stickers when drawing!
         document.getElementById('stickerTools').style.display = 'none';
         document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
         window.activeSticker = null;
+        
+        // 🟢 THE FIX: Lock the sticker layer so fingers pass through it to the drawing canvas
+        sContainer.classList.add('drawing-locked');
     } else {
         dCanvas.style.pointerEvents = 'none';
         tools.style.display = 'none';
+        
+        // 🟢 THE FIX: Unlock the stickers so they can be dragged again
+        sContainer.classList.remove('drawing-locked');
         makeDoodleSticker(); 
     }
 }
@@ -1593,6 +1629,9 @@ function updateActiveSticker() {
 // 🟢 MASTER STICKER ENGINE (With Slider Integration & Memory Optimization)
 function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
     closeStickerDrawer();
+    
+    // (Notice we keep this logic here! Opening the drawer already turns draw mode off, 
+    // but just in case, this safely ensures draw mode toggles off when dropping a sticker).
     if (isDrawMode) toggleDrawMode();
 
     const img = document.createElement('img');
@@ -1602,14 +1641,12 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     img.style.width = sWidth + 'px';
     img.style.height = sHeight + 'px';
     
-    // Store original sizes for slider math
     img.dataset.baseW = sWidth;
     img.dataset.baseH = sHeight;
     img.dataset.scale = 1;
     img.dataset.rot = 0;
 
     const container = document.getElementById('stickerContainer');
-    
     document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
 
     if (forceX !== null && forceY !== null) {
@@ -1624,14 +1661,15 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     let startX, startY, initialLeft, initialTop;
 
     const startDrag = (e) => {
+        // 🟢 DOUBLE PROTECTION: If Draw Mode is ON, absolutely ignore sticker drags!
+        if (isDrawMode) return; 
+        
         e.preventDefault();
         
-        // Select Sticker & Add dragging class to disable heavy CSS filters
         document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
         img.classList.add('active', 'is-dragging');
-        container.appendChild(img); // Bring to front
+        container.appendChild(img); 
         
-        // Sync & Show Sliders
         window.activeSticker = img;
         document.getElementById('stickerTools').style.display = 'flex';
         document.getElementById('stickerScale').value = img.dataset.scale || 1;
@@ -1643,7 +1681,6 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
         initialLeft = parseFloat(img.style.left) || 0;
         initialTop = parseFloat(img.style.top) || 0;
 
-        // 🟢 CRITICAL FIX: Only attach global listeners WHEN a drag starts
         window.addEventListener('mousemove', doDrag);
         window.addEventListener('mouseup', stopDrag);
         window.addEventListener('touchmove', doDrag, {passive: false});
