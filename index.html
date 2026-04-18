@@ -671,7 +671,8 @@
       <strong style="color:white;">Photobooth Props</strong>
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
-    <div class="sticker-tabs" id="stickerTabs">
+   <div class="sticker-tabs" id="stickerTabs">
+      <button class="sticker-tab" id="tabUserStickers" style="display: none;" onclick="loadStickerCategory('userStickers', this)">📁 User Stickers</button>
       
       <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
       <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🖼️ Placeholders</button>
@@ -813,14 +814,20 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 SMART AUTO-DETECT & URL SCANNER
+      // 🟢 SMART AUTO-DETECT & URL SCANNER (Case-Insensitive Fix!)
       const rawEventId = urlParams.get('id') || '';
-      const galleryEventId = rawEventId.toLowerCase().trim(); // Force lowercase for GitHub API!
+      const galleryEventId = rawEventId.toLowerCase().trim(); 
       
-      // Check if it's explicitly in the URL
-      const urlHasStickers = window.location.search.toLowerCase().includes('userstickers=true');
+      // Converts the entire URL to lowercase so it NEVER misses the parameter!
+      const urlHasStickers = window.location.href.toLowerCase().includes('userstickers=true');
 
       if (galleryEventId) {
+          // If the URL has it, unhide the tab instantly without waiting for GitHub!
+          if (urlHasStickers) {
+              const userTab = document.getElementById('tabUserStickers');
+              if (userTab) userTab.style.display = 'inline-block';
+          }
+
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
             .then(res => {
                 if (!res.ok) throw new Error("Folder not found.");
@@ -828,11 +835,10 @@
             })
             .then(files => {
                 if (Array.isArray(files) && files.length > 0) {
-                    // 🟢 GITHUB SUCCESS: Force the global flag to true
                     window.githubStickersFound = true;
                     
                     const userTab = document.getElementById('tabUserStickers');
-                    if (userTab) userTab.style.setProperty('display', 'inline-block', 'important');
+                    if (userTab) userTab.style.display = 'inline-block';
                     
                     stickerCatalog.userStickers = files
                         .filter(file => file.name.toLowerCase().endsWith('.png'))
@@ -845,14 +851,8 @@
                 }
             })
             .catch(err => {
-                console.warn(`Dynamic stickers-${galleryEventId} bypassed:`, err.message);
+                console.warn(`Dynamic stickers bypassed:`, err.message);
                 window.userStickersFailed = true;
-                
-                // If GitHub failed BUT the URL says true, we still unhide the tab so they see the warning message!
-                if (urlHasStickers) {
-                    const userTab = document.getElementById('tabUserStickers');
-                    if (userTab) userTab.style.setProperty('display', 'inline-block', 'important');
-                }
             });
       }
 
@@ -1711,61 +1711,34 @@ function loadStickerCategory(category, btnElement) {
 }
 
 function openStickerDrawer() {
-    try {
-        if (isDrawMode) toggleDrawMode(); 
-        if (window.activeSticker) deselectActiveSticker(); 
-        
-        // 1. Bulletproof URL Check (Bypasses Hash Router issues)
-        const currentUrl = window.location.href.toLowerCase();
-        const isUrlEnabled = currentUrl.includes('userstickers=true');
-        const isApiEnabled = window.githubStickersFound === true;
-        const shouldShowTab = isUrlEnabled || isApiEnabled;
-        
-        // 2. The Nuclear Option: Dynamically inject the button into ALL tab containers
-        document.querySelectorAll('.sticker-tabs').forEach(tabsContainer => {
-            let userTab = tabsContainer.querySelector('.tab-user-stickers');
-            
-            if (shouldShowTab) {
-                // If it doesn't exist in this container, create it!
-                if (!userTab) {
-                    userTab = document.createElement('button');
-                    userTab.className = 'sticker-tab tab-user-stickers'; 
-                    userTab.innerText = '📁 User Stickers';
-                    userTab.onclick = function() { loadStickerCategory('userStickers', this); };
-                    // Inject it at the very beginning of the tab list
-                    tabsContainer.insertBefore(userTab, tabsContainer.firstChild);
-                }
-                userTab.style.setProperty('display', 'inline-block', 'important');
-            } else if (userTab) {
-                userTab.style.setProperty('display', 'none', 'important');
-            }
-        });
-
-        const grid = document.getElementById('stickerGrid');
-        
-        if (grid.innerHTML === '') {
-            if (shouldShowTab) {
-                // Find the newly injected tab in the active DOM and click it
-                const activeUserTabs = document.querySelectorAll('.tab-user-stickers');
-                if (activeUserTabs.length > 0) {
-                    loadStickerCategory('userStickers', activeUserTabs[activeUserTabs.length - 1]);
-                }
-            } else {
-                const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
-                if (customTabBtn) loadStickerCategory('custom', customTabBtn); 
-            }
-        }
-        
-        document.getElementById('stickerDrawer').style.display = 'flex';
-        requestAnimationFrame(() => {
-            document.getElementById('stickerDrawer').classList.add('open');
-        });
-        
-    } catch (err) {
-        // If anything crashes, it tells us exactly why instead of doing nothing!
-        console.error(err);
-        alert("Editor Error: " + err.message);
+    if (isDrawMode) toggleDrawMode(); 
+    if (window.activeSticker) deselectActiveSticker(); 
+    
+    // 🟢 100% Case-Insensitive URL Check
+    const isUrlEnabled = window.location.href.toLowerCase().includes('userstickers=true');
+    const isApiEnabled = window.githubStickersFound === true;
+    const shouldShowTab = isUrlEnabled || isApiEnabled;
+    
+    const userTabBtn = document.getElementById('tabUserStickers');
+    if (userTabBtn) {
+        userTabBtn.style.display = shouldShowTab ? 'inline-block' : 'none';
     }
+
+    const grid = document.getElementById('stickerGrid');
+    
+    if (grid.innerHTML === '') {
+        if (shouldShowTab && userTabBtn) {
+            loadStickerCategory('userStickers', userTabBtn); 
+        } else {
+            const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
+            if (customTabBtn) loadStickerCategory('custom', customTabBtn); 
+        }
+    }
+    
+    document.getElementById('stickerDrawer').style.display = 'flex';
+    requestAnimationFrame(() => {
+        document.getElementById('stickerDrawer').classList.add('open');
+    });
 }
 
 function closeStickerDrawer() {
