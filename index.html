@@ -701,6 +701,7 @@
     const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
 
     window.onload = () => {
+      
       // 🟢 THE FIX: Aggressive In-App Browser Detection
       const isAppBrowser = /FBAN|FBAV|Messenger|Instagram|Line|Snapchat|TikTok|MicroMessenger/i.test(navigator.userAgent);
       
@@ -805,6 +806,36 @@
             }
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
+        // 🟢 NEW: DYNAMIC USER STICKERS SCANNER
+      const galleryEventId = urlParams.get('id');
+      const isUserStickersEnabled = urlParams.get('userStickers') === 'true';
+
+      if (isUserStickersEnabled && galleryEventId) {
+          // 1. Unhide the tab
+          const userTab = document.getElementById('tabUserStickers');
+          if (userTab) userTab.style.display = 'block';
+
+          // 2. Fetch from the dynamic URL (e.g., stickers-egm0015)
+          fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
+            .then(res => {
+                if (!res.ok) throw new Error("Folder not found or empty.");
+                return res.json();
+            })
+            .then(files => {
+                if (Array.isArray(files)) {
+                    stickerCatalog.userStickers = files
+                        .filter(file => file.name.toLowerCase().endsWith('.png'))
+                        .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${galleryEventId}/${file.name}`);
+                    
+                    // Refresh if drawer is already open to this tab
+                    if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
+                        delete stickerCache['userStickers']; 
+                        loadStickerCategory('userStickers', document.querySelector('.sticker-tab.active'));
+                    }
+                }
+            })
+            .catch(err => console.warn(`Dynamic stickers-${galleryEventId} not loaded:`, err.message));
+         }
       }
 
       if (!targetFolderId) {
@@ -1635,7 +1666,15 @@ function loadStickerCategory(category, btnElement) {
         grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">${loadingText}<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>`;
         return; 
     }
-
+// Add 'userStickers' to the loading check array
+    if ((category === 'userStickers' || category === 'custom' || category === 'glasses') && stickerCatalog[category].length === 0) {
+        let loadingText = 'Fetching Custom Props...';
+        if (category === 'glasses') loadingText = 'Fetching Placeholders...';
+        if (category === 'userStickers') loadingText = 'Fetching Event Stickers...';
+        
+        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">${loadingText}<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>`;
+        return; 
+    }
     let html = '';
     stickerCatalog[category].forEach(code => {
         const url = (code.startsWith('http')) 
@@ -1651,14 +1690,20 @@ function loadStickerCategory(category, btnElement) {
 
 function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
-    // 🟢 THE FIX: Auto-exit sticker mode if we click the Star tool!
     if (window.activeSticker) deselectActiveSticker(); 
     
     const grid = document.getElementById('stickerGrid');
     if (grid.innerHTML === '') {
-        // 🟢 THE FIX: Strictly find and click the "Custom" tab button!
-        const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
-        loadStickerCategory('custom', customTabBtn); 
+        // 🟢 THE FIX: Smart Default Tab Selection
+        const isUserStickersEnabled = new URLSearchParams(window.location.search).get('userStickers') === 'true';
+        
+        if (isUserStickersEnabled) {
+            const userTabBtn = document.getElementById('tabUserStickers');
+            loadStickerCategory('userStickers', userTabBtn); 
+        } else {
+            const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
+            loadStickerCategory('custom', customTabBtn); 
+        }
     }
     
     document.getElementById('stickerDrawer').style.display = 'flex';
