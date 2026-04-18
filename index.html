@@ -706,19 +706,17 @@
       const isAppBrowser = /FBAN|FBAV|Messenger|Instagram|Line|Snapchat|TikTok|MicroMessenger/i.test(navigator.userAgent);
       
       if (isAppBrowser) {
-          // Instantly show the warning and kill the background loaders
           document.getElementById('inAppBrowserWarning').style.display = 'flex';
           const bgLoader = document.getElementById('background-loader');
           if (bgLoader) bgLoader.style.display = 'none';
-          
-          return; // 🛑 CRITICAL: This stops the rest of window.onload from executing, saving memory!
+          return; 
       }
-      // Show Community UI if applicable
+
+      // --- COMMUNITY UI ---
       if (isCommunityBooth) {
           document.getElementById('communityUploadBtn').style.display = 'flex';
           document.getElementById('searchContainer').style.display = 'none';
           
-          // 🟢 NEW: Clean Template Fetcher (No DOM hacks needed!)
           fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
           .then(res => res.json())
           .then(async res => {
@@ -726,13 +724,11 @@
                   for (let t of res.data) {
                       let largestImage = null;
                       let maxArea = 0;
-                      
                       let imageLayers = t.Layers.filter(l => l.ImageBase64 || l.base64 || l.ImagePath || l.src);
                       
                       for (let layer of imageLayers) {
                           await new Promise((resolve) => {
                               const tempImg = new Image();
-                              
                               let rawSrc = layer.ImageBase64 || layer.base64 || layer.ImagePath || layer.src;
                               if (rawSrc) {
                                   if (rawSrc.startsWith('http')) {
@@ -772,8 +768,11 @@
               }
           })
           .catch(err => console.error("Template fetch error:", err));
-        // 🟢 SILENT GITHUB FOLDER SCANNER
-      // Scans your repo folder and auto-generates blazing-fast jsDelivr CDN links!
+      } 
+      // 🟢 THE FIX: CLOSING THE `if (isCommunityBooth)` BRACKET HERE SO SCANNERS RUN FOR EVERYONE!
+
+      // --- STICKER SCANNERS ---
+      
       fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers01')
         .then(res => res.json())
         .then(files => {
@@ -782,7 +781,6 @@
                     .filter(file => file.name.toLowerCase().endsWith('.png'))
                     .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers01/${file.name}`);
                 
-                // If the drawer is already open and looking at the Custom tab, instantly refresh it!
                 if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Custom')) {
                     delete stickerCache['custom']; 
                     loadStickerCategory('custom', document.querySelector('.sticker-tab.active'));
@@ -790,7 +788,8 @@
             }
         })
         .catch(err => console.error("Failed to load GitHub stickers:", err));
-        fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers02')
+
+      fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers02')
         .then(res => res.json())
         .then(files => {
             if (Array.isArray(files)) {
@@ -798,7 +797,6 @@
                     .filter(file => file.name.toLowerCase().endsWith('.png'))
                     .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers02/${file.name}`);
                 
-                // Refresh if the drawer is open to the Placeholders tab
                 if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Placeholders')) {
                     delete stickerCache['glasses']; 
                     loadStickerCategory('glasses', document.querySelector('.sticker-tab.active'));
@@ -806,18 +804,15 @@
             }
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
-      
 
-        // 🟢 NEW: DYNAMIC USER STICKERS SCANNER
+      // 🟢 DYNAMIC USER STICKERS SCANNER
       const galleryEventId = urlParams.get('id');
       const isUserStickersEnabled = urlParams.get('userStickers') === 'true';
 
       if (isUserStickersEnabled && galleryEventId) {
-          // 1. Unhide the tab (use inline-block for flex compatibility)
           const userTab = document.getElementById('tabUserStickers');
-          if (userTab) userTab.style.display = 'inline-block';
+          if (userTab) userTab.style.display = 'block'; // 🟢 Force the tab visible!
 
-          // 2. Fetch from the dynamic URL (e.g., stickers-egm0015)
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
             .then(res => {
                 if (!res.ok) throw new Error("Folder not found or empty.");
@@ -837,13 +832,14 @@
             })
             .catch(err => {
                 console.warn(`Dynamic stickers-${galleryEventId} not loaded:`, err.message);
-                // 🟢 THE FIX: Stop the infinite loading spinner if the folder doesn't exist yet!
+                // 🟢 THE FIX: Flag it as failed so the drawer doesn't spin forever!
+                window.userStickersFailed = true;
+                
                 const grid = document.getElementById('stickerGrid');
                 if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                     grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${galleryEventId}' on GitHub.</span></div>`;
                 }
             });
-      }
       }
 
       if (!targetFolderId) {
