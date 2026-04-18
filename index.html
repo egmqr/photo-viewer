@@ -814,8 +814,8 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 DYNAMIC USER STICKERS SCANNER (Strictly uses eventId)
-      const rawEventId = urlParams.get('eventId') || ''; 
+      // 🟢 DYNAMIC USER STICKERS SCANNER (Strictly uses 'id' or 'eventId')
+      const rawEventId = urlParams.get('id') || urlParams.get('eventId') || ''; 
       const galleryEventId = rawEventId.toLowerCase().trim(); 
 
       const isUserStickersEnabled = urlParams.get('userStickers') === 'true' || window.location.href.toLowerCase().includes('userstickers=true');
@@ -853,7 +853,6 @@
                 }
             });
       } else {
-          // If no valid eventId was found, flag it so the drawer doesn't spin infinitely
           window.userStickersFailed = true;
       }
 
@@ -1679,9 +1678,9 @@ function loadStickerCategory(category, btnElement) {
         return;
     }
 
-    // 🟢 THE FIX: Prevent infinite loading and explicitly show the eventId!
+    // 🟢 THE FIX: Prevent infinite loading and explicitly show the ID!
     if (category === 'userStickers' && window.userStickersFailed) {
-        const rawEvId = new URLSearchParams(window.location.search).get('eventId') || 'UNKNOWN';
+        const rawEvId = new URLSearchParams(window.location.search).get('id') || new URLSearchParams(window.location.search).get('eventId') || 'UNKNOWN';
         const evId = rawEvId.toLowerCase().trim();
         
         grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${evId}' on GitHub.</span></div>`;
