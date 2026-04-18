@@ -129,6 +129,10 @@
       border-radius: 12px;
       z-index: 100 !important;
     }
+    /* 🟢 THE FIX: Locks inactive stickers so you don't accidentally grab them */
+    .locked-sticker {
+      pointer-events: none !important;
+    }
     /* TEXT LIGHTBOX */
    .text-sticker-modal {
       background: #1e1e1e; border-radius: 20px; padding: 24px; width: 90%; max-width: 350px;
@@ -542,14 +546,9 @@
       </div>
       
       <div id="stickerTools">
-        <div class="tool-group">
-          <label>Scale</label>
-          <input type="range" id="stickerScale" min="0.2" max="4" step="0.1" value="1" oninput="updateActiveSticker()">
-        </div>
-        <div class="tool-group">
-          <label>Rotate</label>
-          <input type="range" id="stickerRotate" min="-180" max="180" value="0" oninput="updateActiveSticker()">
-        </div>
+        <button class="btn btn-success w-100 fw-bold shadow-lg" style="max-width: 300px; border-radius: 30px; font-size: 16px; pointer-events: auto;" onclick="deselectActiveSticker()">
+          <i class="bi bi-check-circle-fill me-1"></i> Done Adjusting
+        </button>
       </div>
     </div>
 
@@ -1347,8 +1346,7 @@ function undoLastAction() {
             
             // Hide the slider tools if we just undid the sticker we were actively touching
             if (window.activeSticker === lastEl) {
-                window.activeSticker = null;
-                document.getElementById('stickerTools').style.display = 'none';
+                deselectActiveSticker();
             }
             break; // Stop after successfully undoing exactly 1 action!
         }
@@ -1376,11 +1374,9 @@ function showCustomDialog(title, message, isConfirm, onConfirmCallback) {
 }
 
 function handleDelete() {
-    // 1. Only delete the selected sticker
-    if (window.activeSticker) {
+   if (window.activeSticker) {
         window.activeSticker.remove();
-        document.getElementById('stickerTools').style.display = 'none';
-        window.activeSticker = null;
+        deselectActiveSticker(); // Safely unlock everything else
     } else {
         // 2. Ask to clear everything using the NEW custom UI!
         showCustomDialog("Clear Everything?", "Are you sure you want to delete all stickers and doodles?", true, () => {
@@ -1577,61 +1573,27 @@ function closeStickerDrawer() {
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
 }
 
-// 🟢 DESELECT STICKERS & HIDE TOOLS
+// 🟢 DESELECT STICKERS ON CANVAS TAP
 document.getElementById('editorCanvasContainer').addEventListener('mousedown', (e) => {
-    if (e.target.id === 'doodleCanvas') {
-        document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
-        document.getElementById('stickerTools').style.display = 'none';
-        window.activeSticker = null;
-    }
+    if (e.target.id === 'doodleCanvas') deselectActiveSticker();
 });
 document.getElementById('editorCanvasContainer').addEventListener('touchstart', (e) => {
-    if (e.target.id === 'doodleCanvas') {
-        document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
-        document.getElementById('stickerTools').style.display = 'none';
-        window.activeSticker = null;
-    }
+    if (e.target.id === 'doodleCanvas') deselectActiveSticker();
 }, {passive: true});
 
-window.activeSticker = null;
-
-// 🟢 SLIDER SYNC LOGIC
-function updateActiveSticker() {
-    if (!window.activeSticker) return;
-    
-    const scale = parseFloat(document.getElementById('stickerScale').value);
-    const rot = parseFloat(document.getElementById('stickerRotate').value);
-    
-    const baseW = parseFloat(window.activeSticker.dataset.baseW);
-    const baseH = parseFloat(window.activeSticker.dataset.baseH);
-    
-    const oldW = parseFloat(window.activeSticker.style.width);
-    const oldH = parseFloat(window.activeSticker.style.height);
-    
-    const newW = baseW * scale;
-    const newH = baseH * scale;
-    
-    // Adjust Left/Top to keep it centered while scaling
-    let currentLeft = parseFloat(window.activeSticker.style.left);
-    let currentTop = parseFloat(window.activeSticker.style.top);
-    
-    window.activeSticker.style.left = (currentLeft - ((newW - oldW) / 2)) + 'px';
-    window.activeSticker.style.top = (currentTop - ((newH - oldH) / 2)) + 'px';
-    
-    window.activeSticker.style.width = newW + 'px';
-    window.activeSticker.style.height = newH + 'px';
-    window.activeSticker.style.transform = `rotate(${rot}deg)`;
-    
-    window.activeSticker.dataset.scale = scale;
-    window.activeSticker.dataset.rot = rot;
+// 🟢 NEW: Global Helper to unlock stickers and close the banner
+function deselectActiveSticker() {
+    document.querySelectorAll('.editor-sticker').forEach(el => {
+        el.classList.remove('active');
+        el.classList.remove('locked-sticker');
+    });
+    document.getElementById('stickerTools').style.display = 'none';
+    window.activeSticker = null;
 }
 
-// 🟢 MASTER STICKER ENGINE (With Slider Integration & Memory Optimization)
+// 🟢 MASTER STICKER ENGINE (With Pinch & Rotate Gestures)
 function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
     closeStickerDrawer();
-    
-    // (Notice we keep this logic here! Opening the drawer already turns draw mode off, 
-    // but just in case, this safely ensures draw mode toggles off when dropping a sticker).
     if (isDrawMode) toggleDrawMode();
 
     const img = document.createElement('img');
@@ -1647,7 +1609,12 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     img.dataset.rot = 0;
 
     const container = document.getElementById('stickerContainer');
-    document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+    
+    // Lock all existing stickers immediately!
+    document.querySelectorAll('.editor-sticker').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('locked-sticker');
+    });
 
     if (forceX !== null && forceY !== null) {
         img.style.left = forceX + 'px';
@@ -1658,28 +1625,50 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     }
 
     let isDragging = false;
+    let isPinching = false;
     let startX, startY, initialLeft, initialTop;
+    let initialDistance = 0, initialAngle = 0, startScale = 1, startRot = 0;
 
     const startDrag = (e) => {
-        // 🟢 DOUBLE PROTECTION: If Draw Mode is ON, absolutely ignore sticker drags!
         if (isDrawMode) return; 
+        
+        // Safeguard: If we are adjusting another sticker, ignore this touch
+        if (window.activeSticker && window.activeSticker !== img) return;
         
         e.preventDefault();
         
-        document.querySelectorAll('.editor-sticker').forEach(el => el.classList.remove('active'));
+        // Lock all other stickers!
+        document.querySelectorAll('.editor-sticker').forEach(el => {
+            el.classList.remove('active');
+            if (el !== img) el.classList.add('locked-sticker');
+        });
+        
         img.classList.add('active', 'is-dragging');
         container.appendChild(img); 
         
         window.activeSticker = img;
         document.getElementById('stickerTools').style.display = 'flex';
-        document.getElementById('stickerScale').value = img.dataset.scale || 1;
-        document.getElementById('stickerRotate').value = img.dataset.rot || 0;
 
-        isDragging = true;
-        startX = e.touches ? e.touches[0].clientX : e.clientX;
-        startY = e.touches ? e.touches[0].clientY : e.clientY;
-        initialLeft = parseFloat(img.style.left) || 0;
-        initialTop = parseFloat(img.style.top) || 0;
+        // 🟢 TWO FINGERS: Enter Pinch/Rotate Mode
+        if (e.touches && e.touches.length === 2) {
+            isPinching = true;
+            isDragging = false;
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            initialDistance = Math.hypot(dx, dy);
+            initialAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+            startScale = parseFloat(img.dataset.scale) || 1;
+            startRot = parseFloat(img.dataset.rot) || 0;
+        } 
+        // 🟢 ONE FINGER: Standard Drag
+        else {
+            isDragging = true;
+            isPinching = false;
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            initialLeft = parseFloat(img.style.left) || 0;
+            initialTop = parseFloat(img.style.top) || 0;
+        }
 
         window.addEventListener('mousemove', doDrag);
         window.addEventListener('mouseup', stopDrag);
@@ -1688,20 +1677,62 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     };
 
     const doDrag = (e) => {
-        if (!isDragging) return;
+        if (isDrawMode) return;
         e.preventDefault();
         
-        const currentX = e.touches ? e.touches[0].clientX : e.clientX;
-        const currentY = e.touches ? e.touches[0].clientY : e.clientY;
-        img.style.left = (initialLeft + (currentX - startX)) + 'px';
-        img.style.top = (initialTop + (currentY - startY)) + 'px';
+        // 🟢 CALCULATE PINCH & ROTATE
+        if (e.touches && e.touches.length === 2) {
+            isPinching = true;
+            isDragging = false;
+            
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const distance = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+            if (!initialDistance) {
+                initialDistance = distance;
+                initialAngle = angle;
+                startScale = parseFloat(img.dataset.scale) || 1;
+                startRot = parseFloat(img.dataset.rot) || 0;
+            }
+
+            const scaleDiff = distance / initialDistance;
+            const newScale = Math.max(0.2, Math.min(startScale * scaleDiff, 6)); // Prevents scaling into infinity
+            const angleDiff = angle - initialAngle;
+            const newRot = startRot + angleDiff;
+
+            img.dataset.scale = newScale;
+            img.dataset.rot = newRot;
+            img.style.transform = `scale(${newScale}) rotate(${newRot}deg)`;
+        } 
+        // 🟢 CALCULATE DRAG
+        else if (isDragging) {
+            const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+            const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+            img.style.left = (initialLeft + (currentX - startX)) + 'px';
+            img.style.top = (initialTop + (currentY - startY)) + 'px';
+        }
     };
 
-    const stopDrag = () => { 
-        isDragging = false; 
-        img.classList.remove('is-dragging'); // Restore drop-shadow
+    const stopDrag = (e) => { 
+        // If they lifted one finger but still have one held down, cleanly transition back to drag mode
+        if (e && e.touches && e.touches.length > 0) {
+            isPinching = false;
+            isDragging = true;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            initialLeft = parseFloat(img.style.left) || 0;
+            initialTop = parseFloat(img.style.top) || 0;
+            initialDistance = 0; 
+            return;
+        }
 
-        // 🟢 CRITICAL FIX: Kill the global listeners so they don't pile up and lag the phone!
+        isDragging = false; 
+        isPinching = false;
+        initialDistance = 0;
+        img.classList.remove('is-dragging'); 
+
         window.removeEventListener('mousemove', doDrag);
         window.removeEventListener('mouseup', stopDrag);
         window.removeEventListener('touchmove', doDrag);
@@ -1712,15 +1743,11 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     img.addEventListener('touchstart', startDrag, {passive: false});
 
     container.appendChild(img);
-    
-    // 🟢 NEW: Log this sticker into our chronological history tracker!
     actionHistory.push(img);
     
     // Auto-select immediately upon adding
     window.activeSticker = img;
     document.getElementById('stickerTools').style.display = 'flex';
-    document.getElementById('stickerScale').value = 1;
-    document.getElementById('stickerRotate').value = 0;
 }
 
 // --- FINAL MERGE & HANDOFF ---
@@ -1750,7 +1777,7 @@ function saveAndSubmitEdit() {
     const scaleX = origW / containerRect.width;
     const scaleY = origH / containerRect.height;
 
-    // 3. Draw Stickers (With Rotation Math)
+    // 3. Draw Stickers (With Scale & Rotation Math)
     const stickers = document.querySelectorAll('.editor-sticker');
     stickers.forEach(sticker => {
         const sLeft = parseFloat(sticker.style.left) || 0;
@@ -1763,8 +1790,11 @@ function saveAndSubmitEdit() {
         
         const finalCenterX = centerX * scaleX;
         const finalCenterY = centerY * scaleY;
-        const finalStickerW = sW * scaleX;
-        const finalStickerH = sH * scaleY;
+        
+        // 🟢 THE FIX: Extract the pinch scale and multiply the final canvas size!
+        const stickerScale = parseFloat(sticker.dataset.scale || 1);
+        const finalStickerW = sW * scaleX * stickerScale;
+        const finalStickerH = sH * scaleY * stickerScale;
         
         const rot = parseFloat(sticker.dataset.rot || 0) * (Math.PI / 180);
 
