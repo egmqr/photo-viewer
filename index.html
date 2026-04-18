@@ -672,7 +672,7 @@
       <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
     </div>
     <div class="sticker-tabs" id="stickerTabs">
-      <button class="sticker-tab" id="tabUserStickers" onclick="loadStickerCategory('userStickers', this)">📁 User Stickers</button>
+      <button class="sticker-tab" id="tabUserStickers" style="display: none;" onclick="loadStickerCategory('userStickers', this)">📁 User Stickers</button>
       
       <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
       <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🖼️ Placeholders</button>
@@ -814,9 +814,12 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 SMART AUTO-DETECT STICKER SCANNER
-      // Bypasses fragile URL parameters. If the folder exists on GitHub, we show the tab automatically!
-      const galleryEventId = urlParams.get('id');
+      // 🟢 SMART AUTO-DETECT & URL SCANNER
+      const rawEventId = urlParams.get('id') || '';
+      const galleryEventId = rawEventId.toLowerCase().trim(); // Force lowercase for GitHub API!
+      
+      // Check if it's explicitly in the URL
+      const urlHasStickers = window.location.search.toLowerCase().includes('userstickers=true');
 
       if (galleryEventId) {
           fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${galleryEventId}`)
@@ -826,17 +829,16 @@
             })
             .then(files => {
                 if (Array.isArray(files) && files.length > 0) {
-                    // 1. Folder exists and has files! Force the tab visible globally!
-                    document.body.classList.add('show-user-stickers');
-                    const userTab = document.getElementById('tabUserStickers');
-                    if (userTab) userTab.style.display = 'inline-block';
+                    // 🟢 GITHUB SUCCESS: Force the global flag to true
+                    window.githubStickersFound = true;
                     
-                    // 2. Populate the catalog
+                    const userTab = document.getElementById('tabUserStickers');
+                    if (userTab) userTab.style.setProperty('display', 'inline-block', 'important');
+                    
                     stickerCatalog.userStickers = files
                         .filter(file => file.name.toLowerCase().endsWith('.png'))
                         .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${galleryEventId}/${file.name}`);
                     
-                    // 3. Auto-refresh if drawer is open
                     if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                         delete stickerCache['userStickers']; 
                         loadStickerCategory('userStickers', document.querySelector('.sticker-tab.active'));
@@ -846,6 +848,12 @@
             .catch(err => {
                 console.warn(`Dynamic stickers-${galleryEventId} bypassed:`, err.message);
                 window.userStickersFailed = true;
+                
+                // If GitHub failed BUT the URL says true, we still unhide the tab so they see the warning message!
+                if (urlHasStickers) {
+                    const userTab = document.getElementById('tabUserStickers');
+                    if (userTab) userTab.style.setProperty('display', 'inline-block', 'important');
+                }
             });
       }
 
@@ -1704,15 +1712,29 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
+    // 🟢 BULLETPROOF TAB UNHIDER
+    // 1. Is it in the URL?
+    const isUrlEnabled = window.location.search.toLowerCase().includes('userstickers=true');
+    // 2. Did GitHub find the folder?
+    const isApiEnabled = window.githubStickersFound === true;
+    
+    const shouldShowTab = isUrlEnabled || isApiEnabled;
+    const userTabBtn = document.getElementById('tabUserStickers');
+    
+    if (userTabBtn) {
+        if (shouldShowTab) {
+            // Brute force the CSS
+            userTabBtn.style.cssText = "display: inline-block !important;";
+        } else {
+            userTabBtn.style.cssText = "display: none !important;";
+        }
+    }
+    
     const grid = document.getElementById('stickerGrid');
     
     if (grid.innerHTML === '') {
-        // 🟢 THE FIX: If the GitHub scan was successful, it applied the class. Open the tab!
-        if (document.body.classList.contains('show-user-stickers')) {
-            const userTabs = document.querySelectorAll('#tabUserStickers');
-            if (userTabs.length > 0) {
-                loadStickerCategory('userStickers', userTabs[userTabs.length - 1]); 
-            }
+        if (shouldShowTab && userTabBtn) {
+            loadStickerCategory('userStickers', userTabBtn); 
         } else {
             const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
             loadStickerCategory('custom', customTabBtn); 
