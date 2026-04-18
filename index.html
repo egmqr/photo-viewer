@@ -1664,13 +1664,13 @@ function loadStickerCategory(category, btnElement) {
         return;
     }
 
-    // 🟢 THE FIX: Check if either of our dynamic tabs are still loading
-    if ((category === 'custom' || category === 'glasses') && stickerCatalog[category].length === 0) {
-        const loadingText = category === 'custom' ? 'Fetching Custom Props...' : 'Fetching Placeholders...';
-        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">${loadingText}<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>`;
-        return; 
+    // 🟢 THE FIX: Prevent infinite loading if the custom event folder doesn't exist yet!
+    if (category === 'userStickers' && window.userStickersFailed) {
+        const evId = new URLSearchParams(window.location.search).get('id');
+        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${evId}' on GitHub.</span></div>`;
+        return;
     }
-// Add 'userStickers' to the loading check array
+
     if ((category === 'userStickers' || category === 'custom' || category === 'glasses') && stickerCatalog[category].length === 0) {
         let loadingText = 'Fetching Custom Props...';
         if (category === 'glasses') loadingText = 'Fetching Placeholders...';
@@ -1679,6 +1679,7 @@ function loadStickerCategory(category, btnElement) {
         grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">${loadingText}<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>`;
         return; 
     }
+
     let html = '';
     stickerCatalog[category].forEach(code => {
         const url = (code.startsWith('http')) 
