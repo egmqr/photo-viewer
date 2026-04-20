@@ -3,603 +3,2185 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Client Gallery</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+  <title>Gallery</title>
+
   <link rel="preconnect" href="https://script.google.com" crossorigin>
   <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="preconnect" href="https://drive.google.com" crossorigin>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #111; color: white; font-family: -apple-system, sans-serif; }
-    .content-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
+    /* 🟢 BULLETPROOF TAB UNHIDER */
+    #tabUserStickers {
+      display: none; 
     }
-    .landing-page { padding: 20px; text-align: center; max-width: 800px; margin: 0 auto; }
     
-    .header-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 25px; }
-    .header-container h2 { font-size: 24px; font-weight: 600; margin: 0; color: #fff; }
-    .share-btn { background: #2a2a2a; color: white; border: 1px solid #444; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
-    .share-btn:active { background: #444; }
-    
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-    .modal-box { background: #222; border-radius: 20px; padding: 25px; width: 85%; max-width: 320px; display: flex; flex-direction: column; align-items: center; gap: 12px; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .modal-box h3 { margin: 0 0 5px 0; font-size: 18px; }
-    .qr-container { background: white; padding: 10px; border-radius: 12px; margin-bottom: 5px; }
-    .action-btn { background: #4285f4; color: white; width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; }
-    .action-btn:active { opacity: 0.8; transform: scale(0.98); }
-    .close-btn { background: transparent; color: #aaa; width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #555; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    /* When this class is on the body, the tab HAS to show up! */
+    body.show-user-stickers #tabUserStickers {
+      display: inline-block !important;
+    }
+    :root { 
+      --primary: #202124; 
+      --bg: transparent; 
+      --safe-top: env(safe-area-inset-top, 20px);
+      --safe-bottom: env(safe-area-inset-bottom, 20px);
+    }
 
-    .thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-bottom: 30px; }
-    .thumb-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid #333; background: #222; content-visibility: auto; contain-intrinsic-size: 100px; }
-    
-    .loader-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 60px; gap: 15px; width: 100%; }
-    .focus-ring { width: 44px; height: 44px; border: 3px solid rgba(66, 133, 244, 0.15); border-top: 3px solid #4285f4; border-radius: 50%; animation: spin 0.8s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite; }
-    .loader-text { color: #aaa; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; animation: pulse-text 1.5s ease-in-out infinite; }
-    
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    @keyframes pulse-text { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+    html { box-sizing: border-box; background: transparent; }
+    *, *:before, *:after { box-sizing: inherit; }
 
-    .lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background: #000; z-index: 9999; display: none; flex-direction: column; align-items:center; justify-content:center; overflow:hidden; }
-    .popout-close { position: absolute; top: max(40px, env(safe-area-inset-top)); right: max(20px, env(safe-area-inset-right)); width: 44px; height: 44px; background: rgba(255,255,255,0.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; z-index: 99999; color: #fff; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); } 
+    body { 
+      margin: 0; 
+      padding: 0; 
+      background: transparent; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      min-height: 100vh; 
+      overscroll-behavior-y: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      padding-bottom: calc(60px + var(--safe-bottom)); 
+    }
+    /* 🟢 ADVANCED EDITOR STYLES */
+    #drawTools, #stickerTools {
+      position: absolute; bottom: 0; width: 100%; display: none; 
+      justify-content: center; align-items: center; gap: 20px; z-index: 10;
+      background: rgba(15,15,15,0.9); padding: 15px 10px max(15px, env(safe-area-inset-bottom)) 10px; 
+      backdrop-filter: blur(10px); border-top: 1px solid #333;
+    }
+    .tool-group { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #ccc; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
+    /* 🟢 FAT FINGER SLIDER UPGRADES */
+    .tool-group input[type="range"],
+    .text-sticker-modal input[type="range"] {
+      -webkit-appearance: none;
+      width: 160px; /* Made the sliders much longer */
+      height: 36px; /* Massive invisible touch padding */
+      background: transparent;
+      margin: 0;
+    }
+    .confirm-sticker-btn {
+  /* Vibrant "Go Green" Gradient */
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  color: white !important;
+  border: none !important;
+  width: 56px !important;
+  height: 56px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  
+  /* Layered "Go" Glow Shadow */
+  box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.39), 
+              0 0 20px rgba(34, 197, 94, 0.2);
+  
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.confirm-sticker-btn:hover {
+  /* Brighten on hover */
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%) !important;
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+}
+
+.confirm-sticker-btn:active {
+  transform: scale(0.9);
+  filter: brightness(0.9);
+}
+
+.confirm-sticker-btn svg {
+  /* Makes the checkmark "pop" against the green */
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+}
+    .text-sticker-modal input[type="range"] { 
+      width: 100%; /* Keeps text modal slider full width */
+    }
+
+    /* 1. The Track (Thicker and easier to see) */
+    .tool-group input[type="range"]::-webkit-slider-runnable-track,
+    .text-sticker-modal input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 10px; 
+      background: #444;
+      border-radius: 5px;
+    }
+
+    /* 2. The Thumb (Giant, branded, with a white border) */
+    .tool-group input[type="range"]::-webkit-slider-thumb,
+    .text-sticker-modal input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 30px; 
+      width: 30px; 
+      border-radius: 50%;
+      background: #0d9488;
+      border: 3px solid #fff;
+      margin-top: -10px; /* Centers the thumb perfectly on the 10px track */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
     
-    .lightbox-share { position: absolute; top: max(40px, env(safe-area-inset-top)); left: max(20px, env(safe-area-inset-left)); width: 44px; height: 44px; background: rgba(255,255,255,0.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 99999; color: #fff; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); }
+    #doodleColor { width: 36px; height: 36px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0; }
+    #doodleColor::-webkit-color-swatch { border-radius: 50%; border: 2px solid white; }
     
-    .download-action { margin-top: 15px; height: 44px; padding: 0 25px; background: rgba(255,255,255,0.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; z-index: 10; color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,0.4); transition: all 0.2s; flex-shrink: 0; }
+    .editor-toolbar {
+      padding: 15px 10px; background: #111; display: flex; justify-content: space-around;
+      padding-bottom: max(15px, env(safe-area-inset-bottom)); z-index: 11;
+    }
+    .toolbar-item { 
+      display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; 
+    }
+    .tool-label { 
+      color: #aaa; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; 
+    }
+    .tool-btn { 
+      background: #222; color: white; border: 1px solid #333; padding: 10px; border-radius: 50%; 
+      width: 50px; height: 50px; font-size: 20px; display: flex; justify-content: center; 
+      align-items: center; transition: 0.2s; 
+    }
+    .tool-btn.active { background: #0d9488; border-color: #5eead4; }
+
+    /* 🟢 THE FIX: When drawing is active, make stickers completely invisible to touch! */
+    #stickerContainer.drawing-locked .editor-sticker {
+      pointer-events: none !important;
+    }
+/* 🟢 STICKER LAYER CONTROLS & TOUCH TARGETS */
+    .editor-sticker { 
+      position: absolute; pointer-events: auto; 
+      cursor: grab; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      padding: 20px; margin: -20px; 
+      box-sizing: content-box; transition: outline 0.1s;
+      will-change: left, top, transform;
+      -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translate3d(0,0,0); 
+    }
+    /* The actual image now sits inside the wrapper */
+    .editor-sticker img {
+      width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: block;
+    }
+    .editor-sticker.is-dragging { filter: none; cursor: grabbing; }
     
-    .image-stage { 
-      position: absolute; 
-      top: calc(max(40px, env(safe-area-inset-top)) + 60px); 
-      bottom: calc(190px + env(safe-area-inset-bottom)); 
-      left: 0; 
-      right: 0; 
+    .editor-sticker.active {
+      outline: 2px dashed #5eead4; outline-offset: -10px; background: rgba(255, 255, 255, 0.1); border-radius: 12px; z-index: 100 !important;
+    }
+    .locked-sticker { pointer-events: none !important; }
+
+    /* 🟢 THE INLINE DELETE BUTTON */
+    .sticker-delete-btn {
+      position: absolute;
+      top: 0px; left: 0px;
+      width: 28px; height: 28px;
+      background: #ef4444; color: white;
+      border-radius: 50%;
+      display: none; 
+      justify-content: center; align-items: center;
+      font-weight: bold; font-size: 14px;
+      cursor: pointer; z-index: 101;
+      pointer-events: auto;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      border: 2px solid white;
+    }
+    .editor-sticker.active .sticker-delete-btn {
+      display: flex; /* Only show the X when the sticker is actively selected */
+    }
+
+    /* 🟢 RESIZE HANDLES */
+    .resize-handle {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #ffffff;
+      border: 2px solid #0d9488; 
+      border-radius: 50%;
+      display: none; 
+      z-index: 102;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .editor-sticker.active .resize-handle {
+      display: block;
+    }
+
+    .nw { top: -7px; left: -7px; cursor: nw-resize; }
+    .ne { top: -7px; right: -7px; cursor: ne-resize; }
+    .sw { bottom: -7px; left: -7px; cursor: sw-resize; }
+    .se { bottom: -7px; right: -7px; cursor: se-resize; }
+
+    .resize-handle::after {
+      content: '';
+      position: absolute;
+      top: -10px; left: -10px; right: -10px; bottom: -10px;
+    }
+
+    /* 🟢 INSTAGRAM-STYLE TEXT LIGHTBOX */
+    .ig-text-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.2);
+      z-index: 100005; display: none; flex-direction: column;
+    }
+    .ig-text-header {
+      display: flex; justify-content: space-between; padding: max(15px, env(safe-area-inset-top)) 20px 10px;
+      background: #000000; 
+    }
+    .ig-text-input-wrapper {
+      flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; cursor: text;
+    }
+    #textStickerInput {
+      width: 100%; background: transparent; border: none; color: #ffffff; text-align: center;
+      font-size: 40px; font-weight: bold; outline: none; resize: none; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.2;
+      text-shadow: 0 4px 15px rgba(0,0,0,0.5); /* Helps visibility while typing */
+    }
+    #textStickerInput::placeholder { color: rgba(255,255,255,0.5); }
+    
+    .ig-text-controls {
+      background: rgba(20,20,20,0.95); border-top-left-radius: 20px; border-top-right-radius: 20px;
+      padding: 20px; padding-bottom: max(20px, env(safe-area-inset-bottom)); border-top: 1px solid #333;
+    }
+    
+    .text-controls-flex { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+    .text-row { display: flex; gap: 15px; align-items: flex-end; }
+    .text-col { flex: 1; display: flex; flex-direction: column; gap: 5px; color: white; }
+    .text-col label { font-size: 11px; color: #aaa; text-transform: uppercase; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+    .text-col select, .text-col input[type="color"] {
+      width: 100%; background: #333; color: white; border: 1px solid #444; padding: 10px;
+      border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box;
+    }
+    .text-col input[type="color"] { height: 40px; cursor: pointer; padding: 2px; }
+    .text-checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; color: #ddd; justify-content: center; cursor: pointer; }
+
+    /* STICKER DRAWER TABS */
+    #stickerDrawer { height: 400px; }
+    .sticker-tabs { display: flex; overflow-x: auto; background: #1a1a1a; padding: 10px 15px; gap: 10px; border-bottom: 1px solid #333; scrollbar-width: none; }
+    .sticker-tabs::-webkit-scrollbar { display: none; }
+    .sticker-tab { background: #333; color: #aaa; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: 0.2s; }
+    .sticker-tab.active { background: #0d9488; color: white; }
+    .sticker-grid { display: flex; flex-wrap: wrap; gap: 15px; padding: 20px; overflow-y: auto; justify-content: center; flex: 1; align-content: flex-start; }
+/* 🟢 PHOTO EDITOR MODAL STYLES */
+    #photoEditorModal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000; z-index: 100000; display: none; flex-direction: column;
+    }
+    .editor-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 15px 20px; background: #111; padding-top: max(15px, env(safe-area-inset-top));
+    }
+    .editor-btn { background: none; border: none; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .editor-btn-submit { color: #0d9488; background: #ccfbf1; padding: 6px 16px; border-radius: 20px; }
+    
+    #editorWorkspace {
+      flex: 1; position: relative; overflow: hidden; display: flex;
+      align-items: center; justify-content: center; touch-action: none;
+    }
+    
+    #editorCanvasContainer { position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    #baseCanvas { position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
+    #doodleCanvas { position: absolute; top: 0; left: 0; z-index: 2; touch-action: none; }
+    #stickerContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: hidden; }
+    
+    .editor-sticker { position: absolute; width: 100px; height: 100px; object-fit: contain; pointer-events: auto; cursor: grab; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+    .editor-sticker.active {
+      outline: 2px dashed #5eead4; outline-offset: -10px; background: rgba(255, 255, 255, 0.1); border-radius: 12px; z-index: 100 !important;
+    }
+    /* 🟢 THE FIX: Creates a massive 100px invisible touch-shield around the active sticker so you can pinch tiny images easily! */
+    .editor-sticker.active::after {
+      content: ""; position: absolute;
+      top: -100px; left: -100px; right: -100px; bottom: -100px;
+      background: transparent; z-index: -1;
+    }
+    .editor-toolbar {
+      padding: 15px; background: #111; display: flex; justify-content: space-around;
+      padding-bottom: max(15px, env(safe-area-inset-bottom));
+    }
+    .tool-btn { background: #222; color: white; border: 1px solid #333; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; justify-content: center; align-items: center; transition: 0.2s; cursor: pointer; }
+    .tool-btn.active { background: #0d9488; border-color: #5eead4; }
+
+    /* STICKER DRAWER */
+    #stickerDrawer {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: 350px;
+      background: rgba(20,20,20,0.95); backdrop-filter: blur(10px);
+      z-index: 100001; display: none; flex-direction: column;
+      border-top-left-radius: 20px; border-top-right-radius: 20px;
+      transform: translateY(100%); transition: transform 0.3s ease-out;
+    }
+    #stickerDrawer.open { transform: translateY(0); }
+    .drawer-header { display: flex; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid #333; }
+    .sticker-grid { display: flex; flex-wrap: wrap; gap: 15px; padding: 20px; overflow-y: auto; justify-content: center; }
+    .sticker-item { width: 70px; height: 70px; object-fit: contain; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 5px; transition: 0.2s; }
+    .sticker-item:active { transform: scale(0.9); }
+    /* MOBILE FLOATING SEARCH BAR & SYNC ROW */
+    .search-wrapper { 
+      position: sticky; 
+      top: 0; 
+      z-index: 100; 
+      background: rgba(255, 255, 255, 0); 
+      backdrop-filter: blur(15px); 
+      -webkit-backdrop-filter: blur(15px); 
+      padding: calc(10px + var(--safe-top)) 15px 10px 15px; 
+      border-bottom: 0.5px solid rgba(0,0,0,0.1); 
       display: flex; 
       flex-direction: column; 
-      justify-content: center; 
       align-items: center; 
-      z-index: 1; 
+      gap: 10px; 
+    }
+
+    .search-row {
+      display: flex;
+      width: 100%;
+      max-width: 600px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input-container { 
+      position: relative; 
+      width: 100%; 
+      flex-grow: 1;
+    }
+/* 🟢 IN-APP BROWSER WARNING SCREEN */
+    #inAppBrowserWarning {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #111111; color: white; z-index: 10000;
+      display: none; flex-direction: column; align-items: center; 
+      justify-content: center; padding: 30px; text-align: center;
+    }
+    .warning-icon { font-size: 60px; margin-bottom: 15px; }
+    .warning-title { font-size: 24px; font-weight: 700; margin: 0 0 10px 0; }
+    .warning-text { font-size: 16px; color: #aaaaaa; line-height: 1.5; margin-bottom: 25px; }
+    .warning-highlight { color: #0d9488; font-weight: bold; }
+    .warning-btn {
+      background: #0d9488; color: white; border: none; padding: 16px 30px;
+      font-size: 16px; border-radius: 30px; font-weight: bold; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(13, 148, 136, 0.4); transition: 0.2s; width: 100%; max-width: 300px;
+    }
+    .warning-btn:active { transform: scale(0.95); background: #0f766e; }
+    #timeSearch { 
+      width: 100%; 
+      padding: 12px 40px 12px 20px; 
+      border: none; 
+      border-radius: 24px; 
+      font-size: 16px; 
+      outline: none; 
+      background: #fff; 
+      box-sizing: border-box; 
+      color: #111;
+      transition: background 0.2s;
+    }
+    #timeSearch:focus { background: #fff; }
+    #timeSearch::placeholder { color: rgba(0,0,0,0.4); }
+
+    .clear-btn { 
+      position: absolute; 
+      right: 12px; 
+      top: 50%; 
+      transform: translateY(-50%); 
+      width: 24px; 
+      height: 24px; 
+      background: rgba(0,0,0,0.2); 
+      color: white; 
+      border-radius: 50%; 
+      display: none; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .sync-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #fff;
+      color: #333;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
     }
     
-    img.main { flex-shrink: 1; min-height: 0; max-width: 100%; transition: opacity 0.2s ease; opacity:0; object-fit: contain; pointer-events: auto; user-select: none; -webkit-user-drag: none; }
-    
-    .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; z-index: 10; color: #fff; cursor: pointer; } 
-    .left { left: max(10px, env(safe-area-inset-left)); } .right { right: max(10px, env(safe-area-inset-right)); } 
-    .modal-bottom-controls { position: absolute; bottom: 0; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 20; padding-top: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%); }
-    .filmstrip-wrapper { position: relative; width: 100%; overflow-x: auto; white-space: nowrap; -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); padding: 10px calc(50% - 26px); scroll-snap-type: x mandatory; box-sizing: border-box; } 
-    .filmstrip-wrapper::-webkit-scrollbar { display: none; } 
-    .filmstrip-thumb { width: 45px; height: 45px; object-fit: cover; display: inline-block; margin: 0 4px; border-radius: 6px; opacity: 0.4; border: 2px solid transparent; transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); scroll-snap-align: center; background-color: #222; cursor: pointer; transform-origin: center center; } 
-    .filmstrip-thumb.active { opacity: 1; transform: scale(1.25); border-color: white; box-shadow: 0 0 15px rgba(255,255,255,0.4); z-index: 2; position: relative; } 
-    .scrubber-track { width: 90%; max-width: 500px; height: 50px; display: flex; align-items: center; position: relative; touch-action: none; } 
-    .track-line { width: 100%; height: 4px; background: #444; border-radius: 2px; } 
-    .scrubber-handle { width: 24px; height: 24px; background: #fff; border-radius: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 8px rgba(0,0,0,0.6); pointer-events: none; } 
-    .time-bubble { position: absolute; top: -30px; transform: translateX(-50%); background: #333; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-    
-    .download-btn { display: none; background: rgba(255, 255, 255, 0.15); color: white; padding: 6px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; border: 1px solid rgba(255,255,255,0.4); font-size: 13px; transition: background 0.2s; backdrop-filter: blur(5px); margin: 15px auto 5px auto; }
-    .download-btn:active { background: rgba(255,255,255,0.3); }
-    .hint-banner { 
-      position: absolute; 
-      top: calc(max(40px, env(safe-area-inset-top)) + 60px); 
-      left: 50%; 
-      transform: translateX(-50%); 
-      width: fit-content; 
-      max-width: 90%; 
-      font-size: 14px; 
-      text-align: center; 
-      font-weight: bold; 
-      background: rgba(0,0,0,0.85); 
-      padding: 10px 20px; 
-      border-radius: 30px; 
-      z-index: 100; 
-      backdrop-filter: blur(10px); 
-      border: 1px solid rgba(255,255,255,0.2); 
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      transition: opacity 0.3s ease-in-out; 
-      border-radius: 20px; 
-      backdrop-filter: blur(10px); 
-      -webkit-backdrop-filter: blur(10px);
-      pointer-events: none; 
-      opacity: 0; 
+    .sync-btn:active { transform: scale(0.85); background: #f0f0f0; }
+    .sync-btn.spinning svg { animation: spin 0.8s linear infinite; }
+
+    /* 🟢 COMMUNITY BOOTH BUTTON */
+    #communityUploadBtn {
+      flex-grow: 1; /* Replaces width:100% to fit perfectly next to sync button */
+      height: 44px;
+      border-radius: 24px;
+      background: #0d9488;
       color: white;
+      border: none;
+      display: none; /* Hidden by default */
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(13, 148, 136, 0.3);
+      transition: 0.2s;
+    }
+    #communityUploadBtn:active { transform: scale(0.95); background: #0f766e; }
+    #communityUploadBtn svg { margin-right: 8px; }
+/* 🟢 COMMUNITY SHARE BUTTON & MODAL */
+    #communityShareBtn {
+      width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #333;
+      border: none; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #communityShareBtn:active { transform: scale(0.85); background: #f0f0f0; }
+
+    .custom-modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+      z-index: 9999; display: none; align-items: center; justify-content: center;
+    }
+    .custom-modal-box {
+      background: white; border-radius: 20px; padding: 24px; width: 90%; max-width: 320px;
+      text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #111;
+    }
+    .custom-modal-box h3 { margin: 0 0 15px 0; font-size: 18px; font-weight: 700; }
+    .qr-wrapper { 
+      background: #f8fafc; padding: 10px; border-radius: 12px; display: inline-block; 
+      margin-bottom: 20px; border: 1px solid #e2e8f0; 
+    }
+    .qr-wrapper img { width: 180px; height: 180px; display: block; }
+    .share-btn-row { display: flex; gap: 10px; }
+    .share-btn-row button {
+      flex: 1; height: 44px; border-radius: 12px; border: none; font-weight: bold; 
+      font-size: 14px; cursor: pointer; transition: 0.2s;
+    }
+    .btn-copy { background: #0d9488; color: white; }
+    .btn-copy:active { background: #0f766e; }
+    .btn-close-modal { background: #e2e8f0; color: #475569; }
+    .btn-close-modal:active { background: #cbd5e1; }
+    /* COMPACT LOADER PILL */
+    #background-loader { 
+      display: flex; justify-content: center; align-items: center; width: fit-content; 
+      margin: 0 auto; height: 24px; padding: 0 12px; color: #555; font-size: 11px; 
+      font-weight: 600; gap: 6px; background-color: #fff; border-radius: 12px; 
+    }
+
+    .spinner-small { 
+      width: 10px; height: 10px; border: 2px solid rgba(0,0,0,0.1); 
+      border-top: 2px solid #555; border-radius: 50%; animation: spin 1s linear infinite; 
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* EDGE-TO-EDGE CAMERA ROLL GRID */
+    .gallery-container { 
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+      padding: 2px; max-width: 1200px; margin: 0 auto; 
+    }
+
+    @media (min-width: 768px) { 
+      .gallery-container { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px; padding: 4px; } 
+    }
+
+    .card { 
+      background: #eee; position: relative; cursor: pointer; aspect-ratio: 1 / 1; overflow: hidden;
+    }
+
+    .image-container { 
+      width: 100%; height: 100%; background-image: linear-gradient(90deg, #eee 0px, #f5f5f5 40px, #eee 80px); 
+      background-size: 600px; animation: shimmer 1.5s infinite linear; will-change: background-position;
+    }
+
+    .image-container img { 
+      width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.2s ease-in; 
+    }
+    .image-container img.loaded { opacity: 1; }
+
+    @keyframes shimmer { 0% { background-position: -100px; } 100% { background-position: 500px; } }
+
+    .card-footer { 
+      position: absolute; bottom: 4px; right: 4px; padding: 0px 6px 4px;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px); border-radius: 8px; pointer-events: none; 
+    }
+    .time-value { font-size: 10px; color: #fff; font-weight: 600; letter-spacing: 0.3px;}
+
+    /* MOBILE NATIVE TOAST */
+    #status-toast { 
+      position: fixed; top: calc(50px + var(--safe-bottom)); left: 50%; 
+      transform: translateX(-50%) translateY(20px); background: rgba(30, 30, 30, 0.9); 
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: white; 
+      padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 500; 
+      opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+      z-index: 5000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #status-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* 🟢 FULL SCREEN PROCESSING OVERLAY */
+    #uploadOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px); z-index: 9999;
+      display: none; flex-direction: column; align-items: center; justify-content: center; color: white;
+    }
+    .big-spinner {
+      width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.2);
+      border-top: 4px solid #0d9488; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;
+    }
+
+    #sentinel { height: 40px; }
+    /* 🟢 THE FIX: PREVENT SCROLL BLEEDING / CHAINING */
+    #photoEditorModal, #stickerDrawer {
+      overscroll-behavior: none; /* Stops the modal from tugging the background */
+    }
+    .sticker-grid {
+      overscroll-behavior: contain; /* Traps the scroll momentum inside the drawer */
     }
   </style>
 </head>
 <body>
+<div id="inAppBrowserWarning">
+    <div class="warning-icon">⚠️</div>
+    <h2 class="warning-title">Action Required</h2>
+    <p class="warning-text">You are viewing this inside an app (like Messenger or Instagram) which blocks our photo layout features.</p>
+    <p class="warning-text" style="color: #ffffff;">Please tap the <strong>3 dots</strong> in the corner of your screen and select <br><br><span class="warning-highlight">"Open in System Browser"</span><br>or<br><span class="warning-highlight">"Open in Chrome / Safari"</span></p>
+    
+    <button class="warning-btn" id="copyExternalLinkBtn" onclick="copyForExternalBrowser()">📋 Copy Gallery Link</button>
+  </div>
+  <div id="status-toast">Gallery is up to date</div>
 
-  <div class="landing-page">
-    <div class="header-container">
-      <h2>Your gallery</h2>
-      <button class="share-btn" onclick="openShareModal()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-        Share
+  <div id="uploadOverlay">
+    <div class="big-spinner"></div>
+    <h3 id="uploadStatusText" style="margin:0; font-weight: 600;">Processing Photo...</h3>
+  </div>
+
+  <div class="search-wrapper">
+    <div class="search-row">
+      <div class="input-container" id="searchContainer">
+        <input type="text" id="timeSearch" placeholder="Search time or filename..." oninput="handleSearch()" inputmode="search">
+        <div id="clearSearch" class="clear-btn" onclick="clearSearch()">&times;</div>
+      </div>
+
+      <button id="communityUploadBtn" onclick="document.getElementById('communityFileInput').click()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        Add Your Photo
+      </button>
+      <input type="file" id="communityFileInput" accept="image/*" style="display:none;" onchange="openPhotoEditor(event)">
+
+      <button id="communityShareBtn" onclick="openShareModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+      </button>
+
+      <button class="sync-btn" id="manual-sync-btn" onclick="triggerManualSync()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path>
+        </svg>
       </button>
     </div>
     
-    <div id="loader" class="loader-wrapper">
-      <div class="focus-ring"></div>
-      <div class="loader-text">Fetching Photos</div>
-    </div>
-    <div id="thumb-grid" class="thumb-grid"></div>
+    
+    
+    <div id="background-loader"><div class="spinner-small"></div><span id="loader-msg">Syncing photos...</span></div>
   </div>
-
-  <div id="shareModal" class="modal-overlay" onclick="closeShareModal()">
-    <div class="modal-box" onclick="event.stopPropagation()">
-      <h3>Share this Gallery</h3>
-      <div class="qr-container">
-        <div id="share-qr-code"></div>
+<div id="shareModal" class="custom-modal-overlay" onclick="closeShareModal()">
+      <div class="custom-modal-box" onclick="event.stopPropagation()">
+        <h3>Share Booth</h3>
+        <div class="qr-wrapper">
+          <img id="shareQrImage" src="" alt="QR Code">
+        </div>
+        <div class="share-btn-row">
+          <button class="btn-close-modal" onclick="closeShareModal()">Close</button>
+          <button class="btn-copy" onclick="copyShareLink()">Copy Link</button>
+        </div>
       </div>
-      <button class="action-btn" id="qr-dl-btn" style="background: #0f9d58;" onclick="downloadQR()">⬇️ Download QR Code</button>
-      <button class="action-btn" id="copy-btn" onclick="copyLink()">📋 Copy Link</button>
-      <button class="close-btn" onclick="closeShareModal()">Close</button>
+    </div>
+  <div class="gallery-container" id="gallery"></div>
+  <div id="sentinel"></div>
+  <div id="decoratePromptModal" class="custom-modal-overlay" style="z-index: 100000;">
+    <div class="custom-modal-box">
+      <h3>Decorate Photo?</h3>
+      <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Would you like to add text, stickers, or doodles to your photo before uploading?</p>
+      <div class="share-btn-row">
+        <button class="btn-close-modal" id="btnSubmitAsIs">No, Submit</button>
+        <button class="btn-copy" id="btnDecoratePhoto">Yes, Decorate</button>
+      </div>
     </div>
   </div>
-
-  <div id="lightbox" class="lightbox">
-    <div class="popout-close" onclick="closeLightbox()">✕</div>
-
-    <div class="lightbox-share" onclick="openShareModal()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+  <div id="customDialogModal" class="custom-modal-overlay" style="z-index: 100010;">
+    <div class="custom-modal-box" style="background: #1e1e1e; border: 1px solid #333; color: white;">
+      <h3 id="dialogTitle" style="margin-top: 0;">Confirm</h3>
+      <p id="dialogMessage" style="font-size: 14px; color: #aaa; margin-bottom: 20px; line-height: 1.5;"></p>
+      <div class="share-btn-row">
+        <button class="btn-close-modal" id="btnDialogCancel" style="display:none; background:#333; color:white;">Cancel</button>
+        <button class="btn-copy" id="btnDialogConfirm">OK</button>
+      </div>
+    </div>
+  </div>
+<div id="photoEditorModal">
+    <div class="editor-header">
+      <button class="editor-btn" onclick="closePhotoEditor()">Cancel</button>
+      <div style="font-weight: bold; letter-spacing: 1px; color:#fff !important;">Decorate</div>
+      <button class="editor-btn editor-btn-submit" onclick="saveAndSubmitEdit()">Submit</button>
     </div>
     
-    <div class="nav-btn left" onclick="navigateInline(-1)">&#10094;</div>
-    <div class="nav-btn right" onclick="navigateInline(1)">&#10095;</div>
-    
-    <div class="image-stage" id="l-stage">
-      <div id="hd-hint" class="hint-banner"></div> 
+    <div id="editorWorkspace">
+      <div id="editorCanvasContainer">
+        <canvas id="baseCanvas"></canvas>
+        <canvas id="doodleCanvas"></canvas>
+        <div id="stickerContainer"></div>
+      </div>
       
-      <div class="content-wrapper">
-          <img id="l-img" class="main" src="">
-          <button id="l-download-btn" class="download-btn" onclick="triggerDownload()">⬇ Download</button>
+      <div id="drawTools">
+        <div class="tool-group">
+          <label>Color</label>
+          <input type="color" id="doodleColor" value="#ffffff" onchange="updateDrawSettings()">
+        </div>
+        <div class="tool-group">
+          <label>Thickness</label>
+          <input type="range" id="doodleWidth" min="2" max="30" value="6" oninput="updateDrawSettings()">
+        </div>
+      </div>
+      
+      <div id="stickerTools" style="position: absolute;bottom: 0;width: 100%;display: flex;justify-content: center;z-index: 105;background: transparent;border-width: medium;border-style: none;border-color: currentcolor;border-image: initial;backdrop-filter: none;pointer-events: none;">
+        <button class="tool-btn confirm-sticker-btn" onclick="deselectActiveSticker()" aria-label="Confirm Sticker">
+  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+</button>
       </div>
     </div>
-    
-    <div class="modal-bottom-controls">
-      <div id="l-count" style="font-size:12px; color:#aaa; font-weight:bold;"></div>
-      <div class="filmstrip-wrapper" id="l-filmstripWrapper"></div>
-      <div class="scrubber-track" id="l-track">
-        <div class="time-bubble" id="l-time"></div>
-        <div class="track-line"></div>
-        <div class="scrubber-handle" id="l-handle"></div>
+
+    <div class="editor-toolbar">
+      <div class="toolbar-item" onclick="toggleDrawMode()">
+        <div class="tool-btn active" id="btnDraw"><span style="font-size:22px;">🖍️</span></div>
+        <span class="tool-label">Draw</span>
+      </div>
+      <div class="toolbar-item" onclick="openTextEditor()">
+        <div class="tool-btn"><span style="font-size:22px;">🔤</span></div>
+        <span class="tool-label">Text</span>
+      </div>
+      <div class="toolbar-item" onclick="openStickerDrawer()">
+        <div class="tool-btn"><span style="font-size:22px;">🌟</span></div>
+        <span class="tool-label">Stickers</span>
+      </div>
+      <div class="toolbar-item" onclick="undoLastAction()">
+        <div class="tool-btn"><span style="font-size:22px;">↩️</span></div>
+        <span class="tool-label">Undo</span>
       </div>
     </div>
   </div>
 
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const SESSION_NUM = urlParams.get('session');
-    const PHOTO_ID = urlParams.get('photo') || urlParams.get('id'); // 🟢 THE FIX: Accepts 'id' as well
-    const FOLDER_ID = urlParams.get('folderId'); 
+  <div id="textEditorModal" class="ig-text-overlay">
     
-    // Always use your primary unified backend URL
-    const GAS_WEB_APP_URL = urlParams.get('backend') || "https://script.google.com/macros/s/AKfycbwUzJHFrbKL-SWsfDig_Khh2dc-dRTmBIXXeAo7sMH9AhwTFy03B4OMJEuqI2BttJCC/exec"; 
-    
-    window.filteredImages = [];
-    var inlineIdx = 0;            
-    var lIsProgrammatic = false;
-    var imageLoadTimer = null; 
-    var hdLoadTimer = null; 
-    var isUserTouching = false; 
-    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    <div class="ig-text-header">
+      <button class="editor-btn" onclick="closeTextEditor()">Cancel</button>
+      <button class="editor-btn editor-btn-submit" onclick="applyTextSticker()">Done</button>
+    </div>
 
-    var hintTimer = null;
-    var activeHdLoader = null, fadeTimer = null;
-    var popoutImgTimer = null, lastPreviewFetch = 0;
-    
-    function showHint(msg, persist = false) {
-      const h = document.getElementById('hd-hint');
-      if (!h) return;
-      h.innerText = msg; h.style.opacity = '1';
-      clearTimeout(hintTimer);
-      if (!persist) {
-        hintTimer = setTimeout(() => { 
-          h.style.opacity = '0'; 
-          setTimeout(() => { if(h.style.opacity === '0') h.innerText = ''; }, 300);
-        }, 5000);
-      }
-    }
+    <div class="ig-text-input-wrapper" onclick="document.getElementById('textStickerInput').focus()">
+      <textarea id="textStickerInput" placeholder="Type here..." rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+    </div>
 
-    function preloadNeighbors(index) {
-      if (!window.filteredImages || window.filteredImages.length === 0) return;
-      const preload = (idx) => {
-        if (idx >= 0 && idx < window.filteredImages.length) {
-          let preImg = new Image();
-          let bUrl = window.filteredImages[idx].baseUrl;
-          preImg.src = bUrl.startsWith('data:') ? bUrl : bUrl + '=w1024';
-        }
-      };
-      preload(index + 1);
-      preload(index - 1);
-    }
+    <div class="ig-text-controls">
+      <div class="text-controls-flex">
+        <div class="text-col">
+          <label>Font Style</label>
+          <select id="textStickerFont" style="font-size: 16px;" onchange="updateTextPreview()">
+            <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Classic</option>
+            <option value="'Trebuchet MS', 'Lucida Grande', 'Avenir', sans-serif" style="font-family: 'Trebuchet MS', sans-serif;">Modern</option>
+            <option value="Impact, Charcoal, 'Arial Black', sans-serif" style="font-family: Impact, sans-serif;">Strong</option>
+            <option value="'Courier New', Courier, monospace" style="font-family: 'Courier New', monospace;">Typewriter</option>
+            <option value="'Brush Script MT', 'Apple Chancery', 'Snell Roundhand', cursive" style="font-family: 'Brush Script MT', cursive;">Neon / Script</option>
+            <option value="Georgia, 'Times New Roman', Times, serif" style="font-family: Georgia, serif;">Elegant</option>
+            
+            <option value="'Comic Neue', cursive" style="font-family: 'Comic Neue', cursive;">Comic</option>
+            <option value="'Anton', sans-serif" style="font-family: 'Anton', sans-serif; letter-spacing: 1px;">Heavy</option>
+          </select>
+        </div>
 
-    window.onload = function() {
-      // 🟢 THE MAGIC LINK: Listen for pre-loaded data from index.html
-      window.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'INIT_DATA') {
-          const images = event.data.images;
-          let targetIdx = 0;
-          if (PHOTO_ID) {
-            targetIdx = images.findIndex(img => img.id === PHOTO_ID || img.name.includes(PHOTO_ID));
-            if (targetIdx === -1) targetIdx = 0;
-          }
-          setupLandingPageFromObjects(images, targetIdx);
-        }
-      });
-      
-      // Check if we were opened by the main gallery
-      if (window.opener) {
-        window.opener.postMessage({ type: 'VIEWER_READY' }, '*');
+        <div class="text-row">
+          <div class="text-col">
+            <label>Text Color</label>
+            <input type="color" id="textColor" value="#ffffff" oninput="updateTextPreview()">
+          </div>
+          <div class="text-col">
+            <label><input type="checkbox" id="textEnableOutline" style="accent-color:#0d9488;" onchange="updateTextPreview()"> Outline Color</label>
+            <input type="color" id="textOutline" value="#000000" oninput="updateTextPreview()">
+          </div>
+        </div>
+
+        <div class="text-col">
+            <label>Outline Thickness</label>
+            <input type="range" id="textOutlineWidth" min="2" max="24" value="12" style="width: 100%; accent-color:#0d9488;" oninput="updateTextPreview()">
+        </div>
         
-        // Failsafe: if index.html doesn't respond in 500ms, fetch manually
-        setTimeout(() => {
-          if (!window.filteredImages || window.filteredImages.length === 0) {
-            manualFetch();
-          }
-        }, 500);
-      } else {
-        // Opened directly via SMS/Email link
-        manualFetch();
-      }
+        <label class="text-checkbox-row" style="margin-bottom: 0;">
+          <input type="checkbox" id="textShadow" style="width:18px; height:18px; accent-color:#0d9488;" onchange="updateTextPreview()">
+          Add Drop Shadow
+        </label>
+      </div>
+    </div>
+  </div>
 
-      if (isIOS) {
-        const dlBtn = document.getElementById('l-download-btn');
-        dlBtn.style.display = 'none';
-
-        const qrDlBtn = document.getElementById('qr-dl-btn');
-        qrDlBtn.removeAttribute('onclick');
-        qrDlBtn.innerText = "Long press QR image and Save to Photos";
-        qrDlBtn.style.background = "transparent";
-        qrDlBtn.style.color = "#aaa";
-        qrDlBtn.style.pointerEvents = "none";
-        qrDlBtn.style.fontSize = "13px";
-        qrDlBtn.style.padding = "0";
-        qrDlBtn.style.height = "auto";
-        qrDlBtn.style.margin = "-5px 0 5px 0"; 
-      }
-      if (!isIOS) {
-        document.getElementById('l-download-btn').style.display = 'block';
-      }
+  <div id="stickerDrawer">
+    <div class="drawer-header">
+      <strong style="color:white;">Photobooth Props</strong>
+      <button class="editor-btn" style="color:#ef4444;" onclick="closeStickerDrawer()">Close</button>
+    </div>
+   <div class="sticker-tabs" id="stickerTabs">
+      <button class="sticker-tab" id="tabUserStickers" style="display: none;" onclick="loadStickerCategory('userStickers', this)">📁 User Stickers</button>
       
-      setupInlineTouch(); 
+      <button class="sticker-tab active" onclick="loadStickerCategory('custom', this)">✨ Custom Props</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('glasses', this)">🖼️ Placeholders</button>
+      
+      <button class="sticker-tab" onclick="loadStickerCategory('hats', this)">👑 Hats & Hair</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('masks', this)">🎭 Masks & Heads</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('props', this)">🎸 Handheld Props</button>
+      <button class="sticker-tab" onclick="loadStickerCategory('decor', this)">💬 Bubbles & FX</button>
+    </div>
+    <div class="sticker-grid" id="stickerGrid"></div>
+  </div>
+  <script>
+    // IMPORTANT: Make sure this points to your unified backend Apps Script URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbwUzJHFrbKL-SWsfDig_Khh2dc-dRTmBIXXeAo7sMH9AhwTFy03B4OMJEuqI2BttJCC/exec";
+    const VIEWER_URL = "viewer.html";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetFolderId = urlParams.get('folderId');
+    
+    // 🟢 EXACT ID CATCHER
+    function findMyEventId() {
+        const params = new URLSearchParams(window.location.search);
+        
+        // 1. Directly grab the exact 'id' parameter passed from main.html
+        const exactId = params.get('id');
+        if (exactId) {
+            return exactId.toLowerCase().trim();
+        }
+
+        // 2. Failsafe: Just in case, scan the raw URL text for "egm" followed by numbers
+        const rawMatch = window.location.href.match(/egm\d+/i);
+        if (rawMatch) return rawMatch[0].toLowerCase();
+
+        return 'unknown';
+    }
+
+    window.globalEventId = findMyEventId();
+    
+    // 🟢 Read the new safe flag to identify the Community Booth, keeping legacy support just in case
+    const isCommunityBooth = urlParams.get('isCommunity') === 'true' || urlParams.get('tab') === 'community';
+
+    // 🟢 DUMMY TEMPLATES (Will be replaced dynamically in Phase 2)
+    let templateOverlays = {
+        landscape: null, // Base64 string of the horizontal PNG
+        portrait: null   // Base64 string of the vertical PNG
     };
 
-    // 🟢 MANUAL FETCH ENGINE: Directly asks the backend for photos and parses the array
-    function manualFetch() {
-      if (!FOLDER_ID) {
-        document.getElementById('loader').innerHTML = "<div class='loader-text' style='color:#ea4335;'>Error: Missing folderId in URL</div>";
-        document.querySelector('.share-btn').style.display = 'none';
+    window.filteredImages = []; 
+    window.deadImageIds = new Set();
+
+    let allImages = [], currentIndex = 0, isFirstLoad = true, hasRendered = false, scrollObserver = null;
+    let viewerWindow = null;
+
+    const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
+
+    window.onload = () => {
+      
+      // 🟢 THE FIX: Aggressive In-App Browser Detection
+      const isAppBrowser = /FBAN|FBAV|Messenger|Instagram|Line|Snapchat|TikTok|MicroMessenger/i.test(navigator.userAgent);
+      
+      if (isAppBrowser) {
+          document.getElementById('inAppBrowserWarning').style.display = 'flex';
+          const bgLoader = document.getElementById('background-loader');
+          if (bgLoader) bgLoader.style.display = 'none';
+          return; 
+      }
+
+      // --- COMMUNITY UI ---
+      if (isCommunityBooth) {
+          document.getElementById('communityUploadBtn').style.display = 'flex';
+          document.getElementById('searchContainer').style.display = 'none';
+          
+          fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
+          .then(res => res.json())
+          .then(async res => {
+              if (res.data && res.data.length > 0) {
+                  for (let t of res.data) {
+                      let largestImage = null;
+                      let maxArea = 0;
+                      let imageLayers = t.Layers.filter(l => l.ImageBase64 || l.base64 || l.ImagePath || l.src);
+                      
+                      for (let layer of imageLayers) {
+                          await new Promise((resolve) => {
+                              const tempImg = new Image();
+                              let rawSrc = layer.ImageBase64 || layer.base64 || layer.ImagePath || layer.src;
+                              if (rawSrc) {
+                                  if (rawSrc.startsWith('http')) {
+                                      tempImg.crossOrigin = "anonymous";
+                                  } else if (!rawSrc.startsWith('data:image')) {
+                                      let mime = rawSrc.charAt(0) === '/' ? 'jpeg' : 'png';
+                                      rawSrc = `data:image/${mime};base64,` + rawSrc;
+                                  }
+                                  
+                                  tempImg.onload = function() {
+                                      const area = tempImg.width * tempImg.height;
+                                      if (area > maxArea) {
+                                          maxArea = area;
+                                          largestImage = {
+                                              src: tempImg.src, 
+                                              isLandscape: tempImg.width > tempImg.height
+                                          };
+                                      }
+                                      resolve();
+                                  };
+                                  tempImg.onerror = function() { resolve(); };
+                                  tempImg.src = rawSrc;
+                              } else {
+                                  resolve();
+                              }
+                          });
+                      }
+                      
+                      if (largestImage) {
+                          if (largestImage.isLandscape) templateOverlays.landscape = largestImage.src;
+                          else templateOverlays.portrait = largestImage.src;
+                      }
+                  }
+                  
+                  if (!templateOverlays.landscape && templateOverlays.portrait) templateOverlays.landscape = templateOverlays.portrait;
+                  if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
+              }
+          })
+          .catch(err => console.error("Template fetch error:", err));
+      } 
+      // 🟢 THE FIX: CLOSING THE `if (isCommunityBooth)` BRACKET HERE SO SCANNERS RUN FOR EVERYONE!
+
+      // --- STICKER SCANNERS ---
+      
+      fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers01')
+        .then(res => res.json())
+        .then(files => {
+            if (Array.isArray(files)) {
+                stickerCatalog.custom = files
+                    .filter(file => file.name.toLowerCase().endsWith('.png'))
+                    .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers01/${file.name}`);
+                
+                if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Custom')) {
+                    delete stickerCache['custom']; 
+                    loadStickerCategory('custom', document.querySelector('.sticker-tab.active'));
+                }
+            }
+        })
+        .catch(err => console.error("Failed to load GitHub stickers:", err));
+
+      fetch('https://api.github.com/repos/egmqr/photo-viewer/contents/stickers02')
+        .then(res => res.json())
+        .then(files => {
+            if (Array.isArray(files)) {
+                stickerCatalog.glasses = files
+                    .filter(file => file.name.toLowerCase().endsWith('.png'))
+                    .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers02/${file.name}`);
+                
+                if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Placeholders')) {
+                    delete stickerCache['glasses']; 
+                    loadStickerCategory('glasses', document.querySelector('.sticker-tab.active'));
+                }
+            }
+        })
+        .catch(err => console.error("Failed to load Placeholders:", err));
+
+      // 🟢 DYNAMIC USER STICKERS SCANNER (Strict URL Check)
+      // Only runs if the URL explicitly says userStickers=true
+      const isUserStickersEnabled = window.location.search.toLowerCase().includes('userstickers=true');
+
+      if (isUserStickersEnabled && window.globalEventId !== 'unknown') {
+          const userTab = document.getElementById('tabUserStickers');
+          if (userTab) userTab.style.setProperty('display', 'inline-block', 'important'); 
+
+          fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${window.globalEventId}`)
+            .then(res => {
+                if (!res.ok) throw new Error("Folder not found.");
+                return res.json();
+            })
+            .then(files => {
+                if (Array.isArray(files) && files.length > 0) {
+                    window.githubStickersFound = true; // Global success flag
+                    
+                    stickerCatalog.userStickers = files
+                        .filter(file => file.name.toLowerCase().endsWith('.png'))
+                        .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${window.globalEventId}/${file.name}`);
+                    
+                    if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
+                        delete stickerCache['userStickers']; 
+                        loadStickerCategory('userStickers', document.querySelector('.sticker-tab.active'));
+                    }
+                }
+            })
+            .catch(err => {
+                console.warn(`Dynamic stickers bypassed:`, err.message);
+                window.userStickersFailed = true;
+                
+                const grid = document.getElementById('stickerGrid');
+                if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
+                    grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${window.globalEventId}' on GitHub.</span></div>`;
+                }
+            });
+      } else {
+          // If the URL parameter is missing, cleanly flag it as failed/disabled
+          window.userStickersFailed = true;
+      }
+
+      if (!targetFolderId) {
+        document.getElementById('gallery').innerHTML = "<div style='margin: 10%; grid-column: 1 / -1; text-align: center; font-size: 12px; padding: 10px; color: #333; font-weight: bold; background: rgba(255, 255, 255, 0.5); border-radius: 30px;'>No folder ID provided.</div>";
+        document.getElementById('background-loader').style.display = 'none';
         return;
       }
 
-      const fetchUrl = `${GAS_WEB_APP_URL}?api=gallery&folderId=${FOLDER_ID}`;
-      
-      fetch(fetchUrl)
+      fetch(`${API_URL}?api=getInitial&folderId=${targetFolderId}`)
+        .then(res => res.json())
+        .then(res => {
+          if (res.data && isFirstLoad) loadData(res.data);
+        })
+        .catch(err => {
+          console.error("Initial load failed:", err);
+        })
+        .finally(() => {
+          handleDeepSync(); 
+        });
+    };
+
+
+    // 🟢 UPLOAD LOGIC
+    function uploadProcessedPhoto(base64Data) {
+        document.getElementById('uploadStatusText').innerText = "Uploading to Gallery...";
+        
+        // Format the payload exactly how Apps Script expects it
+        const b64Clean = base64Data.split(',')[1];
+        const payload = {
+            action: 'uploadCommunityPhoto',
+            folderId: targetFolderId,
+            base64Data: b64Clean,
+            mimeType: 'image/jpeg',
+            filename: `Community_${Date.now()}.jpg`
+        };
+
+        fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
         .then(response => response.json())
         .then(result => {
-          if (result.status === 'success' || result.data) {
-            let dataArr = result.data || [];
-            
-            // Map the raw arrays [id, name, url, time] into workable objects
-            let mappedPhotos = dataArr.map(item => {
-              const [id, name, rawUrl, rawTime] = item;
-              let displayTime = '';
-              if (rawTime > 0) {
-                const d = new Date(rawTime);
-                const ph = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) + (8 * 3600000));
-                let h = ph.getHours(), m = ph.getMinutes().toString().padStart(2, '0');
-                displayTime = `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
-              }
-              let baseUrl = rawUrl.startsWith('data:') ? rawUrl : rawUrl.split('=')[0];
-              return { id: id, name: name, baseUrl: baseUrl, displayTime: displayTime };
-            });
-
-            // 🟢 Filter the list to only show the requested Session or Photo
-            let finalPhotos = mappedPhotos;
-            if (SESSION_NUM) {
-              finalPhotos = mappedPhotos.filter(p => p.name.toLowerCase().includes(SESSION_NUM.toLowerCase()));
-            } else if (PHOTO_ID) {
-              finalPhotos = mappedPhotos.filter(p => p.id === PHOTO_ID || p.name.toLowerCase().includes(PHOTO_ID.toLowerCase()));
+            document.getElementById('uploadOverlay').style.display = 'none';
+            if (result.success) {
+                showToast("Photo added successfully!");
+                triggerManualSync(); 
+            } else {
+                // 🟢 REPLACED
+                showCustomDialog("Upload Failed", result.error || "Unknown error", false);
             }
-            
-            setupLandingPageFromObjects(finalPhotos, 0);
-          } else {
-            document.getElementById('loader').innerHTML = "<div class='loader-text' style='color:#ea4335;'>Error: " + result.message + "</div>";
+        })
+        .catch(err => {
+            document.getElementById('uploadOverlay').style.display = 'none';
+            // 🟢 REPLACED
+            showCustomDialog("Network Error", "A network error occurred during upload.", false);
+            console.error(err);
+        });
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'VIEWER_READY') {
+        if (viewerWindow && !viewerWindow.closed) {
+          viewerWindow.postMessage({ type: 'INIT_DATA', images: window.filteredImages }, '*');
+        }
+      }
+    });
+
+    function handleImageClick(id) {
+      viewerWindow = window.open(`${VIEWER_URL}?id=${id}`, "_blank");
+    }
+
+    window.handleImageError = function(id, imgElement) {
+      window.deadImageIds.add(id);
+
+      allImages = allImages.filter(img => img.id !== id);
+      window.filteredImages = window.filteredImages.filter(img => img.id !== id);
+
+      const card = imgElement.closest('.card');
+      if (card) card.remove();
+
+      if (viewerWindow && !viewerWindow.closed) {
+        viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
+      }
+    };
+// 🟢 SHARE MODAL LOGIC (Upgraded for iFrames)
+    
+    // Helper to peek outside the iframe and grab the main.html URL
+    function getShareUrl() {
+        try {
+            // Check if we are inside an iframe and grab the parent's URL
+            if (window.parent && window.parent.location.href !== window.location.href) {
+                return window.parent.location.href;
+            }
+        } catch (e) {
+            // Failsafe in case of cross-origin blocks
+        }
+        return window.location.href;
+    }
+
+    function openShareModal() {
+        const modal = document.getElementById('shareModal');
+        const qrImg = document.getElementById('shareQrImage');
+        
+        // Use our new smart URL fetcher
+        const shareUrl = getShareUrl();
+        qrImg.src = `https://quickchart.io/qr?size=400&margin=1&text=${encodeURIComponent(shareUrl)}`;
+        modal.style.display = 'flex';
+    }
+
+    function closeShareModal() {
+        document.getElementById('shareModal').style.display = 'none';
+    }
+
+    function copyShareLink() {
+        const shareUrl = getShareUrl();
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            showToast("Link copied to clipboard!");
+            closeShareModal();
+        }).catch(err => {
+            // 🟢 REPLACED
+            showCustomDialog("Action Blocked", "Failed to copy link. Your browser might block this.", false);
+        });
+    }
+    function handleDeepSync() {
+      fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
+        .then(res => res.json())
+        .then(res => {
+          document.getElementById('background-loader').style.display = 'none';
+          if (!res.data) return;
+
+          allImages = res.data.map(processItem).filter(img => !window.deadImageIds.has(img.id));
+
+          applyFilter(hasRendered); 
+
+          hasRendered = true;
+          isFirstLoad = false; 
+          showToast('Gallery up to date'); 
+          setInterval(() => refreshData(false), 90000); 
+
+          if (viewerWindow && !viewerWindow.closed) {
+            viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
           }
         })
         .catch(err => {
-          document.getElementById('loader').innerHTML = "<div class='loader-text' style='color:#ea4335;'>Failed to load photos</div>";
-          console.error(err);
+          console.error("Deep sync failed:", err);
+          document.getElementById('background-loader').style.display = 'none';
         });
     }
 
-    function setupLandingPageFromObjects(photos, startIdx = 0) {
-      document.getElementById('loader').style.display = 'none';
-      if (!photos || photos.length === 0) {
-        document.getElementById('thumb-grid').innerHTML = "<div class='loader-wrapper'><div class='loader-text'>No photos ready yet. Check back soon!</div></div>";
-        return;
+    function processItem(item) {
+      const [id, name, rawUrl, rawTime] = item;
+      let displayTime = '';
+      if (rawTime > 0) {
+        const d = new Date(rawTime);
+        const ph = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) + (8 * 3600000));
+        let h = ph.getHours(), m = ph.getMinutes().toString().padStart(2, '0');
+        displayTime = `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
       }
-
-      window.filteredImages = photos;
-
-      var gridHtml = "";
-      photos.forEach(function(p, index) { 
-        let thumbUrl = p.baseUrl.startsWith('data:') ? p.baseUrl : p.baseUrl + '=w250';
-        gridHtml += "<img src='" + thumbUrl + "' loading='lazy' decoding='async' onclick='openInlineCarousel(" + index + ")' style='cursor:pointer; transition: opacity 0.2s;' onmouseover='this.style.opacity=0.8' onmouseout='this.style.opacity=1'>"; 
-      });
-      document.getElementById('thumb-grid').innerHTML = gridHtml;
-
-      if ((PHOTO_ID || photos.length === 1) && !window.opener) {
-        setTimeout(() => {
-          openInlineCarousel(startIdx);
-          if (photos.length <= 1) {
-            document.getElementById('l-count').style.display = 'none';
-            document.getElementById('l-filmstripWrapper').style.display = 'none';
-            document.getElementById('l-track').style.display = 'none';
-          }
-        }, 50); 
-      } else {
-        document.getElementById('l-count').style.display = 'block';
-        document.getElementById('l-filmstripWrapper').style.display = 'block';
-        document.getElementById('l-track').style.display = 'flex';
-      }
+      let baseUrl = rawUrl.startsWith('data:') ? rawUrl : rawUrl.split('=')[0];
+      return { id, name, baseUrl, url: baseUrl + (rawUrl.startsWith('data:') ? '' : gridThumbSize), displayTime, searchStr: `${displayTime} ${name}`.toLowerCase() };
     }
 
-    let qrGenerated = false;
-    
-    function openShareModal() {
-      document.getElementById('shareModal').style.display = 'flex';
-      document.getElementById('shareModal').style.zIndex = '100000';
+    function handleSearch() {
+      const val = document.getElementById('timeSearch').value;
+      document.getElementById('clearSearch').style.display = val.length > 0 ? 'flex' : 'none';
+      applyFilter();
+    }
 
-      if (!qrGenerated) {
-        new QRCode(document.getElementById("share-qr-code"), {
-          text: window.location.href, 
-          width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L
-        });
-        qrGenerated = true;
+    function clearSearch() {
+      document.getElementById('timeSearch').value = '';
+      document.getElementById('clearSearch').style.display = 'none';
+      applyFilter();
+    }
 
-        if (isIOS) {
-          setTimeout(() => {
-            const qrContainer = document.getElementById('share-qr-code');
-            const canvas = qrContainer.querySelector('canvas');
-            const img = qrContainer.querySelector('img');
-            if (canvas && img) {
-              img.src = canvas.toDataURL("image/png");
-              img.style.display = "block";
-              canvas.style.display = "none";
-            }
-          }, 50);
-        }
+    function triggerManualSync() {
+      const btn = document.getElementById('manual-sync-btn');
+      if (btn.classList.contains('spinning')) return; 
+
+      btn.classList.add('spinning');
+      showToast('Syncing...');
+      refreshData(true); // Now serves as our manual button flag
+    }
+
+    function applyFilter(isBackgroundRefresh = false) {
+      const terms = document.getElementById('timeSearch').value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      window.filteredImages = terms.length > 0 ? allImages.filter(img => terms.every(t => img.searchStr.includes(t))) : allImages;
+
+      const galleryEl = document.getElementById('gallery');
+
+      const scrollPos = window.scrollY;
+      if (isBackgroundRefresh) {
+        galleryEl.style.minHeight = galleryEl.offsetHeight + 'px';
       }
-    }
 
-    function closeShareModal() { document.getElementById('shareModal').style.display = 'none'; }
+      galleryEl.innerHTML = ''; 
+      const targetCount = Math.max(currentIndex, 24);
+      currentIndex = 0;
 
-    function copyLink() {
-      navigator.clipboard.writeText(window.location.href).then(() => {
-        const btn = document.getElementById('copy-btn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = "✓ Link Copied!";
-        btn.style.background = "#2b2b2b"; 
-        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = "#4285f4"; }, 2000);
-      });
-    }
-
-    function downloadQR() {
-      const qrContainer = document.getElementById('share-qr-code');
-      const canvas = qrContainer.querySelector('canvas');
-      const img = qrContainer.querySelector('img');
-      let url = canvas ? canvas.toDataURL("image/png") : (img ? img.src : '');
-      
-      if (url) {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Gallery-QR-${SESSION_NUM || 'Share'}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
-    }
-
-    function openInlineCarousel(idx) {
-      inlineIdx = idx;
-      document.getElementById('lightbox').style.display = 'flex';
-      
-      var stripHtml = '';
-      window.filteredImages.forEach((f, i) => { 
-        var src = f.baseUrl.startsWith('data:') ? f.baseUrl : f.baseUrl + '=s50-c';
-        stripHtml += '<img id="lt-'+i+'" class="filmstrip-thumb ' + (i === idx ? 'active' : '') + '" src="'+src+'" loading="lazy" decoding="async" onclick="navigateInlineTo('+i+')">'; 
-      });
-      document.getElementById('l-filmstripWrapper').innerHTML = stripHtml;
-      
-      navigateInlineTo(idx);
-      setTimeout(() => { 
-        var itl = document.getElementById('lt-' + idx); 
-        if (itl) itl.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' }); 
-      }, 50);
-    }
-
-    function navigateInlineTo(idx, fromFilmstripScroll = false, scrub = false) {
-      if (idx < 0 || idx >= window.filteredImages.length) return;
-      inlineIdx = idx;
-      const imgData = window.filteredImages[idx];
-      
-      const pct = window.filteredImages.length > 1 ? (idx / (window.filteredImages.length - 1)) * 100 : 0;
-      
-      document.getElementById('l-handle').style.left = pct + '%'; 
-      var timeB = document.getElementById('l-time');
-      timeB.style.left = pct + '%'; timeB.innerText = imgData.displayTime; 
-      document.getElementById('l-count').innerText = `${idx + 1} / ${window.filteredImages.length}`; 
-      
-      document.querySelectorAll('#l-filmstripWrapper .filmstrip-thumb.active').forEach(el => el.classList.remove('active')); 
-      const active = document.getElementById('lt-' + idx); 
-      
-      if (active) { 
-        active.classList.add('active'); 
-        if (!fromFilmstripScroll) {
-          lIsProgrammatic = true; 
-          document.getElementById('l-filmstripWrapper').style.scrollBehavior = 'smooth'; 
-          document.getElementById('l-filmstripWrapper').scrollLeft = active.offsetLeft + (active.offsetWidth / 2) - (document.getElementById('l-filmstripWrapper').offsetWidth / 2);
-          setTimeout(() => { lIsProgrammatic = false; }, 300); 
-        }
-      }
-      
-      clearTimeout(hdLoadTimer);
-      clearTimeout(fadeTimer);
-      clearTimeout(hintTimer);
-      document.getElementById('hd-hint').style.opacity = '0';
-      
-      if (activeHdLoader) { activeHdLoader.onload = null; activeHdLoader.onerror = null; activeHdLoader.src = ""; activeHdLoader = null; }
-      
-      const imgEl = document.getElementById('l-img');
-      imgEl.onload = null; 
-      imgEl.onerror = null;
-
-      let w1024Url = imgData.baseUrl.startsWith('data:') ? imgData.baseUrl : imgData.baseUrl + '=w1024';
-      let hdUrl = imgData.baseUrl.startsWith('data:') ? imgData.baseUrl : imgData.baseUrl + '=s0';
-      let scrubUrl = imgData.baseUrl.startsWith('data:') ? imgData.baseUrl : imgData.baseUrl + '=w200';
-
-      if (scrub) { 
-        const now = Date.now(); 
-        if (now - lastPreviewFetch > 120) { imgEl.src = scrubUrl; lastPreviewFetch = now; } 
-        else { clearTimeout(popoutImgTimer); popoutImgTimer = setTimeout(() => { imgEl.src = scrubUrl; lastPreviewFetch = Date.now(); }, 120); }
+      if (window.filteredImages.length === 0) {
+        galleryEl.innerHTML = `<div style='margin: 10%; grid-column: 1 / -1; text-align: center; font-size: 12px; padding: 10px; color: #333; font-weight: bold; background: rgba(255, 255, 255, 0.5); border-radius: 30px;'>No photos found.</div>`;
+        galleryEl.style.minHeight = 'auto'; 
       } else { 
-        preloadNeighbors(idx);
+        while(currentIndex < targetCount && currentIndex < window.filteredImages.length) { 
+          renderNextPage(); 
+        }
+        setupInfiniteScroll(); 
 
-        imgEl.style.opacity = 0; 
-        const renderIndex = inlineIdx; 
-        
-        fadeTimer = setTimeout(() => { 
-          
-          imgEl.onload = () => {
-            imgEl.onload = null; 
-            if (inlineIdx !== renderIndex) return; 
-            imgEl.style.opacity = 1; 
-            
-            hdLoadTimer = setTimeout(() => {
-              if (inlineIdx !== renderIndex) return;
-              const isData = w1024Url.startsWith('data:');
-              
-              if (!isData) showHint("Loading HD photo...", true);
-              
-              activeHdLoader = new Image();
-              activeHdLoader.onload = () => { 
-                activeHdLoader.onload = null;
-                if (inlineIdx !== renderIndex) return;
-                imgEl.src = hdUrl; 
-                
-                if (!isData) {
-                    showHint(isIOS ? "HD photo is loaded. Long press image then Save to Photos" : "HD photo is loaded. Click Download to save", false);
-                }
-              };
-              activeHdLoader.onerror = () => { if (!isData) showHint("Failed to load HD photo", false); };
-              activeHdLoader.src = hdUrl;
-            }, 800);
-          };
-          
-          imgEl.onerror = () => {
-             imgEl.onerror = null;
-             if (inlineIdx !== renderIndex) return;
-             showHint("Photo unavailable or deleted", false);
-          };
-          
-          imgEl.src = w1024Url; 
-          
-        }, 20); 
-      } 
-    }
-
-    async function triggerDownload() {
-      const img = window.filteredImages[inlineIdx];
-      if (!img) return;
-      const btn = document.getElementById('l-download-btn');
-      btn.innerText = "Downloading...";
-      
-      try { 
-        const res = await fetch(img.baseUrl + '=s0'); 
-        const blob = await res.blob(); 
-        const url = URL.createObjectURL(blob); 
-        const a = document.createElement('a'); 
-        a.href = url; 
-        a.download = 'photo.jpg'; 
-        a.click(); 
-        URL.revokeObjectURL(url);
-      } catch(e) { 
-        window.open(img.baseUrl + '=s0', '_blank'); 
-      } finally { 
-        btn.innerText = "⬇ Download"; 
+        if (isBackgroundRefresh) {
+          window.scrollTo(0, scrollPos);
+          setTimeout(() => { galleryEl.style.minHeight = 'auto'; }, 50);
+        }
       }
     }
 
-    function navigateInline(dir) { navigateInlineTo(inlineIdx + dir); }
-    function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; document.getElementById('l-img').src = ''; }
+    function renderNextPage() {
+      if (currentIndex >= window.filteredImages.length) return;
+      const frag = document.createDocumentFragment();
+      window.filteredImages.slice(currentIndex, currentIndex + 24).forEach((img, i) => {
+        const card = document.createElement('div'); card.className = 'card';
 
-    function setupInlineTouch() {
-      let lStartX = 0, lEndX = 0;
-      const stage = document.getElementById('l-stage');
-      
-      stage.addEventListener('touchstart', e => { 
-        lStartX = e.changedTouches[0].screenX; 
-        isUserTouching = true; 
-      }, {passive: true});
-      
-      stage.addEventListener('touchcancel', () => { 
-        isUserTouching = false; 
-      }, {passive: true});
-      
-      stage.addEventListener('touchend', e => { 
-          lEndX = e.changedTouches[0].screenX; 
-          isUserTouching = false;
-          if (lStartX - lEndX > 50) navigateInline(1); 
-          if (lEndX - lStartX > 50) navigateInline(-1); 
-      }, {passive: true});
-      
-      window.addEventListener('keydown', (e) => { 
-          if (document.getElementById('lightbox').style.display !== 'none') {
-              if (e.key === 'ArrowRight') navigateInline(1); 
-              else if (e.key === 'ArrowLeft') navigateInline(-1); 
-              else if (e.key === 'Escape') closeLightbox(); 
-          }
+        card.innerHTML = `
+          <div class="image-container" onclick="handleImageClick('${img.id}')">
+            <img decoding="async" loading="${currentIndex === 0 && i < 12 ? 'eager' : 'lazy'}" src="${img.url}" onload="this.classList.add('loaded')" onerror="handleImageError('${img.id}', this)">
+          </div>
+          <div class="card-footer"><span class="time-value">${img.displayTime}</span></div>
+        `;
+        frag.appendChild(card);
       });
-
-      const track = document.getElementById('l-track'), timeB = document.getElementById('l-time'); 
-      let isD = false, rAF = null;
-      const calcScrub = (cX) => { 
-          const rect = track.getBoundingClientRect(); 
-          var pctFloat = Math.max(0, Math.min(cX - rect.left, rect.width)) / rect.width; 
-          var targetIdx = Math.round(pctFloat * (window.filteredImages.length - 1));
-          if (targetIdx !== inlineIdx) navigateInlineTo(targetIdx);
-      }; 
-      const hS = (cX) => { if(rAF) cancelAnimationFrame(rAF); rAF = requestAnimationFrame(() => calcScrub(cX)); };
-      track.addEventListener('touchstart', e => { isD = true; timeB.style.opacity = 1; hS(e.touches[0].clientX); }, {passive: false}); 
-      window.addEventListener('touchmove', e => { if (isD && document.getElementById('lightbox').style.display !== 'none') { e.preventDefault(); hS(e.touches[0].clientX); } }, {passive: false}); 
-      window.addEventListener('touchend', () => { if (isD) { isD = false; timeB.style.opacity = 0; } }); 
-      
-      var wrapper = document.getElementById('l-filmstripWrapper');
-      setTimeout(() => { 
-          wrapper.addEventListener('scroll', () => { 
-              if (isD || lIsProgrammatic || document.getElementById('lightbox').style.display === 'none') return; 
-              
-              let closestIdx = inlineIdx;
-              let minDistance = Infinity;
-              const wrapperRect = wrapper.getBoundingClientRect();
-              const wCenter = wrapperRect.left + wrapperRect.width / 2;
-
-              const thumbs = document.querySelectorAll('#l-filmstripWrapper .filmstrip-thumb');
-              for (let i = 0; i < thumbs.length; i++) {
-                  const rect = thumbs[i].getBoundingClientRect();
-                  const distance = Math.abs(wCenter - (rect.left + rect.width / 2));
-                  if (distance < minDistance) {
-                      minDistance = distance;
-                      closestIdx = i;
-                  }
-              }
-              if (closestIdx !== inlineIdx) navigateInlineTo(closestIdx, true); 
-          }); 
-      }, 300);
+      document.getElementById('gallery').appendChild(frag); currentIndex += 24;
     }
+
+    function setupInfiniteScroll() {
+      if (scrollObserver) scrollObserver.disconnect();
+      scrollObserver = new IntersectionObserver(e => { if(e[0].isIntersecting) renderNextPage(); }, {rootMargin: '400px'});
+      scrollObserver.observe(document.getElementById('sentinel'));
+    }
+
+    function showToast(m) { 
+      const t = document.getElementById('status-toast'); 
+      t.innerText = m; 
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000); 
+    }
+
+    function loadData(d) { 
+      allImages = d.map(processItem).filter(img => !window.deadImageIds.has(img.id)); 
+      applyFilter(false); 
+      hasRendered = true;
+    }
+
+    function refreshData(isManualBtn = false) { 
+      fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
+        .then(res => res.json())
+        .then(res => {
+          if (!res.data) return;
+
+          const fresh = res.data.map(processItem).filter(img => !window.deadImageIds.has(img.id)); 
+          let hasChanges = (fresh.length !== allImages.length);
+
+          if (!hasChanges) { 
+            for (let i = 0; i < Math.min(fresh.length, 50); i++) { 
+              if (fresh[i].id !== allImages[i].id) { hasChanges = true; break; } 
+            } 
+          }
+
+          if (hasChanges) { 
+            allImages = fresh; 
+            applyFilter(true); 
+            showToast('New photos added'); 
+            if (viewerWindow && !viewerWindow.closed) {
+              viewerWindow.postMessage({ type: 'UPDATE_DATA', images: window.filteredImages }, '*');
+            }
+          } else if (isManualBtn) {
+            showToast('Gallery is up to date');
+          }
+        })
+        .catch(err => {
+          console.error("Background sync failed:", err);
+          if (isManualBtn) showToast('Sync failed. Check connection.');
+        })
+        .finally(() => {
+          if (isManualBtn) {
+            document.getElementById('manual-sync-btn').classList.remove('spinning');
+          }
+        });
+    }
+    // 🟢 COPY LINK FOR EXTERNAL BROWSER
+   function copyForExternalBrowser() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            const btn = document.getElementById('copyExternalLinkBtn');
+            btn.innerText = "✅ Link Copied! Paste in Safari/Chrome";
+            btn.style.background = "#16a34a";
+            setTimeout(() => {
+                btn.innerText = "📋 Copy Gallery Link";
+                btn.style.background = "#0d9488";
+            }, 3000);
+        }).catch(err => {
+            // 🟢 REPLACED
+            showCustomDialog("Action Blocked", "Please manually copy the link from the top of the screen.", false);
+        });
+    }
+    // ==============================================================================
+// 🟢 SNAPCHAT-STYLE PHOTO EDITOR ENGINE
+// ==============================================================================
+let editorBaseImage = new Image();
+let isDrawMode = true;
+let isDrawing = false;
+let ctxDoodle;
+let actionHistory = [];
+
+// 1. Intercept the Photo Upload & Ask User
+function openPhotoEditor(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        editorBaseImage.onload = function() {
+            
+            // 🟢 Show the prompt asking if they want to decorate
+            const promptModal = document.getElementById('decoratePromptModal');
+            promptModal.style.display = 'flex';
+            
+            // If NO: Submit instantly
+            document.getElementById('btnSubmitAsIs').onclick = function() {
+                promptModal.style.display = 'none';
+                const isLandscape = editorBaseImage.width > editorBaseImage.height;
+                
+                const ov = document.getElementById('uploadOverlay');
+                document.getElementById('uploadStatusText').innerText = "Processing Photo...";
+                if(ov) ov.style.display = 'flex';
+                
+                processFinalTemplateLayout(e.target.result, isLandscape);
+            };
+            
+            // If YES: Open Editor
+            document.getElementById('btnDecoratePhoto').onclick = function() {
+                promptModal.style.display = 'none';
+                document.getElementById('photoEditorModal').style.display = 'flex';
+                setTimeout(() => { setupEditorWorkspace(); }, 10);
+            };
+
+        };
+        editorBaseImage.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = ''; 
+}
+
+// 2. Scale the Canvas to Fit the Screen (With Retina High-Res Math)
+function setupEditorWorkspace() {
+    const workspace = document.getElementById('editorWorkspace');
+    const container = document.getElementById('editorCanvasContainer');
+    const baseCanvas = document.getElementById('baseCanvas');
+    const doodleCanvas = document.getElementById('doodleCanvas');
+    
+    const maxWidth = workspace.clientWidth - 40; 
+    const maxHeight = workspace.clientHeight - 40;
+
+    let targetW = editorBaseImage.width;
+    let targetH = editorBaseImage.height;
+    const ratio = Math.min(maxWidth / targetW, maxHeight / targetH);
+    
+    // Physical CSS size on the screen
+    const finalW = targetW * ratio;
+    const finalH = targetH * ratio;
+
+    container.style.width = finalW + 'px';
+    container.style.height = finalH + 'px';
+
+    const dpr = window.devicePixelRatio || 1;
+    baseCanvas.width = finalW * dpr; 
+    baseCanvas.height = finalH * dpr;
+    doodleCanvas.width = finalW * dpr; 
+    doodleCanvas.height = finalH * dpr;
+    
+    baseCanvas.style.width = finalW + 'px'; 
+    baseCanvas.style.height = finalH + 'px';
+    doodleCanvas.style.width = finalW + 'px'; 
+    doodleCanvas.style.height = finalH + 'px';
+
+    const ctxBase = baseCanvas.getContext('2d');
+    ctxBase.scale(dpr, dpr);
+    ctxBase.drawImage(editorBaseImage, 0, 0, finalW, finalH);
+
+    ctxDoodle = doodleCanvas.getContext('2d');
+    ctxDoodle.scale(dpr, dpr);
+    updateDrawSettings(); 
+    
+    clearDecorations();
+    isDrawMode = false; 
+    toggleDrawMode();
+    
+    // 🟢 THE FIX: Trigger the silent background preloader!
+    preloadDynamicStickers();
+}
+
+    // 🟢 NEW: Silently downloads GitHub stickers into the browser cache while the user is looking at the editor!
+function preloadDynamicStickers() {
+    // Combine both dynamic GitHub arrays
+    const allDynamicStickers = [...(stickerCatalog.custom || []), ...(stickerCatalog.glasses || [])];
+    
+    allDynamicStickers.forEach(url => {
+        // Creating an Image object in JavaScript without adding it to the HTML 
+        // forces the browser to silently download and cache it in the background!
+        const img = new Image();
+        img.src = url;
+    });
+}
+
+// 3. Ultra-Smooth Brush Settings
+function updateDrawSettings() {
+    ctxDoodle.lineCap = 'round';
+    ctxDoodle.lineJoin = 'round';
+    ctxDoodle.strokeStyle = document.getElementById('doodleColor').value;
+    ctxDoodle.lineWidth = document.getElementById('doodleWidth').value;
+    
+    // Add a microscopic shadow to eliminate jagged pixels
+    ctxDoodle.shadowBlur = 1; 
+    ctxDoodle.shadowColor = ctxDoodle.strokeStyle;
+}
+
+function closePhotoEditor() { document.getElementById('photoEditorModal').style.display = 'none'; }
+
+function clearDecorations() {
+    ctxDoodle.save();
+    ctxDoodle.setTransform(1, 0, 0, 1, 0, 0); // Reset Retina scaling safely
+    ctxDoodle.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+    ctxDoodle.restore();
+    
+    document.getElementById('stickerContainer').innerHTML = '';
+    document.getElementById('stickerTools').style.display = 'none';
+    window.activeSticker = null;
+    actionHistory = []; // 🟢 Clear the history when the board is wiped
+}
+
+
+function toggleDrawMode() {
+    // 🟢 THE FIX: Auto-exit sticker mode if we click the Draw button!
+    if (window.activeSticker) deselectActiveSticker();
+    
+    isDrawMode = !isDrawMode;
+    const btn = document.getElementById('btnDraw');
+    const tools = document.getElementById('drawTools');
+    const dCanvas = document.getElementById('doodleCanvas');
+    const sContainer = document.getElementById('stickerContainer');
+    
+    btn.classList.toggle('active', isDrawMode);
+    
+    if (isDrawMode) {
+        dCanvas.style.pointerEvents = 'auto';
+        tools.style.display = 'flex';
+        sContainer.classList.add('drawing-locked');
+    } else {
+        dCanvas.style.pointerEvents = 'none';
+        tools.style.display = 'none';
+        sContainer.classList.remove('drawing-locked');
+        makeDoodleSticker(); 
+    }
+}
+
+// 🟢 MATHEMATICAL AUTO-CROP FOR DOODLES
+function makeDoodleSticker() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = doodleCanvas.width; // Internal high-res width
+    const h = doodleCanvas.height;
+    const imgData = ctxDoodle.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    
+    let minX = w, minY = h, maxX = 0, maxY = 0;
+    let hasPixels = false;
+
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const alpha = data[(y * w + x) * 4 + 3];
+            if (alpha > 0) {
+                hasPixels = true;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+    }
+
+    if (!hasPixels) return;
+
+    const padding = 10 * dpr;
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(w, maxX + padding);
+    maxY = Math.min(h, maxY + padding);
+    
+    const cropW = maxX - minX;
+    const cropH = maxY - minY;
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropW;
+    cropCanvas.height = cropH;
+    const cropCtx = cropCanvas.getContext('2d');
+    cropCtx.putImageData(ctxDoodle.getImageData(minX, minY, cropW, cropH), 0, 0);
+
+    // Divide by DPR to get the true physical screen size
+    addSticker(cropCanvas.toDataURL('image/png'), cropW / dpr, cropH / dpr, minX / dpr, minY / dpr);
+    
+    // Clear the high-res canvas cleanly
+    ctxDoodle.save();
+    ctxDoodle.setTransform(1, 0, 0, 1, 0, 0);
+    ctxDoodle.clearRect(0, 0, w, h);
+    ctxDoodle.restore();
+}
+
+function getPointerPos(e) {
+    const rect = doodleCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function startDoodle(e) {
+    if (!isDrawMode) return;
+    e.preventDefault();
+    isDrawing = true;
+    const pos = getPointerPos(e);
+    ctxDoodle.beginPath();
+    ctxDoodle.moveTo(pos.x, pos.y);
+}
+
+function drawDoodle(e) {
+    if (!isDrawing || !isDrawMode) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    ctxDoodle.lineTo(pos.x, pos.y);
+    ctxDoodle.stroke();
+}
+
+function stopDoodle(e) { if (isDrawing) { e.preventDefault(); isDrawing = false; } }
+
+doodleCanvas.addEventListener('mousedown', startDoodle);
+doodleCanvas.addEventListener('mousemove', drawDoodle);
+window.addEventListener('mouseup', stopDoodle);
+doodleCanvas.addEventListener('touchstart', startDoodle, {passive: false});
+doodleCanvas.addEventListener('touchmove', drawDoodle, {passive: false});
+window.addEventListener('touchend', stopDoodle);
+
+// --- UNIVERSAL UNDO LOGIC ---
+function undoLastAction() {
+    // 🟢 1. If actively drawing, immediately toggle OFF to convert the doodle to a sticker!
+    if (isDrawMode) {
+        toggleDrawMode(); 
+    }
+    
+    // 🟢 2. Pop the last created element from our history array, ignoring HTML DOM order!
+    while (actionHistory.length > 0) {
+        let lastEl = actionHistory.pop();
+        
+        // Ensure the element still exists (in case the user manually deleted it earlier)
+        if (lastEl && lastEl.parentNode) {
+            lastEl.remove();
+            
+            // Hide the slider tools if we just undid the sticker we were actively touching
+            if (window.activeSticker === lastEl) {
+                deselectActiveSticker();
+            }
+            break; // Stop after successfully undoing exactly 1 action!
+        }
+    }
+}
+// 🟢 UNIVERSAL DIALOG ENGINE (Replaces Native Prompts)
+function showCustomDialog(title, message, isConfirm, onConfirmCallback) {
+    document.getElementById('dialogTitle').innerText = title;
+    document.getElementById('dialogMessage').innerText = message;
+    
+    const btnCancel = document.getElementById('btnDialogCancel');
+    const btnConfirm = document.getElementById('btnDialogConfirm');
+    const modal = document.getElementById('customDialogModal');
+    
+    btnCancel.style.display = isConfirm ? 'block' : 'none';
+    
+    // Clear old listeners so they don't fire multiple times
+    btnCancel.onclick = () => { modal.style.display = 'none'; };
+    btnConfirm.onclick = () => { 
+        modal.style.display = 'none'; 
+        if (onConfirmCallback) onConfirmCallback(); 
+    };
+    
+    modal.style.display = 'flex';
+}
+
+function handleDelete() {
+   if (window.activeSticker) {
+        window.activeSticker.remove();
+        deselectActiveSticker(); // Safely unlock everything else
+    } else {
+        // 2. Ask to clear everything using the NEW custom UI!
+        showCustomDialog("Clear Everything?", "Are you sure you want to delete all stickers and doodles?", true, () => {
+            clearDecorations();
+        });
+    }
+}
+// --- TEXT STICKER LOGIC ---
+
+// 🟢 NEW: LIVE PREVIEW ENGINE (Smooth 36-Point Circular Shadow)
+function updateTextPreview() {
+    const input = document.getElementById('textStickerInput');
+    const fontSelect = document.getElementById('textStickerFont');
+    const font = fontSelect.options[fontSelect.selectedIndex].style.fontFamily;
+    const color = document.getElementById('textColor').value;
+    
+    const enableOutline = document.getElementById('textEnableOutline').checked;
+    const outlineColor = document.getElementById('textOutline').value;
+    const outlineWidth = document.getElementById('textOutlineWidth').value;
+    const enableShadow = document.getElementById('textShadow').checked;
+
+    // Apply Core Styles
+    input.style.fontFamily = font;
+    input.style.color = color;
+    input.style.webkitTextStroke = '0px transparent'; 
+
+    let shadowLayers = [];
+
+    // 1. Build a flawlessly smooth outer stroke using 36 angles of Trigonometry
+    if (enableOutline) {
+        const w = parseFloat(outlineWidth) / 1.5; // Scale thickness for the DOM preview
+        for (let i = 0; i < 36; i++) {
+            const angle = (i * 2 * Math.PI) / 36;
+            const x = (Math.cos(angle) * w).toFixed(2);
+            const y = (Math.sin(angle) * w).toFixed(2);
+            shadowLayers.push(`${x}px ${y}px 0px ${outlineColor}`);
+        }
+    }
+
+    // 2. Add the Drop Shadow (Goes last so it falls behind the outline)
+    if (enableShadow) {
+        shadowLayers.push('0 4px 15px rgba(0,0,0,0.7)');
+    }
+
+    // Apply the layers
+    input.style.textShadow = shadowLayers.length > 0 ? shadowLayers.join(', ') : 'none';
+}
+
+function openTextEditor() { 
+    if (isDrawMode) toggleDrawMode(); // Auto-off draw mode!
+    // 🟢 THE FIX: Auto-exit sticker mode if we click the Text tool!
+    if (window.activeSticker) deselectActiveSticker(); 
+    
+    // Hard reset the visual inputs so old edits don't bleed over
+    const input = document.getElementById('textStickerInput');
+    input.value = '';
+    input.style.height = 'auto'; 
+    
+    // Reset all controls to defaults
+    document.getElementById('textStickerFont').selectedIndex = 0;
+    document.getElementById('textColor').value = '#ffffff';
+    document.getElementById('textEnableOutline').checked = false;
+    document.getElementById('textOutline').value = '#000000';
+    document.getElementById('textOutlineWidth').value = 12;
+    
+    // 🟢 THE FIX: Force the shadow checkbox to start unchecked!
+    document.getElementById('textShadow').checked = false;
+    
+    // Instantly apply the defaults to the visual preview!
+    updateTextPreview();
+    
+    document.getElementById('textEditorModal').style.display = 'flex'; 
+    
+    // Auto-focus the text area so the mobile keyboard pops up instantly!
+    setTimeout(() => input.focus(), 100);
+}
+
+function closeTextEditor() { 
+    document.getElementById('textEditorModal').style.display = 'none'; 
+    document.getElementById('textStickerInput').value = '';
+}
+
+function applyTextSticker() {
+    const text = document.getElementById('textStickerInput').value;
+    const font = document.getElementById('textStickerFont').value;
+    const fillColor = document.getElementById('textColor').value;
+    const useOutline = document.getElementById('textEnableOutline').checked;
+    const strokeColor = document.getElementById('textOutline').value;
+    const strokeWidth = parseFloat(document.getElementById('textOutlineWidth').value);
+    const useShadow = document.getElementById('textShadow').checked;
+    
+    if (!text || text.trim() === '') { closeTextEditor(); return; }
+
+    const tempCanvas = document.createElement('canvas');
+    const tCtx = tempCanvas.getContext('2d');
+    
+    const fontSize = 100; 
+    tCtx.font = `bold ${fontSize}px ${font}`;
+    
+    const lines = text.split('\n');
+    let maxLineWidth = 0;
+    lines.forEach(line => {
+        const w = tCtx.measureText(line).width;
+        if (w > maxLineWidth) maxLineWidth = w;
+    });
+    
+    const textHeight = fontSize * 1.2; 
+    
+    // 🟢 THE FIX: Massive padding to ensure thick strokes and shadows NEVER get cut off at the edge
+    const padding = 150 + (useOutline ? strokeWidth * 4 : 0);
+    tempCanvas.width = maxLineWidth + padding; 
+    tempCanvas.height = (lines.length * textHeight) + padding;
+    
+    tCtx.font = `bold ${fontSize}px ${font}`;
+    tCtx.textAlign = 'center';
+    tCtx.textBaseline = 'middle';
+
+    lines.forEach((line, i) => {
+        const yPos = (i * textHeight) + (textHeight / 2) + (padding / 2);
+        
+        // 1. Setup Drop Shadow (Must be set BEFORE the stroke)
+        if (useShadow) {
+            tCtx.shadowColor = "rgba(0,0,0,0.7)";
+            tCtx.shadowBlur = 15;
+            tCtx.shadowOffsetX = 5;
+            tCtx.shadowOffsetY = 5;
+        } else {
+            tCtx.shadowColor = "transparent";
+        }
+        
+        // 2. Draw the Outline FIRST
+        if (useOutline) {
+            tCtx.lineJoin = 'round'; 
+            tCtx.lineCap = 'round'; // 🟢 THE FIX: Rounds off the physical ends of the lines
+            tCtx.lineWidth = strokeWidth * 2; 
+            tCtx.strokeStyle = strokeColor;
+            tCtx.strokeText(line, tempCanvas.width / 2, yPos);
+        }
+        
+        // 3. Draw the Fill SECOND
+        tCtx.shadowColor = "transparent"; // 🟢 Clear shadow so it doesn't double-apply to the fill!
+        tCtx.fillStyle = fillColor;
+        tCtx.fillText(line, tempCanvas.width / 2, yPos);
+    });
+
+    closeTextEditor();
+    
+    const displayWidth = Math.min(300, tempCanvas.width / 2);
+    const displayHeight = tempCanvas.height * (displayWidth / tempCanvas.width);
+    
+    addSticker(tempCanvas.toDataURL('image/png'), displayWidth, displayHeight);
+}
+
+// --- PHOTOBOOTH STICKER CATALOG ---
+const stickerCatalog = {
+   userStickers: [], // 🟢 NEW: Will auto-fill if URL param is present
+    custom: [], 
+    glasses: [],
+    hats: [
+        "1f451", // Crown
+        "1f3a9", // Top Hat
+        "1f9e2", // Billed Cap
+        "1f452", // Woman's Hat
+        "1f393", // Graduation Cap
+        "1faa6", // Military Helmet
+        "26d1",  // Rescue Helmet
+        "1f380", // Pink Ribbon/Bow
+        "1f9e3"  // Scarf
+    ],
+    masks: [
+        "1f3ad", // Drama Masks
+        "1f47d", // Alien
+        "1f47b", // Ghost
+        "1f480", // Skull
+        "1f921", // Clown
+        "1f383", // Jack-O-Lantern
+        "1f47a", // Goblin mask
+        "1f479", // Ogre mask
+        "1f916", // Robot
+        "1f435", // Monkey Head
+        "1f436", // Dog Head
+        "1f431", // Cat Head
+        "1f42f", // Tiger Head
+        "1f984"  // Unicorn Head
+    ],
+    props: [
+        "1f3a4", // Microphone
+        "1f3a7", // Headphones
+        "1f3b8", // Guitar
+        "1f3b7", // Saxophone
+        "1f4f7", // Camera
+        "1fa84", // Magic Wand
+        "2694",  // Crossed Swords
+        "1f3c6", // Trophy
+        "1f3c5", // Gold Medal
+        "1f52d", // Telescope
+        "1f37e", // Champagne Bottle
+        "1f378"  // Cocktail Glass
+    ],
+    decor: [
+        "1f4ac", // Speech Bubble
+        "1f4ad", // Thought Bubble
+        "1f5ef", // Anger Bubble
+        "1f48b", // Kiss Mark (Lips)
+        "1f444", // Mouth
+        "1f445", // Tongue
+        "1f496", // Sparkling Heart
+        "2728",  // Sparkles
+        "1f4a5", // Collision/Explosion
+        "1f4a4", // Zzz (Sleeping)
+        "1f388", // Balloon
+        "1f389", // Party Popper
+        "1f48e", // Gemstone
+        "1f338", // Cherry Blossom
+        "1f33b"  // Sunflower
+    ]
+};
+
+const stickerCache = {};
+
+function loadStickerCategory(category, btnElement) {
+    document.querySelectorAll('.sticker-tab').forEach(el => el.classList.remove('active'));
+    if (btnElement) btnElement.classList.add('active');
+
+    const grid = document.getElementById('stickerGrid');
+    
+    if (stickerCache[category]) {
+        grid.innerHTML = stickerCache[category];
+        return;
+    }
+
+   // 🟢 THE FIX: Prevent infinite loading and use the globally captured ID!
+    if (category === 'userStickers' && window.userStickersFailed) {
+        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${window.globalEventId}' on GitHub.</span></div>`;
+        return;
+    }
+
+    if ((category === 'userStickers' || category === 'custom' || category === 'glasses') && stickerCatalog[category].length === 0) {
+        let loadingText = 'Fetching Custom Props...';
+        if (category === 'glasses') loadingText = 'Fetching Placeholders...';
+        if (category === 'userStickers') loadingText = 'Fetching Event Stickers...';
+        
+        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">${loadingText}<br><div class="spinner-small" style="margin: 15px auto; border-top-color: #0d9488;"></div></div>`;
+        return; 
+    }
+
+    let html = '';
+    stickerCatalog[category].forEach(code => {
+        const url = (code.startsWith('http')) 
+            ? code 
+            : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
+        
+        html += `<img class="sticker-item" src="${url}" loading="lazy" decoding="async" onclick="addSticker('${url}', 120, 120)">`;
+    });
+    
+    stickerCache[category] = html;
+    grid.innerHTML = html;
+}
+
+function openStickerDrawer() {
+    if (isDrawMode) toggleDrawMode(); 
+    if (window.activeSticker) deselectActiveSticker(); 
+    
+    // 🟢 STRICT URL CHECK: Only show if userStickers=true is in the URL!
+    const shouldShowTab = window.location.search.toLowerCase().includes('userstickers=true');
+    
+    const tabsContainer = document.getElementById('stickerTabs');
+    let userTabBtn = document.getElementById('tabUserStickers');
+    
+    // Auto-build the button if it's missing from the HTML
+    if (shouldShowTab && !userTabBtn && tabsContainer) {
+        userTabBtn = document.createElement('button');
+        userTabBtn.id = 'tabUserStickers';
+        userTabBtn.className = 'sticker-tab';
+        userTabBtn.innerText = '📁 User Stickers';
+        userTabBtn.onclick = function() { loadStickerCategory('userStickers', this); };
+        tabsContainer.insertBefore(userTabBtn, tabsContainer.firstChild);
+    }
+
+    // Force it visible ONLY if it should show, otherwise hide it completely!
+    if (userTabBtn) {
+        userTabBtn.style.setProperty('display', shouldShowTab ? 'inline-block' : 'none', 'important');
+    }
+
+    const grid = document.getElementById('stickerGrid');
+    
+    if (grid.innerHTML === '') {
+        // Automatically click the User Stickers tab if it's visible
+        if (shouldShowTab && userTabBtn) {
+            loadStickerCategory('userStickers', userTabBtn); 
+        } else {
+            // Fallback to Custom Props if User Stickers are disabled
+            const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
+            if (customTabBtn) loadStickerCategory('custom', customTabBtn); 
+        }
+    }
+    
+    document.getElementById('stickerDrawer').style.display = 'flex';
+    requestAnimationFrame(() => {
+        document.getElementById('stickerDrawer').classList.add('open');
+    });
+}
+
+function closeStickerDrawer() {
+    document.getElementById('stickerDrawer').classList.remove('open');
+    setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
+}
+
+// 🟢 DESELECT STICKERS ON CANVAS TAP
+document.getElementById('editorCanvasContainer').addEventListener('mousedown', (e) => {
+    if (e.target.id === 'doodleCanvas') deselectActiveSticker();
+});
+document.getElementById('editorCanvasContainer').addEventListener('touchstart', (e) => {
+    if (e.target.id === 'doodleCanvas') deselectActiveSticker();
+}, {passive: true});
+
+// 🟢 NEW: Global Helper to unlock stickers and close the banner
+function deselectActiveSticker() {
+    document.querySelectorAll('.editor-sticker').forEach(el => {
+        el.classList.remove('active');
+        el.classList.remove('locked-sticker');
+    });
+    document.getElementById('stickerTools').style.display = 'none';
+    window.activeSticker = null;
+}
+
+// 🟢 MOUSE RESIZE ENGINE (Desktop Corner Handles)
+function startResizing(e, wrapper) {
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startScale = parseFloat(wrapper.dataset.scale) || 1;
+    
+    // Find the center of the sticker
+    const rect = wrapper.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    // Initial distance from mouse to center
+    const startDist = Math.hypot(startX - centerX, startY - centerY);
+
+    function doResize(moveEvent) {
+        const currentDist = Math.hypot(moveEvent.clientX - centerX, moveEvent.clientY - centerY);
+        
+        // New scale is the ratio of current distance vs starting distance
+        let newScale = (currentDist / startDist) * startScale;
+        
+        // Constrain scale between 0.2x and 6x
+        newScale = Math.max(0.2, Math.min(newScale, 6));
+        
+        wrapper.dataset.scale = newScale;
+        const currentRot = wrapper.dataset.rot || 0;
+        
+        // Apply transform while preserving rotation
+        wrapper.style.transform = `scale(${newScale}) rotate(${currentRot}deg)`;
+    }
+
+    function stopResize() {
+        window.removeEventListener('mousemove', doResize);
+        window.removeEventListener('mouseup', stopResize);
+    }
+
+    window.addEventListener('mousemove', doResize);
+    window.addEventListener('mouseup', stopResize);
+}
+
+// 🟢 MASTER STICKER ENGINE (With Wrapper & Inline Delete)
+function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
+    closeStickerDrawer();
+    if (isDrawMode) toggleDrawMode();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'editor-sticker active';
+    wrapper.style.width = sWidth + 'px';
+    wrapper.style.height = sHeight + 'px';
+    wrapper.dataset.baseW = sWidth;
+    wrapper.dataset.baseH = sHeight;
+    wrapper.dataset.scale = 1;
+    wrapper.dataset.rot = 0;
+
+    const img = document.createElement('img');
+    img.crossOrigin = "anonymous"; 
+    img.src = url;
+
+    const delBtn = document.createElement('div');
+    delBtn.className = 'sticker-delete-btn';
+    delBtn.innerHTML = '✕';
+    
+    // Wire up delete
+    const deleteSticker = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        wrapper.remove();
+        deselectActiveSticker();
+    };
+    delBtn.addEventListener('mousedown', deleteSticker);
+    delBtn.addEventListener('touchstart', deleteSticker, {passive: false});
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(delBtn);
+
+    // 🟢 ADD THE 4 CORNER HANDLES
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle ${pos}`;
+        wrapper.appendChild(handle);
+        
+        handle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            startResizing(e, wrapper);
+        });
+    });
+
+    const container = document.getElementById('stickerContainer');
+    
+    // Lock all existing stickers immediately!
+    document.querySelectorAll('.editor-sticker').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('locked-sticker');
+    });
+
+    if (forceX !== null && forceY !== null) {
+        wrapper.style.left = forceX + 'px';
+        wrapper.style.top = forceY + 'px';
+    } else {
+        wrapper.style.left = (container.clientWidth / 2 - (sWidth / 2)) + 'px';
+        wrapper.style.top = (container.clientHeight / 2 - (sHeight / 2)) + 'px';
+    }
+
+    let isDragging = false, isPinching = false;
+    let startX, startY, initialLeft, initialTop;
+    let initialDistance = 0, initialAngle = 0, startScale = 1, startRot = 0;
+
+    const startDrag = (e) => {
+        if (isDrawMode) return; 
+        if (window.activeSticker && window.activeSticker !== wrapper) return;
+        
+        e.preventDefault();
+        
+        document.querySelectorAll('.editor-sticker').forEach(el => {
+            el.classList.remove('active');
+            if (el !== wrapper) el.classList.add('locked-sticker');
+        });
+        
+        wrapper.classList.add('active', 'is-dragging');
+        container.appendChild(wrapper); 
+        
+        window.activeSticker = wrapper;
+        document.getElementById('stickerTools').style.display = 'flex';
+
+        if (e.touches && e.touches.length === 2) {
+            isPinching = true;
+            isDragging = false;
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            initialDistance = Math.hypot(dx, dy);
+            initialAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+            startScale = parseFloat(wrapper.dataset.scale) || 1;
+            startRot = parseFloat(wrapper.dataset.rot) || 0;
+        } else {
+            isDragging = true;
+            isPinching = false;
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            initialLeft = parseFloat(wrapper.style.left) || 0;
+            initialTop = parseFloat(wrapper.style.top) || 0;
+        }
+
+        window.addEventListener('mousemove', doDrag);
+        window.addEventListener('mouseup', stopDrag);
+        window.addEventListener('touchmove', doDrag, {passive: false});
+        window.addEventListener('touchend', stopDrag);
+    };
+
+    const doDrag = (e) => {
+        if (isDrawMode) return;
+        e.preventDefault();
+        
+        if (e.touches && e.touches.length === 2) {
+            isPinching = true;
+            isDragging = false;
+            
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const distance = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+            if (!initialDistance) {
+                initialDistance = distance;
+                initialAngle = angle;
+                startScale = parseFloat(wrapper.dataset.scale) || 1;
+                startRot = parseFloat(wrapper.dataset.rot) || 0;
+            }
+
+            const scaleDiff = distance / initialDistance;
+            const newScale = Math.max(0.2, Math.min(startScale * scaleDiff, 6)); 
+            const angleDiff = angle - initialAngle;
+            const newRot = startRot + angleDiff;
+
+            wrapper.dataset.scale = newScale;
+            wrapper.dataset.rot = newRot;
+            wrapper.style.transform = `scale(${newScale}) rotate(${newRot}deg)`;
+        } else if (isDragging) {
+            const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+            const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+            wrapper.style.left = (initialLeft + (currentX - startX)) + 'px';
+            wrapper.style.top = (initialTop + (currentY - startY)) + 'px';
+        }
+    };
+
+    const stopDrag = (e) => { 
+        if (e && e.touches && e.touches.length > 0) {
+            isPinching = false;
+            isDragging = true;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            initialLeft = parseFloat(wrapper.style.left) || 0;
+            initialTop = parseFloat(wrapper.style.top) || 0;
+            initialDistance = 0; 
+            return;
+        }
+
+        isDragging = false; 
+        isPinching = false;
+        initialDistance = 0;
+        wrapper.classList.remove('is-dragging'); 
+
+        window.removeEventListener('mousemove', doDrag);
+        window.removeEventListener('mouseup', stopDrag);
+        window.removeEventListener('touchmove', doDrag);
+        window.removeEventListener('touchend', stopDrag);
+    };
+
+    wrapper.addEventListener('mousedown', startDrag);
+    wrapper.addEventListener('touchstart', startDrag, {passive: false});
+
+    container.appendChild(wrapper);
+    actionHistory.push(wrapper);
+    
+    window.activeSticker = wrapper;
+    document.getElementById('stickerTools').style.display = 'flex';
+}
+
+// --- FINAL MERGE & HANDOFF ---
+function saveAndSubmitEdit() {
+    // 🟢 THE FIX: We deliberately do NOT call makeDoodleSticker() here. 
+    // We just leave the doodle on the canvas so it gets baked instantly!
+
+    const ov = document.getElementById('uploadOverlay');
+    document.getElementById('uploadStatusText').innerText = "Processing Edits...";
+    if(ov) ov.style.display = 'flex';
+
+    const origW = editorBaseImage.width;
+    const origH = editorBaseImage.height;
+    
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = origW;
+    finalCanvas.height = origH;
+    const ctxFinal = finalCanvas.getContext('2d');
+
+    // 1. Draw Base Image
+    ctxFinal.drawImage(editorBaseImage, 0, 0, origW, origH);
+
+    // 2. Draw the live Doodle Canvas perfectly scaled over the image
+    ctxFinal.drawImage(document.getElementById('doodleCanvas'), 0, 0, origW, origH);
+
+    const containerRect = document.getElementById('editorCanvasContainer').getBoundingClientRect();
+    const scaleX = origW / containerRect.width;
+    const scaleY = origH / containerRect.height;
+
+    // 3. Draw Stickers (With Scale & Rotation Math)
+    const stickers = document.querySelectorAll('.editor-sticker');
+    stickers.forEach(sticker => {
+        // 🟢 THE FIX: Grab the actual <img> from inside the wrapper!
+        const imgEl = sticker.querySelector('img'); 
+        
+        const sLeft = parseFloat(sticker.style.left) || 0;
+        const sTop = parseFloat(sticker.style.top) || 0;
+        const sW = parseFloat(sticker.style.width); 
+        const sH = parseFloat(sticker.style.height);
+        
+        const centerX = sLeft + (sW / 2);
+        const centerY = sTop + (sH / 2);
+        
+        const finalCenterX = centerX * scaleX;
+        const finalCenterY = centerY * scaleY;
+        
+        const stickerScale = parseFloat(sticker.dataset.scale || 1);
+        const finalStickerW = sW * scaleX * stickerScale;
+        const finalStickerH = sH * scaleY * stickerScale;
+        
+        const rot = parseFloat(sticker.dataset.rot || 0) * (Math.PI / 180);
+
+        ctxFinal.save();
+        ctxFinal.translate(finalCenterX, finalCenterY);
+        ctxFinal.rotate(rot);
+        
+        // 🟢 THE FIX: Draw the imgEl, NOT the wrapper!
+        ctxFinal.drawImage(imgEl, -finalStickerW / 2, -finalStickerH / 2, finalStickerW, finalStickerH);
+        ctxFinal.restore();
+    });
+
+    const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
+    closePhotoEditor();
+    
+    // Pass the completely baked image to the final template processor
+    processFinalTemplateLayout(finalBase64, origW > origH);
+}
+
+function processFinalTemplateLayout(editedBase64, isLandscape) {
+    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
+
+    if (activeTemplateBase64) {
+        const overlayImg = new Image();
+        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
+        
+        overlayImg.onload = function() {
+            executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
+        };
+        overlayImg.onerror = function() {
+            // 🟢 REPLACED
+            showCustomDialog("Template Warning", "Overlay failed. Uploading your edited photo bare.", false);
+            executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+        };
+        overlayImg.src = activeTemplateBase64;
+    } else {
+        executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+    }
+}
+
+function executeCanvasUpload(cW, cH, overlayImg, sourceBase64) {
+    const canvas = document.createElement('canvas');
+    canvas.width = cW; canvas.height = cH;
+    const ctx = canvas.getContext('2d');
+    
+    const sourceImg = new Image();
+    sourceImg.onload = function() {
+        const scale = Math.max(cW / sourceImg.width, cH / sourceImg.height);
+        const drawWidth = sourceImg.width * scale;
+        const drawHeight = sourceImg.height * scale;
+        const offsetX = (cW - drawWidth) / 2;
+        const offsetY = (cH - drawHeight) / 2;
+
+        ctx.drawImage(sourceImg, offsetX, offsetY, drawWidth, drawHeight);
+        if (overlayImg) ctx.drawImage(overlayImg, 0, 0, cW, cH);
+        
+        uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85)); 
+    };
+    sourceImg.src = sourceBase64;
+}
   </script>
+    
 </body>
 </html>
