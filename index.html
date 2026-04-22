@@ -606,16 +606,24 @@
     </div>
   <div class="gallery-container" id="gallery"></div>
   <div id="sentinel"></div>
+  
   <div id="decoratePromptModal" class="custom-modal-overlay" style="z-index: 100000;">
-    <div class="custom-modal-box">
-      <h3>Decorate Photo?</h3>
-      <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Would you like to add text, stickers, or doodles to your photo before uploading?</p>
+    <div class="custom-modal-box" style="width: 95%; max-width: 400px; padding: 20px;">
+      <h3 style="margin-top: 0; margin-bottom: 15px;">Photo Preview</h3>
+      
+      <div style="width: 100%; background: #111; border-radius: 12px; overflow: hidden; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; min-height: 250px; position: relative;">
+          <div id="previewModalLoader" class="big-spinner" style="margin: 0; width: 30px; height: 30px; border-width: 3px;"></div>
+          <img id="previewModalImage" src="" style="max-width: 100%; max-height: 45vh; object-fit: contain; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+      </div>
+      
+      <p style="font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.4;">Would you like to add text, stickers, or doodles before uploading?</p>
       <div class="share-btn-row">
         <button class="btn-close-modal" id="btnSubmitAsIs">No, Submit</button>
         <button class="btn-copy" id="btnDecoratePhoto">Yes, Decorate</button>
       </div>
     </div>
   </div>
+  
   <div id="customDialogModal" class="custom-modal-overlay" style="z-index: 100010;">
     <div class="custom-modal-box" style="background: #1e1e1e; border: 1px solid #333; color: white;">
       <h3 id="dialogTitle" style="margin-top: 0;">Confirm</h3>
@@ -1242,7 +1250,8 @@
             showCustomDialog("Action Blocked", "Please manually copy the link from the top of the screen.", false);
         });
     }
-    // ==============================================================================
+    
+// ==============================================================================
 // 🟢 SNAPCHAT-STYLE PHOTO EDITOR ENGINE
 // ==============================================================================
 let editorBaseImage = new Image();
@@ -1250,6 +1259,7 @@ let isDrawMode = true;
 let isDrawing = false;
 let ctxDoodle;
 let actionHistory = [];
+let bakedPreviewBase64 = null; // 🟢 NEW: Stores the generated preview in memory
 
 // 1. Intercept the Photo Upload & Ask User
 function openPhotoEditor(event) {
@@ -1260,23 +1270,41 @@ function openPhotoEditor(event) {
     reader.onload = function(e) {
         editorBaseImage.onload = function() {
             
-            // 🟢 Show the prompt asking if they want to decorate
             const promptModal = document.getElementById('decoratePromptModal');
-            promptModal.style.display = 'flex';
+            const previewImg = document.getElementById('previewModalImage');
+            const loader = document.getElementById('previewModalLoader');
             
-            // If NO: Submit instantly
+            promptModal.style.display = 'flex';
+            previewImg.style.display = 'none';
+            loader.style.display = 'block';
+            bakedPreviewBase64 = null; // Reset memory
+            
+            const isLandscape = editorBaseImage.width > editorBaseImage.height;
+            
+            // 🟢 Generate the high-res composite in the background instantly
+            generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
+                bakedPreviewBase64 = finalBase64;
+                previewImg.src = finalBase64;
+                previewImg.style.display = 'block';
+                loader.style.display = 'none';
+            });
+            
+            // If NO: Submit instantly using the pre-baked preview!
             document.getElementById('btnSubmitAsIs').onclick = function() {
                 promptModal.style.display = 'none';
-                const isLandscape = editorBaseImage.width > editorBaseImage.height;
-                
                 const ov = document.getElementById('uploadOverlay');
                 document.getElementById('uploadStatusText').innerText = "Processing Photo...";
                 if(ov) ov.style.display = 'flex';
                 
-                processFinalTemplateLayout(e.target.result, isLandscape);
+                if (bakedPreviewBase64) {
+                    uploadProcessedPhoto(bakedPreviewBase64);
+                } else {
+                    // Fallback just in case they click impossibly fast before it finishes rendering
+                    processFinalTemplateLayout(e.target.result, isLandscape);
+                }
             };
             
-            // If YES: Open Editor
+            // If YES: Open Editor (Uses the raw photo without the template)
             document.getElementById('btnDecoratePhoto').onclick = function() {
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
@@ -1288,6 +1316,43 @@ function openPhotoEditor(event) {
     };
     reader.readAsDataURL(file);
     event.target.value = ''; 
+}
+
+// 🟢 NEW HELPER: Universally generates the combined template + photo image
+function generateCompositePreview(sourceImgObj, isLandscape, callback) {
+    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
+    const cW = isLandscape ? 1800 : 1200;
+    const cH = isLandscape ? 1200 : 1800;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cW; canvas.height = cH;
+    const ctx = canvas.getContext('2d');
+
+    const drawFinal = function(overlayImg) {
+        // Smart crop and center the photo
+        const scale = Math.max(cW / sourceImgObj.width, cH / sourceImgObj.height);
+        const drawWidth = sourceImgObj.width * scale;
+        const drawHeight = sourceImgObj.height * scale;
+        const offsetX = (cW - drawWidth) / 2;
+        const offsetY = (cH - drawHeight) / 2;
+
+        // Draw Photo
+        ctx.drawImage(sourceImgObj, offsetX, offsetY, drawWidth, drawHeight);
+        // Draw Template on Top
+        if (overlayImg) ctx.drawImage(overlayImg, 0, 0, cW, cH);
+        
+        callback(canvas.toDataURL('image/jpeg', 0.85));
+    };
+
+    if (activeTemplateBase64) {
+        const overlayImg = new Image();
+        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
+        overlayImg.onload = function() { drawFinal(overlayImg); };
+        overlayImg.onerror = function() { drawFinal(null); };
+        overlayImg.src = activeTemplateBase64;
+    } else {
+        drawFinal(null);
+    }
 }
 
 // 2. Scale the Canvas to Fit the Screen (With Retina High-Res Math)
@@ -1334,18 +1399,12 @@ function setupEditorWorkspace() {
     isDrawMode = false; 
     toggleDrawMode();
     
-    // 🟢 THE FIX: Trigger the silent background preloader!
     preloadDynamicStickers();
 }
 
-    // 🟢 NEW: Silently downloads GitHub stickers into the browser cache while the user is looking at the editor!
 function preloadDynamicStickers() {
-    // Combine both dynamic GitHub arrays
     const allDynamicStickers = [...(stickerCatalog.custom || []), ...(stickerCatalog.glasses || [])];
-    
     allDynamicStickers.forEach(url => {
-        // Creating an Image object in JavaScript without adding it to the HTML 
-        // forces the browser to silently download and cache it in the background!
         const img = new Image();
         img.src = url;
     });
@@ -1357,8 +1416,6 @@ function updateDrawSettings() {
     ctxDoodle.lineJoin = 'round';
     ctxDoodle.strokeStyle = document.getElementById('doodleColor').value;
     ctxDoodle.lineWidth = document.getElementById('doodleWidth').value;
-    
-    // Add a microscopic shadow to eliminate jagged pixels
     ctxDoodle.shadowBlur = 1; 
     ctxDoodle.shadowColor = ctxDoodle.strokeStyle;
 }
@@ -1367,19 +1424,17 @@ function closePhotoEditor() { document.getElementById('photoEditorModal').style.
 
 function clearDecorations() {
     ctxDoodle.save();
-    ctxDoodle.setTransform(1, 0, 0, 1, 0, 0); // Reset Retina scaling safely
+    ctxDoodle.setTransform(1, 0, 0, 1, 0, 0); 
     ctxDoodle.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
     ctxDoodle.restore();
     
     document.getElementById('stickerContainer').innerHTML = '';
     document.getElementById('stickerTools').style.display = 'none';
     window.activeSticker = null;
-    actionHistory = []; // 🟢 Clear the history when the board is wiped
+    actionHistory = []; 
 }
 
-
 function toggleDrawMode() {
-    // 🟢 THE FIX: Auto-exit sticker mode if we click the Draw button!
     if (window.activeSticker) deselectActiveSticker();
     
     isDrawMode = !isDrawMode;
@@ -1405,7 +1460,7 @@ function toggleDrawMode() {
 // 🟢 MATHEMATICAL AUTO-CROP FOR DOODLES
 function makeDoodleSticker() {
     const dpr = window.devicePixelRatio || 1;
-    const w = doodleCanvas.width; // Internal high-res width
+    const w = doodleCanvas.width; 
     const h = doodleCanvas.height;
     const imgData = ctxDoodle.getImageData(0, 0, w, h);
     const data = imgData.data;
@@ -1443,10 +1498,8 @@ function makeDoodleSticker() {
     const cropCtx = cropCanvas.getContext('2d');
     cropCtx.putImageData(ctxDoodle.getImageData(minX, minY, cropW, cropH), 0, 0);
 
-    // Divide by DPR to get the true physical screen size
     addSticker(cropCanvas.toDataURL('image/png'), cropW / dpr, cropH / dpr, minX / dpr, minY / dpr);
     
-    // Clear the high-res canvas cleanly
     ctxDoodle.save();
     ctxDoodle.setTransform(1, 0, 0, 1, 0, 0);
     ctxDoodle.clearRect(0, 0, w, h);
@@ -1488,28 +1541,19 @@ window.addEventListener('touchend', stopDoodle);
 
 // --- UNIVERSAL UNDO LOGIC ---
 function undoLastAction() {
-    // 🟢 1. If actively drawing, immediately toggle OFF to convert the doodle to a sticker!
-    if (isDrawMode) {
-        toggleDrawMode(); 
-    }
+    if (isDrawMode) { toggleDrawMode(); }
     
-    // 🟢 2. Pop the last created element from our history array, ignoring HTML DOM order!
     while (actionHistory.length > 0) {
         let lastEl = actionHistory.pop();
-        
-        // Ensure the element still exists (in case the user manually deleted it earlier)
         if (lastEl && lastEl.parentNode) {
             lastEl.remove();
-            
-            // Hide the slider tools if we just undid the sticker we were actively touching
-            if (window.activeSticker === lastEl) {
-                deselectActiveSticker();
-            }
-            break; // Stop after successfully undoing exactly 1 action!
+            if (window.activeSticker === lastEl) { deselectActiveSticker(); }
+            break; 
         }
     }
 }
-// 🟢 UNIVERSAL DIALOG ENGINE (Replaces Native Prompts)
+
+// 🟢 UNIVERSAL DIALOG ENGINE
 function showCustomDialog(title, message, isConfirm, onConfirmCallback) {
     document.getElementById('dialogTitle').innerText = title;
     document.getElementById('dialogMessage').innerText = message;
@@ -1520,7 +1564,6 @@ function showCustomDialog(title, message, isConfirm, onConfirmCallback) {
     
     btnCancel.style.display = isConfirm ? 'block' : 'none';
     
-    // Clear old listeners so they don't fire multiple times
     btnCancel.onclick = () => { modal.style.display = 'none'; };
     btnConfirm.onclick = () => { 
         modal.style.display = 'none'; 
@@ -1533,17 +1576,16 @@ function showCustomDialog(title, message, isConfirm, onConfirmCallback) {
 function handleDelete() {
    if (window.activeSticker) {
         window.activeSticker.remove();
-        deselectActiveSticker(); // Safely unlock everything else
+        deselectActiveSticker(); 
     } else {
-        // 2. Ask to clear everything using the NEW custom UI!
         showCustomDialog("Clear Everything?", "Are you sure you want to delete all stickers and doodles?", true, () => {
             clearDecorations();
         });
     }
 }
+
 // --- TEXT STICKER LOGIC ---
 
-// 🟢 NEW: LIVE PREVIEW ENGINE (Smooth 36-Point Circular Shadow)
 function updateTextPreview() {
     const input = document.getElementById('textStickerInput');
     const fontSelect = document.getElementById('textStickerFont');
@@ -1555,16 +1597,14 @@ function updateTextPreview() {
     const outlineWidth = document.getElementById('textOutlineWidth').value;
     const enableShadow = document.getElementById('textShadow').checked;
 
-    // Apply Core Styles
     input.style.fontFamily = font;
     input.style.color = color;
     input.style.webkitTextStroke = '0px transparent'; 
 
     let shadowLayers = [];
 
-    // 1. Build a flawlessly smooth outer stroke using 36 angles of Trigonometry
     if (enableOutline) {
-        const w = parseFloat(outlineWidth) / 1.5; // Scale thickness for the DOM preview
+        const w = parseFloat(outlineWidth) / 1.5; 
         for (let i = 0; i < 36; i++) {
             const angle = (i * 2 * Math.PI) / 36;
             const x = (Math.cos(angle) * w).toFixed(2);
@@ -1573,41 +1613,27 @@ function updateTextPreview() {
         }
     }
 
-    // 2. Add the Drop Shadow (Goes last so it falls behind the outline)
-    if (enableShadow) {
-        shadowLayers.push('0 4px 15px rgba(0,0,0,0.7)');
-    }
-
-    // Apply the layers
+    if (enableShadow) { shadowLayers.push('0 4px 15px rgba(0,0,0,0.7)'); }
     input.style.textShadow = shadowLayers.length > 0 ? shadowLayers.join(', ') : 'none';
 }
 
 function openTextEditor() { 
-    if (isDrawMode) toggleDrawMode(); // Auto-off draw mode!
-    // 🟢 THE FIX: Auto-exit sticker mode if we click the Text tool!
+    if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
-    // Hard reset the visual inputs so old edits don't bleed over
     const input = document.getElementById('textStickerInput');
     input.value = '';
     input.style.height = 'auto'; 
     
-    // Reset all controls to defaults
     document.getElementById('textStickerFont').selectedIndex = 0;
     document.getElementById('textColor').value = '#ffffff';
     document.getElementById('textEnableOutline').checked = false;
     document.getElementById('textOutline').value = '#000000';
     document.getElementById('textOutlineWidth').value = 12;
-    
-    // 🟢 THE FIX: Force the shadow checkbox to start unchecked!
     document.getElementById('textShadow').checked = false;
     
-    // Instantly apply the defaults to the visual preview!
     updateTextPreview();
-    
     document.getElementById('textEditorModal').style.display = 'flex'; 
-    
-    // Auto-focus the text area so the mobile keyboard pops up instantly!
     setTimeout(() => input.focus(), 100);
 }
 
@@ -1642,7 +1668,6 @@ function applyTextSticker() {
     
     const textHeight = fontSize * 1.2; 
     
-    // 🟢 THE FIX: Massive padding to ensure thick strokes and shadows NEVER get cut off at the edge
     const padding = 150 + (useOutline ? strokeWidth * 4 : 0);
     tempCanvas.width = maxLineWidth + padding; 
     tempCanvas.height = (lines.length * textHeight) + padding;
@@ -1654,7 +1679,6 @@ function applyTextSticker() {
     lines.forEach((line, i) => {
         const yPos = (i * textHeight) + (textHeight / 2) + (padding / 2);
         
-        // 1. Setup Drop Shadow (Must be set BEFORE the stroke)
         if (useShadow) {
             tCtx.shadowColor = "rgba(0,0,0,0.7)";
             tCtx.shadowBlur = 15;
@@ -1664,17 +1688,15 @@ function applyTextSticker() {
             tCtx.shadowColor = "transparent";
         }
         
-        // 2. Draw the Outline FIRST
         if (useOutline) {
             tCtx.lineJoin = 'round'; 
-            tCtx.lineCap = 'round'; // 🟢 THE FIX: Rounds off the physical ends of the lines
+            tCtx.lineCap = 'round'; 
             tCtx.lineWidth = strokeWidth * 2; 
             tCtx.strokeStyle = strokeColor;
             tCtx.strokeText(line, tempCanvas.width / 2, yPos);
         }
         
-        // 3. Draw the Fill SECOND
-        tCtx.shadowColor = "transparent"; // 🟢 Clear shadow so it doesn't double-apply to the fill!
+        tCtx.shadowColor = "transparent"; 
         tCtx.fillStyle = fillColor;
         tCtx.fillText(line, tempCanvas.width / 2, yPos);
     });
@@ -1687,69 +1709,13 @@ function applyTextSticker() {
     addSticker(tempCanvas.toDataURL('image/png'), displayWidth, displayHeight);
 }
 
-// --- PHOTOBOOTH STICKER CATALOG ---
+// --- STICKER DRAWERS ---
 const stickerCatalog = {
-   userStickers: [], // 🟢 NEW: Will auto-fill if URL param is present
-    custom: [], 
-    glasses: [],
-    hats: [
-        "1f451", // Crown
-        "1f3a9", // Top Hat
-        "1f9e2", // Billed Cap
-        "1f452", // Woman's Hat
-        "1f393", // Graduation Cap
-        "1faa6", // Military Helmet
-        "26d1",  // Rescue Helmet
-        "1f380", // Pink Ribbon/Bow
-        "1f9e3"  // Scarf
-    ],
-    masks: [
-        "1f3ad", // Drama Masks
-        "1f47d", // Alien
-        "1f47b", // Ghost
-        "1f480", // Skull
-        "1f921", // Clown
-        "1f383", // Jack-O-Lantern
-        "1f47a", // Goblin mask
-        "1f479", // Ogre mask
-        "1f916", // Robot
-        "1f435", // Monkey Head
-        "1f436", // Dog Head
-        "1f431", // Cat Head
-        "1f42f", // Tiger Head
-        "1f984"  // Unicorn Head
-    ],
-    props: [
-        "1f3a4", // Microphone
-        "1f3a7", // Headphones
-        "1f3b8", // Guitar
-        "1f3b7", // Saxophone
-        "1f4f7", // Camera
-        "1fa84", // Magic Wand
-        "2694",  // Crossed Swords
-        "1f3c6", // Trophy
-        "1f3c5", // Gold Medal
-        "1f52d", // Telescope
-        "1f37e", // Champagne Bottle
-        "1f378"  // Cocktail Glass
-    ],
-    decor: [
-        "1f4ac", // Speech Bubble
-        "1f4ad", // Thought Bubble
-        "1f5ef", // Anger Bubble
-        "1f48b", // Kiss Mark (Lips)
-        "1f444", // Mouth
-        "1f445", // Tongue
-        "1f496", // Sparkling Heart
-        "2728",  // Sparkles
-        "1f4a5", // Collision/Explosion
-        "1f4a4", // Zzz (Sleeping)
-        "1f388", // Balloon
-        "1f389", // Party Popper
-        "1f48e", // Gemstone
-        "1f338", // Cherry Blossom
-        "1f33b"  // Sunflower
-    ]
+   userStickers: [], custom: [], glasses: [],
+    hats: ["1f451", "1f3a9", "1f9e2", "1f452", "1f393", "1faa6", "26d1", "1f380", "1f9e3"],
+    masks: ["1f3ad", "1f47d", "1f47b", "1f480", "1f921", "1f383", "1f47a", "1f479", "1f916", "1f435", "1f436", "1f431", "1f42f", "1f984"],
+    props: ["1f3a4", "1f3a7", "1f3b8", "1f3b7", "1f4f7", "1fa84", "2694", "1f3c6", "1f3c5", "1f52d", "1f37e", "1f378"],
+    decor: ["1f4ac", "1f4ad", "1f5ef", "1f48b", "1f444", "1f445", "1f496", "2728", "1f4a5", "1f4a4", "1f388", "1f389", "1f48e", "1f338", "1f33b"]
 };
 
 const stickerCache = {};
@@ -1765,7 +1731,6 @@ function loadStickerCategory(category, btnElement) {
         return;
     }
 
-   // 🟢 THE FIX: Prevent infinite loading and use the globally captured ID!
     if (category === 'userStickers' && window.userStickersFailed) {
         grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${window.globalEventId}' on GitHub.</span></div>`;
         return;
@@ -1782,10 +1747,7 @@ function loadStickerCategory(category, btnElement) {
 
     let html = '';
     stickerCatalog[category].forEach(code => {
-        const url = (code.startsWith('http')) 
-            ? code 
-            : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
-        
+        const url = (code.startsWith('http')) ? code : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
         html += `<img class="sticker-item" src="${url}" loading="lazy" decoding="async" onclick="addSticker('${url}', 120, 120)">`;
     });
     
@@ -1797,13 +1759,10 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
-    // 🟢 STRICT URL CHECK: Only show if userStickers=true is in the URL!
     const shouldShowTab = window.location.search.toLowerCase().includes('userstickers=true');
-    
     const tabsContainer = document.getElementById('stickerTabs');
     let userTabBtn = document.getElementById('tabUserStickers');
     
-    // Auto-build the button if it's missing from the HTML
     if (shouldShowTab && !userTabBtn && tabsContainer) {
         userTabBtn = document.createElement('button');
         userTabBtn.id = 'tabUserStickers';
@@ -1813,7 +1772,6 @@ function openStickerDrawer() {
         tabsContainer.insertBefore(userTabBtn, tabsContainer.firstChild);
     }
 
-    // Force it visible ONLY if it should show, otherwise hide it completely!
     if (userTabBtn) {
         userTabBtn.style.setProperty('display', shouldShowTab ? 'inline-block' : 'none', 'important');
     }
@@ -1821,20 +1779,16 @@ function openStickerDrawer() {
     const grid = document.getElementById('stickerGrid');
     
     if (grid.innerHTML === '') {
-        // Automatically click the User Stickers tab if it's visible
         if (shouldShowTab && userTabBtn) {
             loadStickerCategory('userStickers', userTabBtn); 
         } else {
-            // Fallback to Custom Props if User Stickers are disabled
             const customTabBtn = Array.from(document.querySelectorAll('.sticker-tab')).find(el => el.innerText.includes('Custom'));
             if (customTabBtn) loadStickerCategory('custom', customTabBtn); 
         }
     }
     
     document.getElementById('stickerDrawer').style.display = 'flex';
-    requestAnimationFrame(() => {
-        document.getElementById('stickerDrawer').classList.add('open');
-    });
+    requestAnimationFrame(() => { document.getElementById('stickerDrawer').classList.add('open'); });
 }
 
 function closeStickerDrawer() {
@@ -1842,7 +1796,6 @@ function closeStickerDrawer() {
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
 }
 
-// 🟢 DESELECT STICKERS ON CANVAS TAP
 document.getElementById('editorCanvasContainer').addEventListener('mousedown', (e) => {
     if (e.target.id === 'doodleCanvas') deselectActiveSticker();
 });
@@ -1850,7 +1803,6 @@ document.getElementById('editorCanvasContainer').addEventListener('touchstart', 
     if (e.target.id === 'doodleCanvas') deselectActiveSticker();
 }, {passive: true});
 
-// 🟢 NEW: Global Helper to unlock stickers and close the banner
 function deselectActiveSticker() {
     document.querySelectorAll('.editor-sticker').forEach(el => {
         el.classList.remove('active');
@@ -1860,33 +1812,22 @@ function deselectActiveSticker() {
     window.activeSticker = null;
 }
 
-// 🟢 MOUSE RESIZE ENGINE (Desktop Corner Handles)
 function startResizing(e, wrapper) {
     const startX = e.clientX;
     const startY = e.clientY;
     const startScale = parseFloat(wrapper.dataset.scale) || 1;
     
-    // Find the center of the sticker
     const rect = wrapper.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    
-    // Initial distance from mouse to center
     const startDist = Math.hypot(startX - centerX, startY - centerY);
 
     function doResize(moveEvent) {
         const currentDist = Math.hypot(moveEvent.clientX - centerX, moveEvent.clientY - centerY);
-        
-        // New scale is the ratio of current distance vs starting distance
         let newScale = (currentDist / startDist) * startScale;
-        
-        // Constrain scale between 0.2x and 6x
         newScale = Math.max(0.2, Math.min(newScale, 6));
-        
         wrapper.dataset.scale = newScale;
         const currentRot = wrapper.dataset.rot || 0;
-        
-        // Apply transform while preserving rotation
         wrapper.style.transform = `scale(${newScale}) rotate(${currentRot}deg)`;
     }
 
@@ -1899,7 +1840,6 @@ function startResizing(e, wrapper) {
     window.addEventListener('mouseup', stopResize);
 }
 
-// 🟢 MASTER STICKER ENGINE (With Wrapper & Inline Delete)
 function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = null) {
     closeStickerDrawer();
     if (isDrawMode) toggleDrawMode();
@@ -1921,7 +1861,6 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     delBtn.className = 'sticker-delete-btn';
     delBtn.innerHTML = '✕';
     
-    // Wire up delete
     const deleteSticker = (e) => {
         e.stopPropagation();
         e.preventDefault();
@@ -1934,7 +1873,6 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     wrapper.appendChild(img);
     wrapper.appendChild(delBtn);
 
-    // 🟢 ADD THE 4 CORNER HANDLES
     ['nw', 'ne', 'sw', 'se'].forEach(pos => {
         const handle = document.createElement('div');
         handle.className = `resize-handle ${pos}`;
@@ -1949,7 +1887,6 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
 
     const container = document.getElementById('stickerContainer');
     
-    // Lock all existing stickers immediately!
     document.querySelectorAll('.editor-sticker').forEach(el => {
         el.classList.remove('active');
         el.classList.add('locked-sticker');
@@ -2079,9 +2016,6 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
 
 // --- FINAL MERGE & HANDOFF ---
 function saveAndSubmitEdit() {
-    // 🟢 THE FIX: We deliberately do NOT call makeDoodleSticker() here. 
-    // We just leave the doodle on the canvas so it gets baked instantly!
-
     const ov = document.getElementById('uploadOverlay');
     document.getElementById('uploadStatusText').innerText = "Processing Edits...";
     if(ov) ov.style.display = 'flex';
@@ -2104,10 +2038,9 @@ function saveAndSubmitEdit() {
     const scaleX = origW / containerRect.width;
     const scaleY = origH / containerRect.height;
 
-    // 3. Draw Stickers (With Scale & Rotation Math)
+    // 3. Draw Stickers
     const stickers = document.querySelectorAll('.editor-sticker');
     stickers.forEach(sticker => {
-        // 🟢 THE FIX: Grab the actual <img> from inside the wrapper!
         const imgEl = sticker.querySelector('img'); 
         
         const sLeft = parseFloat(sticker.style.left) || 0;
@@ -2131,7 +2064,6 @@ function saveAndSubmitEdit() {
         ctxFinal.translate(finalCenterX, finalCenterY);
         ctxFinal.rotate(rot);
         
-        // 🟢 THE FIX: Draw the imgEl, NOT the wrapper!
         ctxFinal.drawImage(imgEl, -finalStickerW / 2, -finalStickerH / 2, finalStickerW, finalStickerH);
         ctxFinal.restore();
     });
@@ -2139,52 +2071,17 @@ function saveAndSubmitEdit() {
     const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
     closePhotoEditor();
     
-    // Pass the completely baked image to the final template processor
+    // 🟢 Hand off to the final processing layer which applies the template layout
     processFinalTemplateLayout(finalBase64, origW > origH);
 }
 
 function processFinalTemplateLayout(editedBase64, isLandscape) {
-    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
-
-    if (activeTemplateBase64) {
-        const overlayImg = new Image();
-        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
-        
-        overlayImg.onload = function() {
-            executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
-        };
-        overlayImg.onerror = function() {
-            // 🟢 REPLACED
-            showCustomDialog("Template Warning", "Overlay failed. Uploading your edited photo bare.", false);
-            executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
-        };
-        overlayImg.src = activeTemplateBase64;
-    } else {
-        executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
-    }
-}
-
-function executeCanvasUpload(cW, cH, overlayImg, sourceBase64) {
-    const canvas = document.createElement('canvas');
-    canvas.width = cW; canvas.height = cH;
-    const ctx = canvas.getContext('2d');
-    
     const sourceImg = new Image();
     sourceImg.onload = function() {
-        const scale = Math.max(cW / sourceImg.width, cH / sourceImg.height);
-        const drawWidth = sourceImg.width * scale;
-        const drawHeight = sourceImg.height * scale;
-        const offsetX = (cW - drawWidth) / 2;
-        const offsetY = (cH - drawHeight) / 2;
-
-        ctx.drawImage(sourceImg, offsetX, offsetY, drawWidth, drawHeight);
-        if (overlayImg) ctx.drawImage(overlayImg, 0, 0, cW, cH);
-        
-        uploadProcessedPhoto(canvas.toDataURL('image/jpeg', 0.85)); 
+        // Run it back through the composite generator to bake the template ON TOP of the drawings
+        generateCompositePreview(sourceImg, isLandscape, function(finalB64) {
+            uploadProcessedPhoto(finalB64);
+        });
     };
-    sourceImg.src = sourceBase64;
+    sourceImg.src = editedBase64;
 }
-  </script>
-    
-</body>
-</html>
