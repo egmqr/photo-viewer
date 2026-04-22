@@ -1259,7 +1259,7 @@ let isDrawMode = true;
 let isDrawing = false;
 let ctxDoodle;
 let actionHistory = [];
-let bakedPreviewBase64 = null; // 🟢 NEW: Stores the generated preview in memory
+let bakedPreviewBase64 = null; // 🟢 Stores the generated preview in memory
 
 // 1. Intercept the Photo Upload & Ask User
 function openPhotoEditor(event) {
@@ -1268,12 +1268,9 @@ function openPhotoEditor(event) {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        
-        // 🟢 Ensure flag is reset on every new upload
         window.isTemplateBaked = false; 
         
         editorBaseImage.onload = function() {
-            
             const promptModal = document.getElementById('decoratePromptModal');
             const previewImg = document.getElementById('previewModalImage');
             const loader = document.getElementById('previewModalLoader');
@@ -1281,11 +1278,11 @@ function openPhotoEditor(event) {
             promptModal.style.display = 'flex';
             previewImg.style.display = 'none';
             loader.style.display = 'block';
-            bakedPreviewBase64 = null; // Reset memory
+            bakedPreviewBase64 = null; 
             
             const isLandscape = editorBaseImage.width > editorBaseImage.height;
             
-            // 🟢 Generate the high-res composite in the background instantly
+            // 🟢 Generate the high-res composite instantly
             generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
                 bakedPreviewBase64 = finalBase64;
                 previewImg.src = finalBase64;
@@ -1303,12 +1300,11 @@ function openPhotoEditor(event) {
                 if (bakedPreviewBase64) {
                     uploadProcessedPhoto(bakedPreviewBase64);
                 } else {
-                    // Fallback just in case they click impossibly fast before it finishes rendering
                     processFinalTemplateLayout(e.target.result, isLandscape);
                 }
             };
             
-            // 🟢 THE FIX: If YES, swap the base image to the pre-baked preview!
+            // If YES: Swap the base image to the PRE-BAKED preview so they draw over the template!
             document.getElementById('btnDecoratePhoto').onclick = function() {
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
@@ -1322,7 +1318,6 @@ function openPhotoEditor(event) {
                     };
                     compositedImg.src = bakedPreviewBase64;
                 } else {
-                    // Fallback if preview isn't done yet
                     setTimeout(() => { setupEditorWorkspace(); }, 10);
                 }
             };
@@ -1334,44 +1329,65 @@ function openPhotoEditor(event) {
     event.target.value = ''; 
 }
 
-// 🟢 NEW HELPER: Universally generates the combined template + photo image
+// 🟢 UNIVERSAL COMPOSITE GENERATOR (No Stretching!)
 function generateCompositePreview(sourceImgObj, isLandscape, callback) {
     const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
-    const cW = isLandscape ? 1800 : 1200;
-    const cH = isLandscape ? 1200 : 1800;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = cW; canvas.height = cH;
-    const ctx = canvas.getContext('2d');
-
-    const drawFinal = function(overlayImg) {
-        // Smart crop and center the photo
-        const scale = Math.max(cW / sourceImgObj.width, cH / sourceImgObj.height);
-        const drawWidth = sourceImgObj.width * scale;
-        const drawHeight = sourceImgObj.height * scale;
-        const offsetX = (cW - drawWidth) / 2;
-        const offsetY = (cH - drawHeight) / 2;
-
-        // Draw Photo
-        ctx.drawImage(sourceImgObj, offsetX, offsetY, drawWidth, drawHeight);
-        // Draw Template on Top
-        if (overlayImg) ctx.drawImage(overlayImg, 0, 0, cW, cH);
-        
-        callback(canvas.toDataURL('image/jpeg', 0.85));
-    };
 
     if (activeTemplateBase64) {
         const overlayImg = new Image();
         if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
-        overlayImg.onload = function() { drawFinal(overlayImg); };
-        overlayImg.onerror = function() { drawFinal(null); };
+        
+        overlayImg.onload = function() {
+            // Use the exact dimensions of the Template to prevent stretching!
+            const cW = overlayImg.width;
+            const cH = overlayImg.height;
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = cW; canvas.height = cH;
+            const ctx = canvas.getContext('2d');
+
+            // Smart crop and center the photo beneath the template
+            const scale = Math.max(cW / sourceImgObj.width, cH / sourceImgObj.height);
+            const drawWidth = sourceImgObj.width * scale;
+            const drawHeight = sourceImgObj.height * scale;
+            const offsetX = (cW - drawWidth) / 2;
+            const offsetY = (cH - drawHeight) / 2;
+
+            ctx.drawImage(sourceImgObj, offsetX, offsetY, drawWidth, drawHeight);
+            ctx.drawImage(overlayImg, 0, 0, cW, cH);
+            
+            callback(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        
+        overlayImg.onerror = function() {
+            fallbackDraw(sourceImgObj, isLandscape, callback);
+        };
         overlayImg.src = activeTemplateBase64;
     } else {
-        drawFinal(null);
+        fallbackDraw(sourceImgObj, isLandscape, callback);
     }
 }
 
-// 2. Scale the Canvas to Fit the Screen (With Retina High-Res Math)
+// Fallback if template fails to load or is missing
+function fallbackDraw(sourceImgObj, isLandscape, callback) {
+    const cW = isLandscape ? 1800 : 1200;
+    const cH = isLandscape ? 1200 : 1800;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = cW; canvas.height = cH;
+    const ctx = canvas.getContext('2d');
+
+    const scale = Math.max(cW / sourceImgObj.width, cH / sourceImgObj.height);
+    const drawWidth = sourceImgObj.width * scale;
+    const drawHeight = sourceImgObj.height * scale;
+    const offsetX = (cW - drawWidth) / 2;
+    const offsetY = (cH - drawHeight) / 2;
+
+    ctx.drawImage(sourceImgObj, offsetX, offsetY, drawWidth, drawHeight);
+    callback(canvas.toDataURL('image/jpeg', 0.85));
+}
+
+// 2. Scale the Canvas to Fit the Screen
 function setupEditorWorkspace() {
     const workspace = document.getElementById('editorWorkspace');
     const container = document.getElementById('editorCanvasContainer');
@@ -1385,7 +1401,6 @@ function setupEditorWorkspace() {
     let targetH = editorBaseImage.height;
     const ratio = Math.min(maxWidth / targetW, maxHeight / targetH);
     
-    // Physical CSS size on the screen
     const finalW = targetW * ratio;
     const finalH = targetH * ratio;
 
@@ -1426,7 +1441,6 @@ function preloadDynamicStickers() {
     });
 }
 
-// 3. Ultra-Smooth Brush Settings
 function updateDrawSettings() {
     ctxDoodle.lineCap = 'round';
     ctxDoodle.lineJoin = 'round';
@@ -1441,7 +1455,8 @@ function closePhotoEditor() { document.getElementById('photoEditorModal').style.
 function clearDecorations() {
     ctxDoodle.save();
     ctxDoodle.setTransform(1, 0, 0, 1, 0, 0); 
-    ctxDoodle.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+    const dCanvasEl = document.getElementById('doodleCanvas');
+    ctxDoodle.clearRect(0, 0, dCanvasEl.width, dCanvasEl.height);
     ctxDoodle.restore();
     
     document.getElementById('stickerContainer').innerHTML = '';
@@ -1473,11 +1488,11 @@ function toggleDrawMode() {
     }
 }
 
-// 🟢 MATHEMATICAL AUTO-CROP FOR DOODLES
 function makeDoodleSticker() {
     const dpr = window.devicePixelRatio || 1;
-    const w = doodleCanvas.width; 
-    const h = doodleCanvas.height;
+    const dCanvasEl = document.getElementById('doodleCanvas');
+    const w = dCanvasEl.width; 
+    const h = dCanvasEl.height;
     const imgData = ctxDoodle.getImageData(0, 0, w, h);
     const data = imgData.data;
     
@@ -1523,7 +1538,8 @@ function makeDoodleSticker() {
 }
 
 function getPointerPos(e) {
-    const rect = doodleCanvas.getBoundingClientRect();
+    const dCanvasEl = document.getElementById('doodleCanvas');
+    const rect = dCanvasEl.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return { x: clientX - rect.left, y: clientY - rect.top };
@@ -1548,14 +1564,6 @@ function drawDoodle(e) {
 
 function stopDoodle(e) { if (isDrawing) { e.preventDefault(); isDrawing = false; } }
 
-doodleCanvas.addEventListener('mousedown', startDoodle);
-doodleCanvas.addEventListener('mousemove', drawDoodle);
-window.addEventListener('mouseup', stopDoodle);
-doodleCanvas.addEventListener('touchstart', startDoodle, {passive: false});
-doodleCanvas.addEventListener('touchmove', drawDoodle, {passive: false});
-window.addEventListener('touchend', stopDoodle);
-
-// --- UNIVERSAL UNDO LOGIC ---
 function undoLastAction() {
     if (isDrawMode) { toggleDrawMode(); }
     
@@ -1569,7 +1577,6 @@ function undoLastAction() {
     }
 }
 
-// 🟢 UNIVERSAL DIALOG ENGINE
 function showCustomDialog(title, message, isConfirm, onConfirmCallback) {
     document.getElementById('dialogTitle').innerText = title;
     document.getElementById('dialogMessage').innerText = message;
@@ -1812,22 +1819,6 @@ function closeStickerDrawer() {
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
 }
 
-document.getElementById('editorCanvasContainer').addEventListener('mousedown', (e) => {
-    if (e.target.id === 'doodleCanvas') deselectActiveSticker();
-});
-document.getElementById('editorCanvasContainer').addEventListener('touchstart', (e) => {
-    if (e.target.id === 'doodleCanvas') deselectActiveSticker();
-}, {passive: true});
-
-function deselectActiveSticker() {
-    document.querySelectorAll('.editor-sticker').forEach(el => {
-        el.classList.remove('active');
-        el.classList.remove('locked-sticker');
-    });
-    document.getElementById('stickerTools').style.display = 'none';
-    window.activeSticker = null;
-}
-
 function startResizing(e, wrapper) {
     const startX = e.clientX;
     const startY = e.clientY;
@@ -2048,7 +2039,8 @@ function saveAndSubmitEdit() {
     ctxFinal.drawImage(editorBaseImage, 0, 0, origW, origH);
 
     // 2. Draw the live Doodle Canvas perfectly scaled over the image
-    ctxFinal.drawImage(document.getElementById('doodleCanvas'), 0, 0, origW, origH);
+    const dCanvasEl = document.getElementById('doodleCanvas');
+    ctxFinal.drawImage(dCanvasEl, 0, 0, origW, origH);
 
     const containerRect = document.getElementById('editorCanvasContainer').getBoundingClientRect();
     const scaleX = origW / containerRect.width;
@@ -2087,32 +2079,26 @@ function saveAndSubmitEdit() {
     const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
     closePhotoEditor();
     
-    // 🟢 Hand off to the final processing layer which applies the template layout
     processFinalTemplateLayout(finalBase64, origW > origH);
 }
 
 function processFinalTemplateLayout(editedBase64, isLandscape) {
-    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
-
-    // 🟢 THE FIX: Skip adding the overlay if it was already baked into the image during the Decorate phase!
-    if (activeTemplateBase64 && !window.isTemplateBaked) {
-        const overlayImg = new Image();
-        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
-        
-        overlayImg.onload = function() {
-            executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
-        };
-        overlayImg.onerror = function() {
-            showCustomDialog("Template Warning", "Overlay failed. Uploading your edited photo bare.", false);
-            executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
-        };
-        overlayImg.src = activeTemplateBase64;
-    } else {
-        // Already baked, or no template exists. Just upload directly!
-        executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+    // If the template is already baked in, bypass overlay logic entirely and upload!
+    if (window.isTemplateBaked) {
+        uploadProcessedPhoto(editedBase64);
+        return;
     }
+
+    // If they bypassed the prompt somehow before baking, overlay it now using the helper
+    const sourceImg = new Image();
+    sourceImg.onload = function() {
+        generateCompositePreview(sourceImg, isLandscape, function(finalB64) {
+            uploadProcessedPhoto(finalB64);
+        });
+    };
+    sourceImg.src = editedBase64;
 }
-    </script>
-    
+
+</script>
 </body>
 </html>
