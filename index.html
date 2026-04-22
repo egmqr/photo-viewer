@@ -1259,7 +1259,7 @@ let isDrawMode = true;
 let isDrawing = false;
 let ctxDoodle;
 let actionHistory = [];
-let bakedPreviewBase64 = null; // 🟢 Stores the generated preview in memory
+let bakedPreviewBase64 = null; // Stores the generated preview in memory
 
 // 1. Intercept the Photo Upload & Ask User
 function openPhotoEditor(event) {
@@ -1268,9 +1268,12 @@ function openPhotoEditor(event) {
 
     const reader = new FileReader();
     reader.onload = function(e) {
+        
+        // 🟢 Ensure flag is reset on every new upload
         window.isTemplateBaked = false; 
         
         editorBaseImage.onload = function() {
+            
             const promptModal = document.getElementById('decoratePromptModal');
             const previewImg = document.getElementById('previewModalImage');
             const loader = document.getElementById('previewModalLoader');
@@ -1278,11 +1281,11 @@ function openPhotoEditor(event) {
             promptModal.style.display = 'flex';
             previewImg.style.display = 'none';
             loader.style.display = 'block';
-            bakedPreviewBase64 = null; 
+            bakedPreviewBase64 = null; // Reset memory
             
             const isLandscape = editorBaseImage.width > editorBaseImage.height;
             
-            // 🟢 Generate the high-res composite instantly
+            // Generate the high-res composite in the background instantly
             generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
                 bakedPreviewBase64 = finalBase64;
                 previewImg.src = finalBase64;
@@ -1300,11 +1303,12 @@ function openPhotoEditor(event) {
                 if (bakedPreviewBase64) {
                     uploadProcessedPhoto(bakedPreviewBase64);
                 } else {
+                    // Fallback
                     processFinalTemplateLayout(e.target.result, isLandscape);
                 }
             };
             
-            // If YES: Swap the base image to the PRE-BAKED preview so they draw over the template!
+            // 🟢 THE FIX: If YES, swap the base image to the pre-baked preview!
             document.getElementById('btnDecoratePhoto').onclick = function() {
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
@@ -1329,16 +1333,16 @@ function openPhotoEditor(event) {
     event.target.value = ''; 
 }
 
-// 🟢 UNIVERSAL COMPOSITE GENERATOR (No Stretching!)
+// 🟢 UNIVERSAL COMPOSITE GENERATOR
 function generateCompositePreview(sourceImgObj, isLandscape, callback) {
     const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
-
+    
     if (activeTemplateBase64) {
         const overlayImg = new Image();
         if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
         
         overlayImg.onload = function() {
-            // Use the exact dimensions of the Template to prevent stretching!
+            // Use exact template dimensions to prevent stretching
             const cW = overlayImg.width;
             const cH = overlayImg.height;
             
@@ -1346,7 +1350,6 @@ function generateCompositePreview(sourceImgObj, isLandscape, callback) {
             canvas.width = cW; canvas.height = cH;
             const ctx = canvas.getContext('2d');
 
-            // Smart crop and center the photo beneath the template
             const scale = Math.max(cW / sourceImgObj.width, cH / sourceImgObj.height);
             const drawWidth = sourceImgObj.width * scale;
             const drawHeight = sourceImgObj.height * scale;
@@ -1368,7 +1371,6 @@ function generateCompositePreview(sourceImgObj, isLandscape, callback) {
     }
 }
 
-// Fallback if template fails to load or is missing
 function fallbackDraw(sourceImgObj, isLandscape, callback) {
     const cW = isLandscape ? 1800 : 1200;
     const cH = isLandscape ? 1200 : 1800;
@@ -1456,7 +1458,7 @@ function clearDecorations() {
     ctxDoodle.save();
     ctxDoodle.setTransform(1, 0, 0, 1, 0, 0); 
     const dCanvasEl = document.getElementById('doodleCanvas');
-    ctxDoodle.clearRect(0, 0, dCanvasEl.width, dCanvasEl.height);
+    if(dCanvasEl) ctxDoodle.clearRect(0, 0, dCanvasEl.width, dCanvasEl.height);
     ctxDoodle.restore();
     
     document.getElementById('stickerContainer').innerHTML = '';
@@ -2083,20 +2085,29 @@ function saveAndSubmitEdit() {
 }
 
 function processFinalTemplateLayout(editedBase64, isLandscape) {
-    // If the template is already baked in, bypass overlay logic entirely and upload!
+    // 🟢 THE FIX: Skip adding the overlay if it was already baked into the image during the Decorate phase!
     if (window.isTemplateBaked) {
         uploadProcessedPhoto(editedBase64);
         return;
     }
 
-    // If they bypassed the prompt somehow before baking, overlay it now using the helper
-    const sourceImg = new Image();
-    sourceImg.onload = function() {
-        generateCompositePreview(sourceImg, isLandscape, function(finalB64) {
-            uploadProcessedPhoto(finalB64);
-        });
-    };
-    sourceImg.src = editedBase64;
+    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
+    
+    if (activeTemplateBase64) {
+        const overlayImg = new Image();
+        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
+        
+        overlayImg.onload = function() {
+            executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
+        };
+        overlayImg.onerror = function() {
+            showCustomDialog("Template Warning", "Overlay failed. Uploading your edited photo bare.", false);
+            executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+        };
+        overlayImg.src = activeTemplateBase64;
+    } else {
+        executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+    }
 }
 
 </script>
