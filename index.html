@@ -817,15 +817,24 @@
 
       // --- COMMUNITY UI ---
       if (isCommunityBooth) {
-          document.getElementById('communityUploadBtn').style.display = 'flex';
+          const uploadBtn = document.getElementById('communityUploadBtn');
+          uploadBtn.style.display = 'flex';
+          
+          // 🟢 THE FIX: Lock the button and show a loader while the template processes!
+          uploadBtn.style.opacity = '0.5';
+          uploadBtn.style.pointerEvents = 'none';
+          uploadBtn.innerHTML = '<div class="spinner-small" style="margin-right:8px; border-top-color:#fff;"></div> Loading Booth...';
+          
           document.getElementById('searchContainer').style.display = 'none';
           
-          fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}`)
+          const templateIdParam = urlParams.get('templateId') ? `&templateId=${urlParams.get('templateId')}` : '';
+          
+          fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}${templateIdParam}`)
           .then(res => res.json())
           .then(async res => {
               if (res.data && res.data.length > 0) {
                   for (let t of res.data) {
-                      let largestImage = null;
+                      let largestImageObj = null;
                       let maxArea = 0;
                       let imageLayers = t.Layers.filter(l => l.ImageBase64 || l.base64 || l.ImagePath || l.src);
                       
@@ -843,12 +852,10 @@
                                   
                                   tempImg.onload = function() {
                                       const area = tempImg.width * tempImg.height;
-                                      if (area > maxArea) {
+                                      // 🟢 THE FIX: Use >= to grab the top-most full-size layer (which is the transparent overlay!)
+                                      if (area >= maxArea) {
                                           maxArea = area;
-                                          largestImage = {
-                                              src: tempImg.src, 
-                                              isLandscape: tempImg.width > tempImg.height
-                                          };
+                                          largestImageObj = tempImg; // 🟢 Save the fully decoded Image Object directly to RAM!
                                       }
                                       resolve();
                                   };
@@ -860,9 +867,9 @@
                           });
                       }
                       
-                      if (largestImage) {
-                          if (largestImage.isLandscape) templateOverlays.landscape = largestImage.src;
-                          else templateOverlays.portrait = largestImage.src;
+                      if (largestImageObj) {
+                          if (largestImageObj.width > largestImageObj.height) templateOverlays.landscape = largestImageObj;
+                          else templateOverlays.portrait = largestImageObj;
                       }
                   }
                   
@@ -870,8 +877,18 @@
                   if (!templateOverlays.portrait && templateOverlays.landscape) templateOverlays.portrait = templateOverlays.landscape;
               }
           })
-          .catch(err => console.error("Template fetch error:", err));
-      } 
+          .catch(err => console.error("Template fetch error:", err))
+          .finally(() => {
+              // 🟢 THE FIX: Unlock the button instantly once the template is secure!
+              uploadBtn.style.opacity = '1';
+              uploadBtn.style.pointerEvents = 'auto';
+              uploadBtn.innerHTML = `
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>
+                  </svg> Add Your Photo
+              `;
+          });
+      }
       // 🟢 THE FIX: CLOSING THE `if (isCommunityBooth)` BRACKET HERE SO SCANNERS RUN FOR EVERYONE!
 
       // --- STICKER SCANNERS ---
@@ -1343,37 +1360,28 @@ function openPhotoEditor(event) {
 
 // 🟢 UNIVERSAL COMPOSITE GENERATOR
 function generateCompositePreview(sourceImgObj, isLandscape, callback) {
-    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
+    const overlayImg = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
     
-    if (activeTemplateBase64) {
-        const overlayImg = new Image();
-        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
+    // 🟢 THE FIX: We already have the fully decoded Image object! No 'onload' delays needed.
+    if (overlayImg) {
+        // Use exact template dimensions to prevent stretching
+        const cW = overlayImg.width;
+        const cH = overlayImg.height;
         
-        overlayImg.onload = function() {
-            // Use exact template dimensions to prevent stretching
-            const cW = overlayImg.width;
-            const cH = overlayImg.height;
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = cW; canvas.height = cH;
-            const ctx = canvas.getContext('2d');
+        const canvas = document.createElement('canvas');
+        canvas.width = cW; canvas.height = cH;
+        const ctx = canvas.getContext('2d');
 
-            const scale = Math.max(cW / sourceImgObj.width, cH / sourceImgObj.height);
-            const drawWidth = sourceImgObj.width * scale;
-            const drawHeight = sourceImgObj.height * scale;
-            const offsetX = (cW - drawWidth) / 2;
-            const offsetY = (cH - drawHeight) / 2;
+        const scale = Math.max(cW / sourceImgObj.width, cH / sourceImgObj.height);
+        const drawWidth = sourceImgObj.width * scale;
+        const drawHeight = sourceImgObj.height * scale;
+        const offsetX = (cW - drawWidth) / 2;
+        const offsetY = (cH - drawHeight) / 2;
 
-            ctx.drawImage(sourceImgObj, offsetX, offsetY, drawWidth, drawHeight);
-            ctx.drawImage(overlayImg, 0, 0, cW, cH);
-            
-            callback(canvas.toDataURL('image/jpeg', 0.85));
-        };
+        ctx.drawImage(sourceImgObj, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.drawImage(overlayImg, 0, 0, cW, cH);
         
-        overlayImg.onerror = function() {
-            fallbackDraw(sourceImgObj, isLandscape, callback);
-        };
-        overlayImg.src = activeTemplateBase64;
+        callback(canvas.toDataURL('image/jpeg', 0.85));
     } else {
         fallbackDraw(sourceImgObj, isLandscape, callback);
     }
@@ -2093,26 +2101,17 @@ function saveAndSubmitEdit() {
 }
 
 function processFinalTemplateLayout(editedBase64, isLandscape) {
-    // 🟢 THE FIX: Skip adding the overlay if it was already baked into the image during the Decorate phase!
+    // 🟢 Skip adding the overlay if it was already baked into the image during the Decorate phase!
     if (window.isTemplateBaked) {
         uploadProcessedPhoto(editedBase64);
         return;
     }
 
-    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
+    const overlayImg = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
     
-    if (activeTemplateBase64) {
-        const overlayImg = new Image();
-        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
-        
-        overlayImg.onload = function() {
-            executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
-        };
-        overlayImg.onerror = function() {
-            showCustomDialog("Template Warning", "Overlay failed. Uploading your edited photo bare.", false);
-            executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
-        };
-        overlayImg.src = activeTemplateBase64;
+    // 🟢 The overlayImg is already decoded in memory, so we can upload it instantly!
+    if (overlayImg) {
+        executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
     } else {
         executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
     }
