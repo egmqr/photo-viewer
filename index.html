@@ -819,13 +819,10 @@
       if (isCommunityBooth) {
           const uploadBtn = document.getElementById('communityUploadBtn');
           uploadBtn.style.display = 'flex';
-          
-          // 🟢 THE FIX: Lock the button and show a loader while the template processes!
-          uploadBtn.style.opacity = '0.5';
-          uploadBtn.style.pointerEvents = 'none';
-          uploadBtn.innerHTML = '<div class="spinner-small" style="margin-right:8px; border-top-color:#fff;"></div> Loading Booth...';
-          
           document.getElementById('searchContainer').style.display = 'none';
+          
+          // 🟢 THE FIX: Unlock the button instantly! Track the load state in the background.
+          window.templateFetchComplete = false; 
           
           const templateIdParam = urlParams.get('templateId') ? `&templateId=${urlParams.get('templateId')}` : '';
           
@@ -852,10 +849,9 @@
                                   
                                   tempImg.onload = function() {
                                       const area = tempImg.width * tempImg.height;
-                                      // 🟢 THE FIX: Use >= to grab the top-most full-size layer (which is the transparent overlay!)
                                       if (area >= maxArea) {
                                           maxArea = area;
-                                          largestImageObj = tempImg; // 🟢 Save the fully decoded Image Object directly to RAM!
+                                          largestImageObj = tempImg; 
                                       }
                                       resolve();
                                   };
@@ -879,14 +875,12 @@
           })
           .catch(err => console.error("Template fetch error:", err))
           .finally(() => {
-              // 🟢 THE FIX: Unlock the button instantly once the template is secure!
-              uploadBtn.style.opacity = '1';
-              uploadBtn.style.pointerEvents = 'auto';
-              uploadBtn.innerHTML = `
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>
-                  </svg> Add Your Photo
-              `;
+              window.templateFetchComplete = true; // Mark as done!
+              
+              // 🟢 If the user already picked a photo and was waiting for this to finish, resume rendering!
+              if (window.waitingForTemplateToRender) {
+                  window.waitingForTemplateToRender();
+              }
           });
       }
       // 🟢 THE FIX: CLOSING THE `if (isCommunityBooth)` BRACKET HERE SO SCANNERS RUN FOR EVERYONE!
@@ -1303,16 +1297,30 @@ function openPhotoEditor(event) {
             
             const isLandscape = editorBaseImage.width > editorBaseImage.height;
             
-            // Generate the high-res composite in the background instantly
-            generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
-                bakedPreviewBase64 = finalBase64;
-                previewImg.src = finalBase64;
-                previewImg.style.display = 'block';
-                loader.style.display = 'none';
-            });
+            // 🟢 THE FIX: Attempt to render. If the background download isn't done, wait for it!
+            const attemptRender = function() {
+                if (window.templateFetchComplete === false) {
+                    // Still downloading. Keep the loader spinning and set the waiting hook.
+                    window.waitingForTemplateToRender = attemptRender;
+                    return;
+                }
+                
+                // Template is ready! Clear the hook and generate the preview.
+                window.waitingForTemplateToRender = null;
+                generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
+                    bakedPreviewBase64 = finalBase64;
+                    previewImg.src = finalBase64;
+                    previewImg.style.display = 'block';
+                    loader.style.display = 'none';
+                });
+            };
             
-            // 🟢 ACTION 1: Submit instantly using the pre-baked preview
+            attemptRender(); // Fire the first attempt
+            
+            // ACTION 1: Submit instantly using the pre-baked preview
             document.getElementById('btnSubmitAsIs').onclick = function() {
+                if (!bakedPreviewBase64 && window.templateFetchComplete === false) return showToast("Please wait for layout to load.", "warning");
+
                 promptModal.style.display = 'none';
                 const ov = document.getElementById('uploadOverlay');
                 document.getElementById('uploadStatusText').innerText = "Processing Photo...";
@@ -1321,21 +1329,22 @@ function openPhotoEditor(event) {
                 if (bakedPreviewBase64) {
                     uploadProcessedPhoto(bakedPreviewBase64);
                 } else {
-                    // Fallback
                     processFinalTemplateLayout(e.target.result, isLandscape);
                 }
             };
             
-            // 🟢 ACTION 2: Swap the base image to the pre-baked preview and open Editor!
+            // ACTION 2: Swap the base image to the pre-baked preview and open Editor!
             document.getElementById('btnDecoratePhoto').onclick = function() {
+                if (!bakedPreviewBase64 && window.templateFetchComplete === false) return showToast("Please wait for layout to load.", "warning");
+
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
                 
                 if (bakedPreviewBase64) {
                     const compositedImg = new Image();
                     compositedImg.onload = function() {
-                        editorBaseImage = compositedImg; // Overwrite raw photo with Template + Photo
-                        window.isTemplateBaked = true;   // Flag so we don't apply the template twice
+                        editorBaseImage = compositedImg; // Overwrite raw photo
+                        window.isTemplateBaked = true;   
                         setupEditorWorkspace();
                     };
                     compositedImg.src = bakedPreviewBase64;
@@ -1344,18 +1353,18 @@ function openPhotoEditor(event) {
                 }
             };
 
-            // 🟢 ACTION 3: Cancel and abort everything!
+            // ACTION 3: Cancel and abort everything!
             document.getElementById('btnCancelPhoto').onclick = function() {
+                window.waitingForTemplateToRender = null; // Kill the background render hook
                 promptModal.style.display = 'none';
                 bakedPreviewBase64 = null; // Flush memory
-                // The input file value was already reset below, so the user can freely click the upload button again!
             };
 
         };
         editorBaseImage.src = e.target.result;
     };
     reader.readAsDataURL(file);
-    event.target.value = ''; // Reset the input immediately so they can re-select the same file if they cancel
+    event.target.value = ''; // Reset input
 }
 
 // 🟢 UNIVERSAL COMPOSITE GENERATOR
