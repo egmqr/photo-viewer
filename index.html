@@ -664,10 +664,10 @@
         </div>
       </div>
       
-      <div id="stickerTools" style="position: absolute; bottom: 15px; width: 100%; display: flex; justify-content: center; z-index: 99999; background: transparent; pointer-events: none;">
+      <div id="stickerTools" style="position: absolute; bottom: 20px; width: 100%; display: none; justify-content: center; z-index: 99999; pointer-events: none;">
         <button class="tool-btn confirm-sticker-btn" 
-                onmousedown="event.stopPropagation(); event.preventDefault(); deselectActiveSticker();" 
-                ontouchstart="event.stopPropagation(); event.preventDefault(); deselectActiveSticker();" 
+                onclick="handleConfirmSticker(event)" 
+                ontouchstart="handleConfirmSticker(event)"
                 aria-label="Confirm Sticker" 
                 style="pointer-events: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -1433,6 +1433,7 @@ function fallbackDraw(sourceImgObj, isLandscape, callback) {
 }
 
 // 2. Scale the Canvas to Fit the Screen
+// 2. Scale the Canvas to Fit the Screen
 function setupEditorWorkspace() {
     const workspace = document.getElementById('editorWorkspace');
     const container = document.getElementById('editorCanvasContainer');
@@ -1473,11 +1474,10 @@ function setupEditorWorkspace() {
     
     clearDecorations();
     
-    // 🟢 THE FIX: We set the flag to true, so when toggleDrawMode() runs, 
-    // it flips it to FALSE, safely turning off the brush and hiding the tools!
     isDrawMode = true; 
     toggleDrawMode();
     
+    attachCanvasListeners(); // 🟢 NEW: Safely locks in the drawing mechanics
     preloadDynamicStickers();
 }
 
@@ -1490,6 +1490,7 @@ function preloadDynamicStickers() {
 }
 
 function updateDrawSettings() {
+    if (!ctxDoodle) return;
     ctxDoodle.lineCap = 'round';
     ctxDoodle.lineJoin = 'round';
     ctxDoodle.strokeStyle = document.getElementById('doodleColor').value;
@@ -1501,13 +1502,13 @@ function updateDrawSettings() {
 function closePhotoEditor() { 
     document.getElementById('photoEditorModal').style.display = 'none'; 
     
-    // 🚀 Send the signal to main.html to shrink the iframe back to normal!
     if (window.parent !== window) {
         window.parent.postMessage({ action: 'closeEditorFullscreen' }, '*');
     }
 }
 
 function clearDecorations() {
+    if (!ctxDoodle) return;
     ctxDoodle.save();
     ctxDoodle.setTransform(1, 0, 0, 1, 0, 0); 
     const dCanvasEl = document.getElementById('doodleCanvas');
@@ -1546,6 +1547,8 @@ function toggleDrawMode() {
 function makeDoodleSticker() {
     const dpr = window.devicePixelRatio || 1;
     const dCanvasEl = document.getElementById('doodleCanvas');
+    if (!dCanvasEl || !ctxDoodle) return;
+
     const w = dCanvasEl.width; 
     const h = dCanvasEl.height;
     const imgData = ctxDoodle.getImageData(0, 0, w, h);
@@ -1600,24 +1603,64 @@ function getPointerPos(e) {
     return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
+// 🟢 NEW: Upgraded ultra-smooth drawing logic
 function startDoodle(e) {
     if (!isDrawMode) return;
-    e.preventDefault();
+    if (e) e.preventDefault(); // Prevents page scrolling while drawing
     isDrawing = true;
+    updateDrawSettings(); 
     const pos = getPointerPos(e);
     ctxDoodle.beginPath();
     ctxDoodle.moveTo(pos.x, pos.y);
+    ctxDoodle.lineTo(pos.x + 0.1, pos.y + 0.1); // Immediately prints a dot!
+    ctxDoodle.stroke();
 }
 
 function drawDoodle(e) {
     if (!isDrawing || !isDrawMode) return;
-    e.preventDefault();
+    if (e) e.preventDefault();
     const pos = getPointerPos(e);
     ctxDoodle.lineTo(pos.x, pos.y);
     ctxDoodle.stroke();
+    ctxDoodle.beginPath(); // Makes rapid curves super smooth
+    ctxDoodle.moveTo(pos.x, pos.y);
 }
 
-function stopDoodle(e) { if (isDrawing) { e.preventDefault(); isDrawing = false; } }
+function stopDoodle(e) { 
+    isDrawing = false; 
+    if (ctxDoodle) ctxDoodle.beginPath();
+}
+
+// 🟢 NEW: Guarantees touch listeners are perfectly mapped
+function attachCanvasListeners() {
+    const canvasEl = document.getElementById('doodleCanvas');
+    if (!canvasEl) return;
+    
+    // Clean old listeners
+    canvasEl.removeEventListener('mousedown', startDoodle);
+    canvasEl.removeEventListener('mousemove', drawDoodle);
+    canvasEl.removeEventListener('touchstart', startDoodle);
+    canvasEl.removeEventListener('touchmove', drawDoodle);
+    window.removeEventListener('mouseup', stopDoodle);
+    window.removeEventListener('touchend', stopDoodle);
+    
+    // Bind fresh listeners
+    canvasEl.addEventListener('mousedown', startDoodle);
+    canvasEl.addEventListener('mousemove', drawDoodle);
+    canvasEl.addEventListener('touchstart', startDoodle, {passive: false});
+    canvasEl.addEventListener('touchmove', drawDoodle, {passive: false});
+    window.addEventListener('mouseup', stopDoodle);
+    window.addEventListener('touchend', stopDoodle);
+}
+
+// 🟢 NEW: Safely handles the green confirm button without freezing the browser
+window.handleConfirmSticker = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    deselectActiveSticker();
+};
 
 function undoLastAction() {
     if (isDrawMode) { toggleDrawMode(); }
