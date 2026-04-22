@@ -252,8 +252,8 @@
         document.getElementById('main-loader').style.display = 'flex';
     };
 
-    // 3. FETCH DATA ON LOAD
-    document.addEventListener('DOMContentLoaded', async () => {
+    // 3. FETCH DATA ON LOAD (Bulletproof Initialization)
+    async function initializeEvent() {
         const params = new URLSearchParams(window.location.search);
         const eventId = params.get('id');
         let requestedTab = parseInt(params.get('tab'), 10) || 1;
@@ -285,7 +285,14 @@
                 booths: 'https://egmqr.github.io/photo-viewer/index.html?folderId=13fAzmvuXHgOfN6FVXfu7Mbk6Sb0_xXVo&booth=1|https://egmqr.github.io/photo-viewer/index.html?folderId=1vcSQbJIr945g71SinfzNYxs7AmMV7V-9&booth=2'
             }, requestedTab);
         }
-    });
+    }
+
+    // 🟢 THE FIX: Guarantee the script runs regardless of module loading speeds
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeEvent);
+    } else {
+        initializeEvent();
+    }
 
     window.buildPageContent = function(data, requestedTab) {
         const customLogoId = data.logoId && data.logoId.trim() !== '' ? data.logoId : '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
@@ -299,6 +306,12 @@
         
         const logoContainer = document.getElementById('logo-container');
         const headerLogo = document.getElementById('header-logo');
+        
+        // 🟢 THE FIX: Attach onload event BEFORE giving it the image source!
+        headerLogo.onload = function() {
+            logoContainer.style.opacity = '1';
+            logoContainer.style.pointerEvents = 'auto';
+        };
         
         if (logoOnMain) {
             headerLogo.src = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=h80`;
@@ -314,10 +327,11 @@
             document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=w64`;
         }
         
-        headerLogo.onload = function() {
+        // 🟢 THE FIX: Failsafe for instantly cached images
+        if (headerLogo.complete) {
             logoContainer.style.opacity = '1';
             logoContainer.style.pointerEvents = 'auto';
-        };
+        }
         
         document.body.style.backgroundColor = bgColor;
         if (data.bgId && data.bgId.trim() !== '') {
@@ -359,7 +373,6 @@
             const frameId = `frame-${boothNum}`;
             const isTargetActive = (index === activeIndex); 
 
-            // 🔥 DOMAIN-AGNOSTIC FIX: Intercept the raw link from Firebase and force a relative path
             let cleanLink = rawLink;
             const folderMatch = rawLink.match(/folderId=([a-zA-Z0-9_-]+)/);
             const tabMatch = rawLink.match(/tab=([a-zA-Z0-9_-]+)/); 
@@ -367,10 +380,8 @@
             let tabLabel = `Photobooth ${boothNum}`;
 
             if (folderMatch) {
-                // This forces the iframe to load exactly where the container is currently hosted
                 cleanLink = `index.html?folderId=${folderMatch[1]}`;
                 
-                // 🟢 Pass the Community tab tag down
                 if (tabMatch) {
                     cleanLink += `&tab=${tabMatch[1]}`;
                     if (tabMatch[1] === 'community') {
@@ -378,21 +389,17 @@
                     }
                 }
 
-                // 🟢 THE FIX: Grab 'id' and 'userStickers' from the main window URL and force them into the iframe!
                 const mainUrlParams = new URLSearchParams(window.location.search);
                 
-                // Pass the exact ID
                 const exactId = mainUrlParams.get('id');
                 if (exactId) {
                     cleanLink += `&id=${exactId}`;
                 }
 
-                // Pass the userStickers flag
                 const exactStickers = mainUrlParams.get('userStickers');
                 if (exactStickers) {
                     cleanLink += `&userStickers=${exactStickers}`;
                 } else {
-                    // Fallback: Check if the database link has it saved
                     const stickerMatch = rawLink.match(/userStickers=(true|false)/);
                     if (stickerMatch) cleanLink += `&userStickers=${stickerMatch[1]}`;
                 }
@@ -402,7 +409,7 @@
                 const btn = document.createElement('button');
                 btn.className = `nav-tab ${isTargetActive ? 'active' : ''}`;
                 btn.setAttribute('data-target', frameId);
-                btn.innerText = tabLabel; // 🟢 Use the smart label!
+                btn.innerText = tabLabel; 
                 navContainer.appendChild(btn);
             }
 
