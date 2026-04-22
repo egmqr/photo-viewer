@@ -148,7 +148,18 @@
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
-
+/* 🟢 IFRAME FULLSCREEN OVERRIDE */
+    .iframe-fullscreen-mode {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 2147483647 !important; /* Forces it over absolutely everything */
+        margin: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+    }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     .loader-text {
@@ -417,7 +428,17 @@
 
         window.setupInteractivity();
     };
-
+// 🟢 LISTEN FOR EDITOR FULLSCREEN COMMANDS FROM THE IFRAME
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.action === 'openEditorFullscreen') {
+            const iframe = document.querySelector('iframe');
+            if (iframe) iframe.classList.add('iframe-fullscreen-mode');
+        }
+        if (event.data && event.data.action === 'closeEditorFullscreen') {
+            const iframe = document.querySelector('iframe');
+            if (iframe) iframe.classList.remove('iframe-fullscreen-mode');
+        }
+    });
     window.setupInteractivity = function() {
         const tabs = document.querySelectorAll('.nav-tab');
         const frames = document.querySelectorAll('.app-iframe');
