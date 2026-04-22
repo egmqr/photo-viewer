@@ -611,9 +611,9 @@
     <div class="custom-modal-box" style="width: 95%; max-width: 400px; padding: 20px;">
       <h3 style="margin-top: 0; margin-bottom: 15px;">Photo Preview</h3>
       
-      <div style="width: 100%; background: #111; border-radius: 12px; overflow: hidden; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; min-height: 250px; position: relative;">
+      <div id="previewModalContainer" style="width: 100%; display: flex; align-items: center; justify-content: center; min-height: 200px; position: relative; margin-bottom: 15px; transition: min-height 0.2s ease;">
           <div id="previewModalLoader" class="big-spinner" style="margin: 0; width: 30px; height: 30px; border-width: 3px;"></div>
-          <img id="previewModalImage" src="" style="max-width: 100%; max-height: 45vh; object-fit: contain; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+          <img id="previewModalImage" src="" style="max-width: 100%; max-height: 45vh; width: auto; height: auto; display: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
       </div>
       
       <p style="font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.4;">Submit this photo as is, personalize it with fun props, or cancel to choose another.</p>
@@ -1289,38 +1289,31 @@ function openPhotoEditor(event) {
             const promptModal = document.getElementById('decoratePromptModal');
             const previewImg = document.getElementById('previewModalImage');
             const loader = document.getElementById('previewModalLoader');
+            const container = document.getElementById('previewModalContainer'); // 🟢 Capture the container
             
             promptModal.style.display = 'flex';
             previewImg.style.display = 'none';
             loader.style.display = 'block';
+            
+            // 🟢 Reset the minimum height so the loader spinner has room to breathe
+            if (container) container.style.minHeight = '200px'; 
             bakedPreviewBase64 = null; // Reset memory
             
             const isLandscape = editorBaseImage.width > editorBaseImage.height;
             
-            // 🟢 THE FIX: Attempt to render. If the background download isn't done, wait for it!
-            const attemptRender = function() {
-                if (window.templateFetchComplete === false) {
-                    // Still downloading. Keep the loader spinning and set the waiting hook.
-                    window.waitingForTemplateToRender = attemptRender;
-                    return;
-                }
+            // Generate the high-res composite in the background instantly
+            generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
+                bakedPreviewBase64 = finalBase64;
+                previewImg.src = finalBase64;
+                previewImg.style.display = 'block';
+                loader.style.display = 'none';
                 
-                // Template is ready! Clear the hook and generate the preview.
-                window.waitingForTemplateToRender = null;
-                generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
-                    bakedPreviewBase64 = finalBase64;
-                    previewImg.src = finalBase64;
-                    previewImg.style.display = 'block';
-                    loader.style.display = 'none';
-                });
-            };
-            
-            attemptRender(); // Fire the first attempt
+                // 🟢 Snap the container tightly to the image's exact borders!
+                if (container) container.style.minHeight = '0'; 
+            });
             
             // ACTION 1: Submit instantly using the pre-baked preview
             document.getElementById('btnSubmitAsIs').onclick = function() {
-                if (!bakedPreviewBase64 && window.templateFetchComplete === false) return showToast("Please wait for layout to load.", "warning");
-
                 promptModal.style.display = 'none';
                 const ov = document.getElementById('uploadOverlay');
                 document.getElementById('uploadStatusText').innerText = "Processing Photo...";
@@ -1329,22 +1322,21 @@ function openPhotoEditor(event) {
                 if (bakedPreviewBase64) {
                     uploadProcessedPhoto(bakedPreviewBase64);
                 } else {
+                    // Fallback
                     processFinalTemplateLayout(e.target.result, isLandscape);
                 }
             };
             
             // ACTION 2: Swap the base image to the pre-baked preview and open Editor!
             document.getElementById('btnDecoratePhoto').onclick = function() {
-                if (!bakedPreviewBase64 && window.templateFetchComplete === false) return showToast("Please wait for layout to load.", "warning");
-
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
                 
                 if (bakedPreviewBase64) {
                     const compositedImg = new Image();
                     compositedImg.onload = function() {
-                        editorBaseImage = compositedImg; // Overwrite raw photo
-                        window.isTemplateBaked = true;   
+                        editorBaseImage = compositedImg; // Overwrite raw photo with Template + Photo
+                        window.isTemplateBaked = true;   // Flag so we don't apply the template twice
                         setupEditorWorkspace();
                     };
                     compositedImg.src = bakedPreviewBase64;
@@ -1355,7 +1347,6 @@ function openPhotoEditor(event) {
 
             // ACTION 3: Cancel and abort everything!
             document.getElementById('btnCancelPhoto').onclick = function() {
-                window.waitingForTemplateToRender = null; // Kill the background render hook
                 promptModal.style.display = 'none';
                 bakedPreviewBase64 = null; // Flush memory
             };
@@ -1364,7 +1355,7 @@ function openPhotoEditor(event) {
         editorBaseImage.src = e.target.result;
     };
     reader.readAsDataURL(file);
-    event.target.value = ''; // Reset input
+    event.target.value = ''; // Reset the input immediately
 }
 
 // 🟢 UNIVERSAL COMPOSITE GENERATOR
