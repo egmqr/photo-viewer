@@ -47,7 +47,7 @@
       padding-bottom: calc(60px + var(--safe-bottom)); 
     }
     /* 🟢 ADVANCED EDITOR STYLES */
-    #drawTools, #stickerTools {
+    #Tools, #stickerTools {
       position: absolute; bottom: 0; width: 100%; display: none; 
       justify-content: center; align-items: center; gap: 20px; z-index: 10;
       background: rgba(15,15,15,0.9); padding: 15px 10px max(15px, env(safe-area-inset-bottom)) 10px; 
@@ -146,8 +146,8 @@
     }
     .tool-btn.active { background: #0d9488; border-color: #5eead4; }
 
-    /* 🟢 THE FIX: When drawing is active, make stickers completely invisible to touch! */
-    #stickerContainer.drawing-locked .editor-sticker {
+    /* 🟢 THE FIX: When ing is active, make stickers completely invisible to touch! */
+    #stickerContainer.ing-locked .editor-sticker {
       pointer-events: none !important;
     }
 /* 🟢 STICKER LAYER CONTROLS & TOUCH TARGETS */
@@ -254,7 +254,7 @@
     .text-col input[type="color"] { height: 40px; cursor: pointer; padding: 2px; }
     .text-checkbox-row { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; color: #ddd; justify-content: center; cursor: pointer; }
 
-    /* STICKER DRAWER TABS */
+    /* STICKER ER TABS */
     #stickerDrawer { height: 400px; }
     .sticker-tabs { display: flex; overflow-x: auto; background: #1a1a1a; padding: 10px 15px; gap: 10px; border-bottom: 1px solid #333; scrollbar-width: none; }
     .sticker-tabs::-webkit-scrollbar { display: none; }
@@ -1454,7 +1454,10 @@ function setupEditorWorkspace() {
     updateDrawSettings(); 
     
     clearDecorations();
-    isDrawMode = false; 
+    
+    // 🟢 THE FIX: We set the flag to true, so when toggleDrawMode() runs, 
+    // it flips it to FALSE, safely turning off the brush and hiding the tools!
+    isDrawMode = true; 
     toggleDrawMode();
     
     preloadDynamicStickers();
