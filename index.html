@@ -695,7 +695,7 @@
       </div>
 
       <div class="toolbar-item" onclick="toggleDrawMode()">
-        <div class="tool-btn active" id="btnDraw"><span style="font-size:22px;">🖍️</span></div>
+        <div class="tool-btn" id="btnDraw"><span style="font-size:22px;">🖍️</span></div>
         <span class="tool-label">Draw</span>
       </div>
       
@@ -1284,7 +1284,7 @@
 // 🟢 SNAPCHAT-STYLE PHOTO EDITOR ENGINE
 // ==============================================================================
 let editorBaseImage = new Image();
-let isDrawMode = true;
+let isDrawMode = false;
 let isDrawing = false;
 let ctxDoodle;
 let actionHistory = [];
@@ -1483,9 +1483,12 @@ function setupEditorWorkspace() {
     updateDrawSettings(); 
     
     clearDecorations();
-    
-    isDrawMode = true; 
-    toggleDrawMode();
+// 🟢 NEW: Silently resets the tools to OFF without running the toggle animations
+    isDrawMode = false;
+    document.getElementById('btnDraw').classList.remove('active');
+    document.getElementById('drawTools').style.display = 'none';
+    document.getElementById('doodleCanvas').style.pointerEvents = 'none';
+    document.getElementById('stickerContainer').classList.remove('drawing-locked');
     
 
     preloadDynamicStickers();
