@@ -1268,6 +1268,10 @@ function openPhotoEditor(event) {
 
     const reader = new FileReader();
     reader.onload = function(e) {
+        
+        // 🟢 Ensure flag is reset on every new upload
+        window.isTemplateBaked = false; 
+        
         editorBaseImage.onload = function() {
             
             const promptModal = document.getElementById('decoratePromptModal');
@@ -1304,11 +1308,23 @@ function openPhotoEditor(event) {
                 }
             };
             
-            // If YES: Open Editor (Uses the raw photo without the template)
+            // 🟢 THE FIX: If YES, swap the base image to the pre-baked preview!
             document.getElementById('btnDecoratePhoto').onclick = function() {
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
-                setTimeout(() => { setupEditorWorkspace(); }, 10);
+                
+                if (bakedPreviewBase64) {
+                    const compositedImg = new Image();
+                    compositedImg.onload = function() {
+                        editorBaseImage = compositedImg; // Overwrite raw photo with Template + Photo
+                        window.isTemplateBaked = true;   // Flag so we don't apply the template twice
+                        setupEditorWorkspace();
+                    };
+                    compositedImg.src = bakedPreviewBase64;
+                } else {
+                    // Fallback if preview isn't done yet
+                    setTimeout(() => { setupEditorWorkspace(); }, 10);
+                }
             };
 
         };
@@ -2076,14 +2092,25 @@ function saveAndSubmitEdit() {
 }
 
 function processFinalTemplateLayout(editedBase64, isLandscape) {
-    const sourceImg = new Image();
-    sourceImg.onload = function() {
-        // Run it back through the composite generator to bake the template ON TOP of the drawings
-        generateCompositePreview(sourceImg, isLandscape, function(finalB64) {
-            uploadProcessedPhoto(finalB64);
-        });
-    };
-    sourceImg.src = editedBase64;
+    const activeTemplateBase64 = isLandscape ? templateOverlays.landscape : templateOverlays.portrait;
+
+    // 🟢 THE FIX: Skip adding the overlay if it was already baked into the image during the Decorate phase!
+    if (activeTemplateBase64 && !window.isTemplateBaked) {
+        const overlayImg = new Image();
+        if (activeTemplateBase64.startsWith('http')) overlayImg.crossOrigin = "anonymous";
+        
+        overlayImg.onload = function() {
+            executeCanvasUpload(overlayImg.width, overlayImg.height, overlayImg, editedBase64);
+        };
+        overlayImg.onerror = function() {
+            showCustomDialog("Template Warning", "Overlay failed. Uploading your edited photo bare.", false);
+            executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+        };
+        overlayImg.src = activeTemplateBase64;
+    } else {
+        // Already baked, or no template exists. Just upload directly!
+        executeCanvasUpload(isLandscape ? 1800 : 1200, isLandscape ? 1200 : 1800, null, editedBase64);
+    }
 }
     </script>
     
