@@ -616,10 +616,11 @@
           <img id="previewModalImage" src="" style="max-width: 100%; max-height: 45vh; object-fit: contain; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
       </div>
       
-      <p style="font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.4;">Would you like to add text, stickers, or doodles before uploading?</p>
-      <div class="share-btn-row">
-        <button class="btn-close-modal" id="btnSubmitAsIs">No, Submit</button>
-        <button class="btn-copy" id="btnDecoratePhoto">Yes, Decorate</button>
+      <p style="font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.4;">Submit this photo as is, personalize it with fun props, or cancel to choose another.</p>
+      <div class="share-btn-row" style="gap: 8px;">
+        <button class="btn-copy" id="btnSubmitAsIs" style="background: #16a34a;">Submit</button>
+        <button class="btn-copy" id="btnDecoratePhoto">Decorate</button>
+        <button class="btn-close-modal" id="btnCancelPhoto">Cancel</button>
       </div>
     </div>
   </div>
@@ -1269,7 +1270,7 @@ function openPhotoEditor(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         
-        // 🟢 Ensure flag is reset on every new upload
+        // Ensure flag is reset on every new upload
         window.isTemplateBaked = false; 
         
         editorBaseImage.onload = function() {
@@ -1293,7 +1294,7 @@ function openPhotoEditor(event) {
                 loader.style.display = 'none';
             });
             
-            // If NO: Submit instantly using the pre-baked preview!
+            // 🟢 ACTION 1: Submit instantly using the pre-baked preview
             document.getElementById('btnSubmitAsIs').onclick = function() {
                 promptModal.style.display = 'none';
                 const ov = document.getElementById('uploadOverlay');
@@ -1308,7 +1309,7 @@ function openPhotoEditor(event) {
                 }
             };
             
-            // 🟢 THE FIX: If YES, swap the base image to the pre-baked preview!
+            // 🟢 ACTION 2: Swap the base image to the pre-baked preview and open Editor!
             document.getElementById('btnDecoratePhoto').onclick = function() {
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
@@ -1326,11 +1327,18 @@ function openPhotoEditor(event) {
                 }
             };
 
+            // 🟢 ACTION 3: Cancel and abort everything!
+            document.getElementById('btnCancelPhoto').onclick = function() {
+                promptModal.style.display = 'none';
+                bakedPreviewBase64 = null; // Flush memory
+                // The input file value was already reset below, so the user can freely click the upload button again!
+            };
+
         };
         editorBaseImage.src = e.target.result;
     };
     reader.readAsDataURL(file);
-    event.target.value = ''; 
+    event.target.value = ''; // Reset the input immediately so they can re-select the same file if they cancel
 }
 
 // 🟢 UNIVERSAL COMPOSITE GENERATOR
