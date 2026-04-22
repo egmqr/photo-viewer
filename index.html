@@ -46,18 +46,7 @@
       user-select: none;
       padding-bottom: calc(60px + var(--safe-bottom)); 
     }
-    /* 🟢 ADVANCED EDITOR STYLES */
-    #drawTools {
-      position: absolute; bottom: 0; width: 100%; display: none; 
-      justify-content: center; align-items: center; gap: 20px; z-index: 10;
-      background: rgba(15,15,15,0.9); padding: 15px 10px max(15px, env(safe-area-inset-bottom)) 10px; 
-      backdrop-filter: blur(10px); border-top: 1px solid #333;
-    }
-    
-    #stickerTools {
-      position: absolute; bottom: 25px; width: 100%; display: none; 
-      justify-content: center; z-index: 105; pointer-events: none;
-    }
+
     .tool-group { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #ccc; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
     /* 🟢 FAT FINGER SLIDER UPGRADES */
     .tool-group input[type="range"],
@@ -266,11 +255,21 @@
     .sticker-tab { background: #333; color: #aaa; border: none; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: 0.2s; }
     .sticker-tab.active { background: #0d9488; color: white; }
     .sticker-grid { display: flex; flex-wrap: wrap; gap: 15px; padding: 20px; overflow-y: auto; justify-content: center; flex: 1; align-content: flex-start; }
-/* 🟢 PHOTO EDITOR MODAL STYLES */
+    /* 🟢 PHOTO EDITOR MODAL STYLES */
     #photoEditorModal {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; /* Forces it perfectly to the edges */
+      width: 100%; height: 100%;
       background: #000; z-index: 100000; display: none; flex-direction: column;
     }
+    
+    /* 🟢 ADVANCED EDITOR STYLES */
+    #drawTools {
+      position: absolute; bottom: 0; width: 100%; display: none; 
+      justify-content: center; align-items: center; gap: 20px; z-index: 10;
+      background: rgba(15,15,15,0.9); padding: 15px 10px max(15px, env(safe-area-inset-bottom)) 10px; 
+      backdrop-filter: blur(10px); border-top: 1px solid #333;
+    }
+    /* We completely removed #stickerTools from the CSS so it loses the black bar and reverts to your original look! */
     .editor-header {
       display: flex; justify-content: space-between; align-items: center;
       padding: 15px 20px; background: #111; padding-top: max(15px, env(safe-area-inset-top));
@@ -665,12 +664,12 @@
         </div>
       </div>
       
-      <div id="stickerTools">
+      <div id="stickerTools" style="position: absolute; bottom: 15px; width: 100%; display: flex; justify-content: center; z-index: 99999; background: transparent; pointer-events: none;">
         <button class="tool-btn confirm-sticker-btn" 
                 onmousedown="event.stopPropagation(); event.preventDefault(); deselectActiveSticker();" 
                 ontouchstart="event.stopPropagation(); event.preventDefault(); deselectActiveSticker();" 
                 aria-label="Confirm Sticker" 
-                style="pointer-events: auto; box-shadow: 0 8px 25px rgba(0,0,0,0.5);">
+                style="pointer-events: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
