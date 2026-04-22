@@ -178,15 +178,16 @@
     /* 🟢 THE FIX: CONSTANT-SIZE DELETE BADGE */
     .sticker-delete-btn {
       position: absolute;
-      top: -14px; left: -14px; /* Centers it perfectly on the corner */
+      top: -14px; left: -14px; 
       width: 28px; height: 28px;
       background: #ef4444; color: white;
       border-radius: 50%; display: none; 
       justify-content: center; align-items: center;
       font-weight: bold; font-size: 14px;
-      cursor: pointer; z-index: 101; pointer-events: auto;
+      cursor: pointer; 
+      z-index: 105; /* 🟢 Bumped from 101 to 105 to guarantee it is on top! */
+      pointer-events: auto;
       box-shadow: 0 2px 5px rgba(0,0,0,0.4); border: 2px solid white;
-      /* As the sticker shrinks, this scales up proportionally to stay visually identical! */
       transform: scale(calc(1 / var(--scale))); 
       transform-origin: center;
     }
@@ -1978,7 +1979,7 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     wrapper.appendChild(img);
     wrapper.appendChild(delBtn);
 
-    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+    ['ne', 'sw', 'se'].forEach(pos => {
         const handle = document.createElement('div');
         handle.className = `resize-handle ${pos}`;
         wrapper.appendChild(handle);
