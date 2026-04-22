@@ -144,8 +144,9 @@
     #stickerContainer.ing-locked .editor-sticker {
       pointer-events: none !important;
     }
-/* 🟢 STICKER LAYER CONTROLS & TOUCH TARGETS */
+/* 🟢 MASTER STICKER LAYER */
     .editor-sticker { 
+      --scale: 1; /* 🟢 This tracks the live scale for the math below! */
       position: absolute; pointer-events: auto; 
       cursor: grab; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
       padding: 20px; margin: -20px; 
@@ -153,7 +154,6 @@
       will-change: left, top, transform;
       -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translate3d(0,0,0); 
     }
-    /* The actual image now sits inside the wrapper */
     .editor-sticker img {
       width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: block;
     }
@@ -164,40 +164,50 @@
     }
     .locked-sticker { pointer-events: none !important; }
 
-    /* 🟢 THE INLINE DELETE BUTTON */
+    /* 🟢 THE FIX: MASSIVE UN-SHRINKABLE PINCH SHIELD */
+    .editor-sticker.active::after {
+      content: ""; position: absolute;
+      top: 50%; left: 50%;
+      /* This math forces the invisible touch shield to always add exactly 200px of visual padding, even if the sticker shrinks! */
+      width: calc(100% + (200px / var(--scale))); 
+      height: calc(100% + (200px / var(--scale)));
+      transform: translate(-50%, -50%);
+      background: transparent; z-index: -1;
+    }
+
+    /* 🟢 THE FIX: CONSTANT-SIZE DELETE BADGE */
     .sticker-delete-btn {
       position: absolute;
-      top: 0px; left: 0px;
+      top: -14px; left: -14px; /* Centers it perfectly on the corner */
       width: 28px; height: 28px;
       background: #ef4444; color: white;
-      border-radius: 50%;
-      display: none; 
+      border-radius: 50%; display: none; 
       justify-content: center; align-items: center;
       font-weight: bold; font-size: 14px;
-      cursor: pointer; z-index: 101;
-      pointer-events: auto;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-      border: 2px solid white;
+      cursor: pointer; z-index: 101; pointer-events: auto;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4); border: 2px solid white;
+      /* As the sticker shrinks, this scales up proportionally to stay visually identical! */
+      transform: scale(calc(1 / var(--scale))); 
+      transform-origin: center;
     }
-    .editor-sticker.active .sticker-delete-btn {
-      display: flex; /* Only show the X when the sticker is actively selected */
-    }
+    .editor-sticker.active .sticker-delete-btn { display: flex; }
 
-    /* 🟢 RESIZE HANDLES */
+    /* 🟢 THE FIX: CONSTANT-SIZE RESIZE HANDLES */
     .resize-handle {
-      position: absolute;
-      width: 14px;
-      height: 14px;
-      background: #ffffff;
-      border: 2px solid #0d9488; 
-      border-radius: 50%;
-      display: none; 
-      z-index: 102;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      position: absolute; width: 14px; height: 14px;
+      background: #ffffff; border: 2px solid #0d9488; border-radius: 50%;
+      display: none; z-index: 102; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transform: scale(calc(1 / var(--scale))); /* Inverse scaling! */
+      transform-origin: center;
     }
-
-    .editor-sticker.active .resize-handle {
-      display: block;
+    .editor-sticker.active .resize-handle { display: block; }
+    .nw { top: -7px; left: -7px; cursor: nw-resize; }
+    .ne { top: -7px; right: -7px; cursor: ne-resize; }
+    .sw { bottom: -7px; left: -7px; cursor: sw-resize; }
+    .se { bottom: -7px; right: -7px; cursor: se-resize; }
+    .resize-handle::after {
+      content: ''; position: absolute;
+      top: -15px; left: -15px; right: -15px; bottom: -15px; /* Huge invisible touch area for handles */
     }
 
     .nw { top: -7px; left: -7px; cursor: nw-resize; }
@@ -1945,6 +1955,7 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     wrapper.dataset.baseH = sHeight;
     wrapper.dataset.scale = 1;
     wrapper.dataset.rot = 0;
+    wrapper.style.setProperty('--scale', '1'); // 🟢 NEW: Set default scale
 
     const img = document.createElement('img');
     img.crossOrigin = "anonymous"; 
