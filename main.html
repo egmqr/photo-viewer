@@ -444,8 +444,10 @@
                 iframe.style.setProperty('position', 'fixed', 'important');
                 iframe.style.setProperty('top', '0', 'important');
                 iframe.style.setProperty('left', '0', 'important');
-                iframe.style.setProperty('width', '100vw', 'important');
-                iframe.style.setProperty('height', '100vh', 'important');
+                iframe.style.setProperty('right', '0', 'important'); // 🟢 NEW
+                iframe.style.setProperty('bottom', '0', 'important'); // 🟢 NEW
+                iframe.style.setProperty('width', '100%', 'important'); // 🟢 FIXED from 100vw
+                iframe.style.setProperty('height', '100%', 'important'); // 🟢 FIXED from 100vh
                 iframe.style.setProperty('z-index', '2147483647', 'important');
                 iframe.style.setProperty('max-width', '100%', 'important');
                 iframe.style.setProperty('max-height', '100%', 'important');
