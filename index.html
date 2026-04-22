@@ -664,12 +664,8 @@
         </div>
       </div>
       
-      <div id="stickerTools" style="position: absolute; bottom: 20px; width: 100%; display: none; justify-content: center; z-index: 99999; pointer-events: none;">
-        <button class="tool-btn confirm-sticker-btn" 
-                onclick="handleConfirmSticker(event)" 
-                ontouchstart="handleConfirmSticker(event)"
-                aria-label="Confirm Sticker" 
-                style="pointer-events: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+      <div id="stickerTools" style="position: absolute; bottom: 15px; width: 100%; display: none; justify-content: center; z-index: 99999; pointer-events: none;">
+        <button class="tool-btn confirm-sticker-btn" onclick="deselectActiveSticker()" aria-label="Confirm Sticker">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
@@ -1477,7 +1473,7 @@ function setupEditorWorkspace() {
     isDrawMode = true; 
     toggleDrawMode();
     
-    attachCanvasListeners(); // 🟢 NEW: Safely locks in the drawing mechanics
+
     preloadDynamicStickers();
 }
 
@@ -1603,55 +1599,40 @@ function getPointerPos(e) {
     return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
-// 🟢 NEW: Upgraded ultra-smooth drawing logic
 function startDoodle(e) {
     if (!isDrawMode) return;
-    if (e) e.preventDefault(); // Prevents page scrolling while drawing
+    e.preventDefault();
     isDrawing = true;
-    updateDrawSettings(); 
     const pos = getPointerPos(e);
     ctxDoodle.beginPath();
     ctxDoodle.moveTo(pos.x, pos.y);
-    ctxDoodle.lineTo(pos.x + 0.1, pos.y + 0.1); // Immediately prints a dot!
-    ctxDoodle.stroke();
 }
 
 function drawDoodle(e) {
     if (!isDrawing || !isDrawMode) return;
-    if (e) e.preventDefault();
+    e.preventDefault();
     const pos = getPointerPos(e);
     ctxDoodle.lineTo(pos.x, pos.y);
     ctxDoodle.stroke();
-    ctxDoodle.beginPath(); // Makes rapid curves super smooth
-    ctxDoodle.moveTo(pos.x, pos.y);
 }
 
 function stopDoodle(e) { 
-    isDrawing = false; 
-    if (ctxDoodle) ctxDoodle.beginPath();
+    if (isDrawing) { 
+        e.preventDefault(); 
+        isDrawing = false; 
+    } 
 }
-
-// 🟢 NEW: Guarantees touch listeners are perfectly mapped
-function attachCanvasListeners() {
-    const canvasEl = document.getElementById('doodleCanvas');
-    if (!canvasEl) return;
-    
-    // Clean old listeners
-    canvasEl.removeEventListener('mousedown', startDoodle);
-    canvasEl.removeEventListener('mousemove', drawDoodle);
-    canvasEl.removeEventListener('touchstart', startDoodle);
-    canvasEl.removeEventListener('touchmove', drawDoodle);
-    window.removeEventListener('mouseup', stopDoodle);
-    window.removeEventListener('touchend', stopDoodle);
-    
-    // Bind fresh listeners
-    canvasEl.addEventListener('mousedown', startDoodle);
-    canvasEl.addEventListener('mousemove', drawDoodle);
-    canvasEl.addEventListener('touchstart', startDoodle, {passive: false});
-    canvasEl.addEventListener('touchmove', drawDoodle, {passive: false});
+// 🟢 GLOBAL LISTENERS (Safe and reliable!)
+const globalDoodleCanvas = document.getElementById('doodleCanvas');
+if (globalDoodleCanvas) {
+    globalDoodleCanvas.addEventListener('mousedown', startDoodle);
+    globalDoodleCanvas.addEventListener('mousemove', drawDoodle);
     window.addEventListener('mouseup', stopDoodle);
+    globalDoodleCanvas.addEventListener('touchstart', startDoodle, {passive: false});
+    globalDoodleCanvas.addEventListener('touchmove', drawDoodle, {passive: false});
     window.addEventListener('touchend', stopDoodle);
 }
+
 
 // 🟢 NEW: Safely handles the green confirm button without freezing the browser
 window.handleConfirmSticker = function(e) {
@@ -1693,7 +1674,14 @@ function showCustomDialog(title, message, isConfirm, onConfirmCallback) {
     
     modal.style.display = 'flex';
 }
-
+function deselectActiveSticker() {
+    document.querySelectorAll('.editor-sticker').forEach(el => {
+        el.classList.remove('active');
+        el.classList.remove('locked-sticker');
+    });
+    document.getElementById('stickerTools').style.display = 'none';
+    window.activeSticker = null;
+}
 function handleDelete() {
    if (window.activeSticker) {
         window.activeSticker.remove();
