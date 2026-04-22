@@ -821,7 +821,7 @@
           uploadBtn.style.display = 'flex';
           document.getElementById('searchContainer').style.display = 'none';
           
-          // 🟢 THE FIX: Unlock the button instantly! Track the load state in the background.
+          // 🟢 THE FIX: Set tracking flag for background download
           window.templateFetchComplete = false; 
           
           const templateIdParam = urlParams.get('templateId') ? `&templateId=${urlParams.get('templateId')}` : '';
@@ -877,7 +877,7 @@
           .finally(() => {
               window.templateFetchComplete = true; // Mark as done!
               
-              // 🟢 If the user already picked a photo and was waiting for this to finish, resume rendering!
+              // 🟢 THE FIX: If the user is staring at the spinner waiting, render the preview instantly!
               if (window.waitingForTemplateToRender) {
                   window.waitingForTemplateToRender();
               }
@@ -1281,7 +1281,6 @@ function openPhotoEditor(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         
-        // Ensure flag is reset on every new upload
         window.isTemplateBaked = false; 
         
         editorBaseImage.onload = function() {
@@ -1289,31 +1288,45 @@ function openPhotoEditor(event) {
             const promptModal = document.getElementById('decoratePromptModal');
             const previewImg = document.getElementById('previewModalImage');
             const loader = document.getElementById('previewModalLoader');
-            const container = document.getElementById('previewModalContainer'); // 🟢 Capture the container
+            const container = document.getElementById('previewModalContainer'); 
             
             promptModal.style.display = 'flex';
             previewImg.style.display = 'none';
             loader.style.display = 'block';
             
-            // 🟢 Reset the minimum height so the loader spinner has room to breathe
+            // Reset the minimum height so the loader spinner has room to breathe
             if (container) container.style.minHeight = '200px'; 
             bakedPreviewBase64 = null; // Reset memory
             
             const isLandscape = editorBaseImage.width > editorBaseImage.height;
             
-            // Generate the high-res composite in the background instantly
-            generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
-                bakedPreviewBase64 = finalBase64;
-                previewImg.src = finalBase64;
-                previewImg.style.display = 'block';
-                loader.style.display = 'none';
+            // 🟢 THE FIX: Wait for background template download to finish!
+            const attemptRender = function() {
+                if (window.templateFetchComplete === false) {
+                    // Still downloading. Keep the loader spinning and set the waiting hook.
+                    window.waitingForTemplateToRender = attemptRender;
+                    return;
+                }
                 
-                // 🟢 Snap the container tightly to the image's exact borders!
-                if (container) container.style.minHeight = '0'; 
-            });
+                // Template is ready! Clear the hook and generate the layout
+                window.waitingForTemplateToRender = null;
+                generateCompositePreview(editorBaseImage, isLandscape, function(finalBase64) {
+                    bakedPreviewBase64 = finalBase64;
+                    previewImg.src = finalBase64;
+                    previewImg.style.display = 'block';
+                    loader.style.display = 'none';
+                    
+                    // Snap the container tightly to the image's exact borders!
+                    if (container) container.style.minHeight = '0'; 
+                });
+            };
+            
+            attemptRender(); // Fire the first attempt
             
             // ACTION 1: Submit instantly using the pre-baked preview
             document.getElementById('btnSubmitAsIs').onclick = function() {
+                if (!bakedPreviewBase64 && window.templateFetchComplete === false) return showToast("Please wait for layout to load.", "warning");
+
                 promptModal.style.display = 'none';
                 const ov = document.getElementById('uploadOverlay');
                 document.getElementById('uploadStatusText').innerText = "Processing Photo...";
@@ -1322,13 +1335,14 @@ function openPhotoEditor(event) {
                 if (bakedPreviewBase64) {
                     uploadProcessedPhoto(bakedPreviewBase64);
                 } else {
-                    // Fallback
                     processFinalTemplateLayout(e.target.result, isLandscape);
                 }
             };
             
-            // 🟢 ACTION 2: Swap the base image to the pre-baked preview and open Editor!
+            // ACTION 2: Swap the base image to the pre-baked preview and open Editor!
             document.getElementById('btnDecoratePhoto').onclick = function() {
+                if (!bakedPreviewBase64 && window.templateFetchComplete === false) return showToast("Please wait for layout to load.", "warning");
+
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
                 
@@ -1342,7 +1356,6 @@ function openPhotoEditor(event) {
                     compositedImg.onload = function() {
                         editorBaseImage = compositedImg; 
                         window.isTemplateBaked = true;   
-                        // Increased delay to 100ms to ensure the iframe finishes expanding before calculating canvas math!
                         setTimeout(() => { setupEditorWorkspace(); }, 100);
                     };
                     compositedImg.src = bakedPreviewBase64;
@@ -1353,6 +1366,7 @@ function openPhotoEditor(event) {
 
             // ACTION 3: Cancel and abort everything!
             document.getElementById('btnCancelPhoto').onclick = function() {
+                window.waitingForTemplateToRender = null; // Kill the background render hook
                 promptModal.style.display = 'none';
                 bakedPreviewBase64 = null; // Flush memory
             };
