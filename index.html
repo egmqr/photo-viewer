@@ -1327,21 +1327,27 @@ function openPhotoEditor(event) {
                 }
             };
             
-            // ACTION 2: Swap the base image to the pre-baked preview and open Editor!
+            // 🟢 ACTION 2: Swap the base image to the pre-baked preview and open Editor!
             document.getElementById('btnDecoratePhoto').onclick = function() {
                 promptModal.style.display = 'none';
                 document.getElementById('photoEditorModal').style.display = 'flex';
                 
+                // 🚀 Send the signal to main.html to stretch the iframe!
+                if (window.parent !== window) {
+                    window.parent.postMessage({ action: 'openEditorFullscreen' }, '*');
+                }
+                
                 if (bakedPreviewBase64) {
                     const compositedImg = new Image();
                     compositedImg.onload = function() {
-                        editorBaseImage = compositedImg; // Overwrite raw photo with Template + Photo
-                        window.isTemplateBaked = true;   // Flag so we don't apply the template twice
-                        setupEditorWorkspace();
+                        editorBaseImage = compositedImg; 
+                        window.isTemplateBaked = true;   
+                        // Increased delay to 100ms to ensure the iframe finishes expanding before calculating canvas math!
+                        setTimeout(() => { setupEditorWorkspace(); }, 100);
                     };
                     compositedImg.src = bakedPreviewBase64;
                 } else {
-                    setTimeout(() => { setupEditorWorkspace(); }, 10);
+                    setTimeout(() => { setupEditorWorkspace(); }, 100);
                 }
             };
 
@@ -1471,7 +1477,14 @@ function updateDrawSettings() {
     ctxDoodle.shadowColor = ctxDoodle.strokeStyle;
 }
 
-function closePhotoEditor() { document.getElementById('photoEditorModal').style.display = 'none'; }
+function closePhotoEditor() { 
+    document.getElementById('photoEditorModal').style.display = 'none'; 
+    
+    // 🚀 Send the signal to main.html to shrink the iframe back to normal!
+    if (window.parent !== window) {
+        window.parent.postMessage({ action: 'closeEditorFullscreen' }, '*');
+    }
+}
 
 function clearDecorations() {
     ctxDoodle.save();
