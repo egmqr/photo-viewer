@@ -428,15 +428,60 @@
 
         window.setupInteractivity();
     };
-// 🟢 LISTEN FOR EDITOR FULLSCREEN COMMANDS FROM THE IFRAME
+// 🟢 BULLETPROOF IFRAME STRETCHER
     window.addEventListener('message', function(event) {
+        
+        // --- 1. EXPAND COMMAND ---
         if (event.data && event.data.action === 'openEditorFullscreen') {
-            const iframe = document.querySelector('iframe');
-            if (iframe) iframe.classList.add('iframe-fullscreen-mode');
+            console.log("📡 Fullscreen Signal Received!"); // Check your F12 Console!
+            
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                // Save original styles to restore later
+                iframe.setAttribute('data-old-css', iframe.style.cssText);
+                
+                // Force Inline Styles (This beats all other CSS rules)
+                iframe.style.setProperty('position', 'fixed', 'important');
+                iframe.style.setProperty('top', '0', 'important');
+                iframe.style.setProperty('left', '0', 'important');
+                iframe.style.setProperty('width', '100vw', 'important');
+                iframe.style.setProperty('height', '100vh', 'important');
+                iframe.style.setProperty('z-index', '2147483647', 'important');
+                iframe.style.setProperty('max-width', '100%', 'important');
+                iframe.style.setProperty('max-height', '100%', 'important');
+                iframe.style.setProperty('margin', '0', 'important');
+                iframe.style.setProperty('border', 'none', 'important');
+                
+                // Climb up the HTML tree and temporarily KILL any 'transforms' trapping the iframe
+                let parent = iframe.parentElement;
+                while (parent && parent !== document.body) {
+                    parent.setAttribute('data-old-transform', parent.style.transform);
+                    parent.style.setProperty('transform', 'none', 'important');
+                    parent = parent.parentElement;
+                }
+            });
+            // Stop the main page from scrolling while editing
+            document.body.style.setProperty('overflow', 'hidden', 'important'); 
         }
+
+        // --- 2. SHRINK COMMAND ---
         if (event.data && event.data.action === 'closeEditorFullscreen') {
-            const iframe = document.querySelector('iframe');
-            if (iframe) iframe.classList.remove('iframe-fullscreen-mode');
+            console.log("📡 Close Signal Received!");
+            
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                // Restore original iframe styles
+                iframe.style.cssText = iframe.getAttribute('data-old-css') || '';
+                
+                // Restore original parent transforms
+                let parent = iframe.parentElement;
+                while (parent && parent !== document.body) {
+                    parent.style.transform = parent.getAttribute('data-old-transform') || '';
+                    parent = parent.parentElement;
+                }
+            });
+            // Restore scrolling
+            document.body.style.overflow = ''; 
         }
     });
     window.setupInteractivity = function() {
