@@ -1930,6 +1930,7 @@ function startResizing(e, wrapper) {
         let newScale = (currentDist / startDist) * startScale;
         newScale = Math.max(0.2, Math.min(newScale, 6));
         wrapper.dataset.scale = newScale;
+        wrapper.style.setProperty('--scale', newScale); // 🟢 NEW: Update live scale
         const currentRot = wrapper.dataset.rot || 0;
         wrapper.style.transform = `scale(${newScale}) rotate(${currentRot}deg)`;
     }
@@ -2076,6 +2077,7 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
 
             wrapper.dataset.scale = newScale;
             wrapper.dataset.rot = newRot;
+            wrapper.style.setProperty('--scale', newScale); // 🟢 NEW: Update live scale
             wrapper.style.transform = `scale(${newScale}) rotate(${newRot}deg)`;
         } else if (isDragging) {
             const currentX = e.touches ? e.touches[0].clientX : e.clientX;
