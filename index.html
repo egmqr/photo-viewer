@@ -652,9 +652,9 @@
   </div>
 <div id="photoEditorModal">
     <div class="editor-header">
-      <button class="editor-btn" onclick="closePhotoEditor()">Cancel</button>
+      <button class="editor-btn" id="mainEditorCancelBtn" onclick="closePhotoEditor()">Cancel</button>
       <div style="font-weight: bold; letter-spacing: 1px; color:#fff !important;">Decorate</div>
-      <button class="editor-btn editor-btn-submit" onclick="saveAndSubmitEdit()">Submit</button>
+      <button class="editor-btn editor-btn-submit" id="mainEditorSubmitBtn" onclick="saveAndSubmitEdit()">Submit</button>
     </div>
     
     <div id="editorWorkspace">
@@ -673,6 +673,7 @@
           <label>Thickness</label>
           <input type="range" id="doodleWidth" min="2" max="30" value="6" oninput="updateDrawSettings()">
         </div>
+        <button class="editor-btn-submit" onclick="toggleDrawMode()" style="margin-left: 10px; height: 38px; padding: 0 16px; font-size: 14px; border: none; cursor: pointer;">Done</button>
       </div>
       
       <div id="stickerTools" style="position: absolute; bottom: 15px; width: 100%; display: none; justify-content: center; z-index: 99999; pointer-events: none;">
@@ -708,11 +709,6 @@
 
   <div id="textEditorModal" class="ig-text-overlay">
     
-    <div class="ig-text-header">
-      <button class="editor-btn" onclick="closeTextEditor()">Cancel</button>
-      <button class="editor-btn editor-btn-submit" onclick="applyTextSticker()">Done</button>
-    </div>
-
     <div class="ig-text-input-wrapper" onclick="document.getElementById('textStickerInput').focus()">
       <textarea id="textStickerInput" placeholder="Type here..." rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
     </div>
@@ -728,7 +724,6 @@
             <option value="'Courier New', Courier, monospace" style="font-family: 'Courier New', monospace;">Typewriter</option>
             <option value="'Brush Script MT', 'Apple Chancery', 'Snell Roundhand', cursive" style="font-family: 'Brush Script MT', cursive;">Neon / Script</option>
             <option value="Georgia, 'Times New Roman', Times, serif" style="font-family: Georgia, serif;">Elegant</option>
-            
             <option value="'Comic Neue', cursive" style="font-family: 'Comic Neue', cursive;">Comic</option>
             <option value="'Anton', sans-serif" style="font-family: 'Anton', sans-serif; letter-spacing: 1px;">Heavy</option>
           </select>
@@ -754,6 +749,12 @@
           <input type="checkbox" id="textShadow" style="width:18px; height:18px; accent-color:#0d9488;" onchange="updateTextPreview()">
           Add Drop Shadow
         </label>
+        
+        <div style="display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
+          <button class="editor-btn" style="color:#ef4444; margin:0; padding:0;" onclick="closeTextEditor()">Cancel</button>
+          <button class="editor-btn editor-btn-submit" style="margin:0;" onclick="applyTextSticker()">Done</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1443,7 +1444,6 @@ function fallbackDraw(sourceImgObj, isLandscape, callback) {
 }
 
 // 2. Scale the Canvas to Fit the Screen
-// 2. Scale the Canvas to Fit the Screen
 function setupEditorWorkspace() {
     const workspace = document.getElementById('editorWorkspace');
     const container = document.getElementById('editorCanvasContainer');
@@ -1492,6 +1492,7 @@ function setupEditorWorkspace() {
     
 
     preloadDynamicStickers();
+  updateMainHeaderVisibility();
 }
 
 function preloadDynamicStickers() {
@@ -1555,6 +1556,7 @@ function toggleDrawMode() {
         sContainer.classList.remove('drawing-locked');
         makeDoodleSticker(); 
     }
+  updateMainHeaderVisibility();
 }
 
 function makeDoodleSticker() {
@@ -1698,6 +1700,7 @@ function deselectActiveSticker() {
     });
     document.getElementById('stickerTools').style.display = 'none';
     window.activeSticker = null;
+  updateMainHeaderVisibility();
 }
 function handleDelete() {
    if (window.activeSticker) {
@@ -1709,7 +1712,22 @@ function handleDelete() {
         });
     }
 }
+// 🟢 NEW: Global UI Visibility Manager
+function updateMainHeaderVisibility() {
+    const isTextOpen = document.getElementById('textEditorModal').style.display === 'flex';
+    const isStickerDrawerOpen = document.getElementById('stickerDrawer').classList.contains('open');
+    const hasActiveSticker = !!window.activeSticker;
+    const isDrawing = isDrawMode;
 
+    const shouldHide = isTextOpen || isStickerDrawerOpen || hasActiveSticker || isDrawing;
+    
+    const cBtn = document.getElementById('mainEditorCancelBtn');
+    const sBtn = document.getElementById('mainEditorSubmitBtn');
+    
+    // Using 'visibility' instead of 'display' keeps the title perfectly centered!
+    if(cBtn) cBtn.style.visibility = shouldHide ? 'hidden' : 'visible';
+    if(sBtn) sBtn.style.visibility = shouldHide ? 'hidden' : 'visible';
+}
 // --- TEXT STICKER LOGIC ---
 
 function updateTextPreview() {
@@ -1761,11 +1779,13 @@ function openTextEditor() {
     updateTextPreview();
     document.getElementById('textEditorModal').style.display = 'flex'; 
     setTimeout(() => input.focus(), 100);
+  updateMainHeaderVisibility();
 }
 
 function closeTextEditor() { 
     document.getElementById('textEditorModal').style.display = 'none'; 
     document.getElementById('textStickerInput').value = '';
+  updateMainHeaderVisibility();
 }
 
 function applyTextSticker() {
@@ -1915,11 +1935,13 @@ function openStickerDrawer() {
     
     document.getElementById('stickerDrawer').style.display = 'flex';
     requestAnimationFrame(() => { document.getElementById('stickerDrawer').classList.add('open'); });
+  updateMainHeaderVisibility();
 }
 
 function closeStickerDrawer() {
     document.getElementById('stickerDrawer').classList.remove('open');
     setTimeout(() => document.getElementById('stickerDrawer').style.display = 'none', 300);
+  updateMainHeaderVisibility();
 }
 
 function startResizing(e, wrapper) {
@@ -2032,6 +2054,7 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
         
         window.activeSticker = wrapper;
         document.getElementById('stickerTools').style.display = 'flex';
+        updateMainHeaderVisibility();
 
         if (e.touches && e.touches.length === 2) {
             isPinching = true;
