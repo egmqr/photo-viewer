@@ -169,8 +169,8 @@
       content: ""; position: absolute;
       top: 50%; left: 50%;
       /* This math forces the invisible touch shield to always add exactly 200px of visual padding, even if the sticker shrinks! */
-      width: calc(100% + (200px / var(--scale))); 
-      height: calc(100% + (200px / var(--scale)));
+      width: calc(100% + (300px / var(--scale))); 
+      height: calc(100% + (300px / var(--scale)));
       transform: translate(-50%, -50%);
       background: transparent; z-index: -1;
     }
@@ -302,12 +302,7 @@
     .editor-sticker.active {
       outline: 2px dashed #5eead4; outline-offset: -10px; background: rgba(255, 255, 255, 0.1); border-radius: 12px; z-index: 100 !important;
     }
-    /* 🟢 THE FIX: Creates a massive 100px invisible touch-shield around the active sticker so you can pinch tiny images easily! */
-    .editor-sticker.active::after {
-      content: ""; position: absolute;
-      top: -100px; left: -100px; right: -100px; bottom: -100px;
-      background: transparent; z-index: -1;
-    }
+
     .editor-toolbar {
       padding: 15px; background: #111; display: flex; justify-content: space-around;
       padding-bottom: max(15px, env(safe-area-inset-bottom));
