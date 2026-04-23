@@ -709,7 +709,12 @@
     </div>
 
     <div class="ig-text-controls">
+      <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+          <button class="editor-btn" style="color:#ef4444; margin:0; padding-right :10px;" onclick="closeTextEditor()">Cancel</button>
+          <button class="editor-btn editor-btn-submit" style="margin:0;" onclick="applyTextSticker()">Done</button>
+        </div>
       <div class="text-controls-flex">
+        
         <div class="text-col">
           <label>Font Style</label>
           <select id="textStickerFont" style="font-size: 16px;" onchange="updateTextPreview()">
@@ -745,10 +750,7 @@
           Add Drop Shadow
         </label>
         
-        <div style="display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
-          <button class="editor-btn" style="color:#ef4444; margin:0; padding:0;" onclick="closeTextEditor()">Cancel</button>
-          <button class="editor-btn editor-btn-submit" style="margin:0;" onclick="applyTextSticker()">Done</button>
-        </div>
+        
 
       </div>
     </div>
