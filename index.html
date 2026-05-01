@@ -816,7 +816,6 @@
     let allImages = [], currentIndex = 0, isFirstLoad = true, hasRendered = false, scrollObserver = null;
     let viewerWindow = null;
 
-    const gridThumbSize = (window.innerWidth > 768) ? '=w300' : '=w250'; 
 
     window.onload = () => {
       
@@ -1134,9 +1133,10 @@
         let h = ph.getHours(), m = ph.getMinutes().toString().padStart(2, '0');
         displayTime = `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
       }
-      let baseUrl = rawUrl.startsWith('data:') ? rawUrl : rawUrl.split('=')[0];
-      return { id, name, baseUrl, url: baseUrl + (rawUrl.startsWith('data:') ? '' : gridThumbSize), displayTime, searchStr: `${displayTime} ${name}`.toLowerCase() };
-    }
+      const baseUrl = `https://lh3.googleusercontent.com/d/${id}`;
+  const url = `${baseUrl}=w${window.innerWidth > 768 ? 300 : 250}`;
+  return { id, name, baseUrl, url, displayTime, searchStr: `${displayTime} ${name}`.toLowerCase() };
+}
 
     function handleSearch() {
       const val = document.getElementById('timeSearch').value;
