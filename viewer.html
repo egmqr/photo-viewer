@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Photo Viewer</title>
   
-  <link rel="preconnect" href="https://drive.google.com" crossorigin>
   
   <style>
     body { margin:0; background:#000; height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow:hidden; } 
@@ -130,7 +129,7 @@
       const currentScroll = wrapper.scrollLeft; 
       
       let fHtml = '';
-      images.forEach((f, i) => { fHtml += `<img id="pt-${i}" class="filmstrip-thumb ${i === currentIndex ? 'active' : ''}" src="${f.baseUrl.startsWith('data:') ? f.baseUrl : f.baseUrl + '=s50-c'}" loading="lazy" onclick="navigateTo(${i})" onerror="this.style.display='none'">`; });
+      images.forEach((f, i) => { fHtml += `<img id="pt-${i}" class="filmstrip-thumb ${i === currentIndex ? 'active' : ''}" src="${f.baseUrl}" loading="lazy" onclick="navigateTo(${i})" onerror="this.style.display='none'">`; });
       wrapper.innerHTML = fHtml;
       
       if (forceScroll) {
@@ -163,7 +162,7 @@
         if (idx >= 0 && idx < images.length) {
           let preImg = new Image();
           let bUrl = images[idx].baseUrl;
-          preImg.src = bUrl.startsWith('data:') ? bUrl : bUrl + '=w400';
+          preImg.src = bUrl;
         }
       };
       preload(index + 1);
@@ -202,8 +201,8 @@
       imgEl.onload = null;
       imgEl.onerror = null;
 
-      let previewUrl = imgData.baseUrl.startsWith('data:') ? imgData.baseUrl : imgData.baseUrl + '=w400';
-      let scrubUrl = imgData.baseUrl.startsWith('data:') ? imgData.baseUrl : imgData.baseUrl + '=w200';
+      let previewUrl = imgData.baseUrl;
+      let scrubUrl = imgData.baseUrl;
 
       if (scrub) { 
         const now = Date.now(); 
@@ -227,7 +226,7 @@
             idleHdTimer = setTimeout(() => {
               if (currentIndex !== renderIndex) return;
               const isData = previewUrl.startsWith('data:');
-              const hdUrl = isData ? previewUrl : imgData.baseUrl + '=s0';
+              const hdUrl = imgData.baseUrl; // R2: full-res CDN URL — no size param needed
               
               if (!isData) showHint("Loading HD photo...", true);
               
@@ -262,7 +261,7 @@
       btn.innerText = "Downloading...";
       
       try { 
-        const res = await fetch(img.baseUrl + '=s0'); 
+        const res = await fetch(img.baseUrl); 
         const blob = await res.blob(); 
         const url = URL.createObjectURL(blob); 
         const a = document.createElement('a'); 
@@ -271,7 +270,7 @@
         a.click(); 
         URL.revokeObjectURL(url);
       } catch(e) { 
-        window.open(img.baseUrl + '=s0', '_blank'); 
+        window.open(img.baseUrl, '_blank'); 
       } finally { 
         btn.innerText = "Download"; 
       }
