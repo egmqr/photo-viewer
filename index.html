@@ -11,9 +11,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
   <title>Gallery</title>
 
-  <link rel="preconnect" href="https://script.google.com" crossorigin>
-  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
-  <link rel="preconnect" href="https://drive.google.com" crossorigin>
 
   <style>
     /* 🟢 BULLETPROOF TAB UNHIDER */
@@ -776,11 +773,11 @@
   </div>
   <script>
     // IMPORTANT: Make sure this points to your unified backend Apps Script URL
-    const API_URL = "https://script.google.com/macros/s/AKfycbwUzJHFrbKL-SWsfDig_Khh2dc-dRTmBIXXeAo7sMH9AhwTFy03B4OMJEuqI2BttJCC/exec";
+    const API_URL = "https://api.createdbyegm.com";
     const VIEWER_URL = "viewer.html";
 
     const urlParams = new URLSearchParams(window.location.search);
-    const targetFolderId = urlParams.get('folderId');
+    const targetPrefix = urlParams.get('prefix') || urlParams.get('folderId'); // R2: use prefix param
     
     // 🟢 EXACT ID CATCHER
     function findMyEventId() {
@@ -840,7 +837,7 @@
           
           const templateIdParam = urlParams.get('templateId') ? `&templateId=${urlParams.get('templateId')}` : '';
           
-          fetch(`${API_URL}?api=getTemplate&folderId=${targetFolderId}${templateIdParam}`)
+          fetch(`${API_URL}/api/template?prefix=${encodeURIComponent(targetPrefix)}`)
           .then(res => res.json())
           .then(async res => {
               if (res.data && res.data.length > 0) {
@@ -977,13 +974,13 @@
           window.userStickersFailed = true;
       }
 
-      if (!targetFolderId) {
+      if (!targetPrefix) {
         document.getElementById('gallery').innerHTML = "<div style='margin: 10%; grid-column: 1 / -1; text-align: center; font-size: 12px; padding: 10px; color: #333; font-weight: bold; background: rgba(255, 255, 255, 0.5); border-radius: 30px;'>No folder ID provided.</div>";
         document.getElementById('background-loader').style.display = 'none';
         return;
       }
 
-      fetch(`${API_URL}?api=getInitial&folderId=${targetFolderId}`)
+      fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(targetPrefix)}&limit=60`)
         .then(res => res.json())
         .then(res => {
           if (res.data && isFirstLoad) loadData(res.data);
@@ -1004,15 +1001,15 @@
         // Format the payload exactly how Apps Script expects it
         const b64Clean = base64Data.split(',')[1];
         const payload = {
-            action: 'uploadCommunityPhoto',
-            folderId: targetFolderId,
+            prefix: targetPrefix,
             base64Data: b64Clean,
             mimeType: 'image/jpeg',
             filename: `Community_${Date.now()}.jpg`
         };
 
-        fetch(API_URL, {
+        fetch(`${API_URL}/api/upload-community`, {
             method: 'POST',
+            headers: { 'content-type': 'application/json' },
             body: JSON.stringify(payload)
         })
         .then(response => response.json())
@@ -1099,7 +1096,7 @@
         });
     }
     function handleDeepSync() {
-      fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
+      fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(targetPrefix)}`)
         .then(res => res.json())
         .then(res => {
           document.getElementById('background-loader').style.display = 'none';
@@ -1125,7 +1122,7 @@
     }
 
     function processItem(item) {
-      const [id, name, rawUrl, rawTime] = item;
+      const [key, name, baseUrl, rawTime] = item;
       let displayTime = '';
       if (rawTime > 0) {
         const d = new Date(rawTime);
@@ -1133,9 +1130,8 @@
         let h = ph.getHours(), m = ph.getMinutes().toString().padStart(2, '0');
         displayTime = `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
       }
-      const baseUrl = `https://lh3.googleusercontent.com/d/${id}`;
-  const url = `${baseUrl}=w${window.innerWidth > 768 ? 300 : 250}`;
-  return { id, name, baseUrl, url, displayTime, searchStr: `${displayTime} ${name}`.toLowerCase() };
+      // R2: baseUrl is full-res CDN URL — used for both grid and viewer (no separate preview).
+      return { id: key, name, baseUrl, url: baseUrl, displayTime, searchStr: `${displayTime} ${name}`.toLowerCase() };
 }
 
     function handleSearch() {
@@ -1227,7 +1223,7 @@
     }
 
     function refreshData(isManualBtn = false) { 
-      fetch(`${API_URL}?api=gallery&folderId=${targetFolderId}`)
+      fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(targetPrefix)}`)
         .then(res => res.json())
         .then(res => {
           if (!res.data) return;
