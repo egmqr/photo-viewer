@@ -443,9 +443,9 @@
 // 🟢 BULLETPROOF IFRAME STRETCHER
     window.addEventListener('message', function(event) {
         
-        // --- 1. EXPAND COMMAND ---
-        if (event.data && event.data.action === 'openEditorFullscreen') {
-            console.log("📡 Fullscreen Signal Received!"); // Check your F12 Console!
+        // --- 1. EXPAND COMMAND (Editor or Viewer) ---
+        if (event.data && (event.data.action === 'openEditorFullscreen' || event.data.action === 'openViewerFullscreen')) {
+            console.log("📡 Fullscreen Signal Received!", event.data.action);
             
             const iframes = document.querySelectorAll('iframe');
             iframes.forEach(iframe => {
@@ -456,10 +456,10 @@
                 iframe.style.setProperty('position', 'fixed', 'important');
                 iframe.style.setProperty('top', '0', 'important');
                 iframe.style.setProperty('left', '0', 'important');
-                iframe.style.setProperty('right', '0', 'important'); // 🟢 NEW
-                iframe.style.setProperty('bottom', '0', 'important'); // 🟢 NEW
-                iframe.style.setProperty('width', '100%', 'important'); // 🟢 FIXED from 100vw
-                iframe.style.setProperty('height', '100%', 'important'); // 🟢 FIXED from 100vh
+                iframe.style.setProperty('right', '0', 'important');
+                iframe.style.setProperty('bottom', '0', 'important');
+                iframe.style.setProperty('width', '100%', 'important');
+                iframe.style.setProperty('height', '100%', 'important');
                 iframe.style.setProperty('z-index', '2147483647', 'important');
                 iframe.style.setProperty('max-width', '100%', 'important');
                 iframe.style.setProperty('max-height', '100%', 'important');
@@ -478,9 +478,9 @@
             document.body.style.setProperty('overflow', 'hidden', 'important'); 
         }
 
-        // --- 2. SHRINK COMMAND ---
-        if (event.data && event.data.action === 'closeEditorFullscreen') {
-            console.log("📡 Close Signal Received!");
+        // --- 2. SHRINK COMMAND (Editor or Viewer) ---
+        if (event.data && (event.data.action === 'closeEditorFullscreen' || event.data.action === 'closeViewerFullscreen')) {
+            console.log("📡 Close Signal Received!", event.data.action);
             
             const iframes = document.querySelectorAll('iframe');
             iframes.forEach(iframe => {
