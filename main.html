@@ -8,8 +8,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <link rel="preconnect" href="https://script.google.com" crossorigin>
-    <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     
     <link rel="icon" id="dynamic-favicon" href="data:image/x-icon;base64,">
@@ -314,17 +312,17 @@
         };
         
         if (logoOnMain) {
-            headerLogo.src = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=h80`;
+            headerLogo.src = `https://cdn.createdbyegm.com/assets/logos/${customLogoId}.png`;
             logoContainer.removeAttribute('href');
             logoContainer.removeAttribute('target');
             logoContainer.style.cursor = 'default';
-            document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=w64`;
+            document.getElementById('dynamic-favicon').href = `https://cdn.createdbyegm.com/assets/logos/${customLogoId}.png`;
         } else {
-            headerLogo.src = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=h80`;
+            headerLogo.src = `https://cdn.createdbyegm.com/assets/logos/${defaultLogoId}.png`;
             logoContainer.setAttribute('href', 'https://www.facebook.com/egmproductions');
             logoContainer.setAttribute('target', '_blank');
             logoContainer.style.cursor = 'pointer';
-            document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=w64`;
+            document.getElementById('dynamic-favicon').href = `https://cdn.createdbyegm.com/assets/logos/${defaultLogoId}.png`;
         }
         
         // 🟢 THE FIX: Failsafe for instantly cached images
@@ -335,7 +333,7 @@
         
         document.body.style.backgroundColor = bgColor;
         if (data.bgId && data.bgId.trim() !== '') {
-            document.body.style.backgroundImage = `url('https://drive.google.com/thumbnail?id=${data.bgId}&sz=w1000')`;
+            document.body.style.backgroundImage = `url('https://cdn.createdbyegm.com/assets/backgrounds/${data.bgId}.png')`;
         } else {
             document.body.style.backgroundImage = 'none';
         }
