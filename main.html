@@ -369,26 +369,33 @@
         boothLinks.forEach((rawLink, index) => {
             const boothNum = index + 1;
             const frameId = `frame-${boothNum}`;
-            const isTargetActive = (index === activeIndex); 
+            const isTargetActive = (index === activeIndex);
 
             let cleanLink = rawLink;
             const folderMatch = rawLink.match(/folderId=([a-zA-Z0-9_-]+)/);
-            const tabMatch = rawLink.match(/tab=([a-zA-Z0-9_-]+)/); 
-            
-            let tabLabel = `Photobooth ${boothNum}`;
+            const prefixMatch = rawLink.match(/[?&]prefix=([^&]+)/);
+            const tabMatch = rawLink.match(/tab=([a-zA-Z0-9_-]+)/);
+            const isCommunity = rawLink.includes('isCommunity=true');
 
-            if (folderMatch) {
+            let tabLabel = isCommunity ? 'Community Booth' : `Photobooth ${boothNum}`;
+
+            if (prefixMatch) {
+                // R2 booth — load in webqr gallery iframe
+                const prefix = decodeURIComponent(prefixMatch[1]);
+                cleanLink = `https://webqr.createdbyegm.com/gallery?prefix=${encodeURIComponent(prefix)}`;
+            } else if (folderMatch) {
+                // Legacy Drive booth link
                 cleanLink = `index.html?folderId=${folderMatch[1]}`;
-                
+
                 if (tabMatch) {
                     cleanLink += `&tab=${tabMatch[1]}`;
                     if (tabMatch[1] === 'community') {
-                        tabLabel = "Community Booth"; 
+                        tabLabel = "Community Booth";
                     }
                 }
 
                 const mainUrlParams = new URLSearchParams(window.location.search);
-                
+
                 const exactId = mainUrlParams.get('id');
                 if (exactId) {
                     cleanLink += `&id=${exactId}`;
