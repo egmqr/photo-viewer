@@ -380,9 +380,9 @@
             let tabLabel = isCommunity ? 'Community Booth' : `Photobooth ${boothNum}`;
 
             if (prefixMatch) {
-                // R2 booth — load in webqr gallery iframe
+                // R2 booth — load photo-viewer index.html with prefix param
                 const prefix = decodeURIComponent(prefixMatch[1]);
-                cleanLink = `https://webqr.createdbyegm.com/gallery?prefix=${encodeURIComponent(prefix)}`;
+                cleanLink = `index.html?prefix=${encodeURIComponent(prefix)}`;
             } else if (folderMatch) {
                 // Legacy Drive booth link
                 cleanLink = `index.html?folderId=${folderMatch[1]}`;
