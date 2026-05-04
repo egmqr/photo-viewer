@@ -8,8 +8,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <link rel="preconnect" href="https://script.google.com" crossorigin>
-    <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     
     <link rel="icon" id="dynamic-favicon" href="data:image/x-icon;base64,">
@@ -295,8 +293,8 @@
     }
 
     window.buildPageContent = function(data, requestedTab) {
-        const customLogoId = data.logoId && data.logoId.trim() !== '' ? data.logoId : '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
-        const defaultLogoId = '18EhLIaW5Hdw8a5--RUUy4B7n0AkWV-jn';
+        const customLogoId = data.logoId && data.logoId.trim() !== '' ? data.logoId : 'egm_fav copy';
+        const defaultLogoId = 'egm_fav copy';
         const fontColor = data.fontColor || '#ffffff';
         const bgColor = data.bgColor || '#000000';
         
@@ -314,17 +312,17 @@
         };
         
         if (logoOnMain) {
-            headerLogo.src = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=h80`;
+            headerLogo.src = `https://cdn.createdbyegm.com/assets/logos/${customLogoId}.png`;
             logoContainer.removeAttribute('href');
             logoContainer.removeAttribute('target');
             logoContainer.style.cursor = 'default';
-            document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${customLogoId}&sz=w64`;
+            document.getElementById('dynamic-favicon').href = `https://cdn.createdbyegm.com/assets/logos/${customLogoId}.png`;
         } else {
-            headerLogo.src = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=h80`;
+            headerLogo.src = `https://cdn.createdbyegm.com/assets/logos/${defaultLogoId}.png`;
             logoContainer.setAttribute('href', 'https://www.facebook.com/egmproductions');
             logoContainer.setAttribute('target', '_blank');
             logoContainer.style.cursor = 'pointer';
-            document.getElementById('dynamic-favicon').href = `https://drive.google.com/thumbnail?id=${defaultLogoId}&sz=w64`;
+            document.getElementById('dynamic-favicon').href = `https://cdn.createdbyegm.com/assets/logos/${defaultLogoId}.png`;
         }
         
         // 🟢 THE FIX: Failsafe for instantly cached images
@@ -335,7 +333,7 @@
         
         document.body.style.backgroundColor = bgColor;
         if (data.bgId && data.bgId.trim() !== '') {
-            document.body.style.backgroundImage = `url('https://drive.google.com/thumbnail?id=${data.bgId}&sz=w1000')`;
+            document.body.style.backgroundImage = `url('https://cdn.createdbyegm.com/assets/backgrounds/${data.bgId}.png')`;
         } else {
             document.body.style.backgroundImage = 'none';
         }
@@ -371,26 +369,33 @@
         boothLinks.forEach((rawLink, index) => {
             const boothNum = index + 1;
             const frameId = `frame-${boothNum}`;
-            const isTargetActive = (index === activeIndex); 
+            const isTargetActive = (index === activeIndex);
 
             let cleanLink = rawLink;
             const folderMatch = rawLink.match(/folderId=([a-zA-Z0-9_-]+)/);
-            const tabMatch = rawLink.match(/tab=([a-zA-Z0-9_-]+)/); 
-            
-            let tabLabel = `Photobooth ${boothNum}`;
+            const prefixMatch = rawLink.match(/[?&]prefix=([^&]+)/);
+            const tabMatch = rawLink.match(/tab=([a-zA-Z0-9_-]+)/);
+            const isCommunity = rawLink.includes('isCommunity=true');
 
-            if (folderMatch) {
+            let tabLabel = isCommunity ? 'Community Booth' : `Photobooth ${boothNum}`;
+
+            if (prefixMatch) {
+                // R2 booth — load photo-viewer index.html with prefix param
+                const prefix = decodeURIComponent(prefixMatch[1]);
+                cleanLink = `index.html?prefix=${encodeURIComponent(prefix)}`;
+            } else if (folderMatch) {
+                // Legacy Drive booth link
                 cleanLink = `index.html?folderId=${folderMatch[1]}`;
-                
+
                 if (tabMatch) {
                     cleanLink += `&tab=${tabMatch[1]}`;
                     if (tabMatch[1] === 'community') {
-                        tabLabel = "Community Booth"; 
+                        tabLabel = "Community Booth";
                     }
                 }
 
                 const mainUrlParams = new URLSearchParams(window.location.search);
-                
+
                 const exactId = mainUrlParams.get('id');
                 if (exactId) {
                     cleanLink += `&id=${exactId}`;
