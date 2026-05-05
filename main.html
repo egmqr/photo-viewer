@@ -393,21 +393,26 @@
                         tabLabel = "Community Booth";
                     }
                 }
+            }
 
-                const mainUrlParams = new URLSearchParams(window.location.search);
+            // 🟢 UNIVERSAL PARAM FORWARDING — applies to both R2 and Legacy booths
+            if (isCommunity) {
+                cleanLink += `&isCommunity=true`;
+            }
 
-                const exactId = mainUrlParams.get('id');
-                if (exactId) {
-                    cleanLink += `&id=${exactId}`;
-                }
+            const mainUrlParams = new URLSearchParams(window.location.search);
 
-                const exactStickers = mainUrlParams.get('userStickers');
-                if (exactStickers) {
-                    cleanLink += `&userStickers=${exactStickers}`;
-                } else {
-                    const stickerMatch = rawLink.match(/userStickers=(true|false)/);
-                    if (stickerMatch) cleanLink += `&userStickers=${stickerMatch[1]}`;
-                }
+            const exactId = mainUrlParams.get('id');
+            if (exactId) {
+                cleanLink += `&id=${exactId}`;
+            }
+
+            const exactStickers = mainUrlParams.get('userStickers');
+            if (exactStickers) {
+                cleanLink += `&userStickers=${exactStickers}`;
+            } else {
+                const stickerMatch = rawLink.match(/userStickers=(true|false)/);
+                if (stickerMatch) cleanLink += `&userStickers=${stickerMatch[1]}`;
             }
 
             if (boothLinks.length > 1) {
