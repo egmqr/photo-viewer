@@ -1233,7 +1233,30 @@ function setupRealtimeStream() {
             console.error("Error processing live photo:", err);
         }
     });
+    // Listen for incoming "deleted_photo" messages
+    galleryStream.addEventListener('deleted_photo', (event) => {
+        try {
+            const incomingData = JSON.parse(event.data);
+            const deletedId = incomingData.id;
 
+            // Check if it's currently in our list
+            const exists = allImages.some(img => img.id === deletedId);
+            
+            if (exists) {
+                // Remove it from both arrays
+                allImages = allImages.filter(img => img.id !== deletedId);
+                window.filteredImages = window.filteredImages.filter(img => img.id !== deletedId);
+                
+                // Add to deadImageIds just to be absolutely sure it doesn't try to load again
+                window.deadImageIds.add(deletedId);
+
+                // Re-render the grid immediately
+                applyFilter(true); 
+            }
+        } catch (err) {
+            console.error("Error processing deleted photo:", err);
+        }
+    });
     // 4. Handle connection drops (EventSource auto-reconnects, but good for logging)
     galleryStream.onerror = (error) => {
         console.warn("Live stream interrupted. Attempting to reconnect...");
