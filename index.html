@@ -1192,28 +1192,76 @@
             showCustomDialog("Action Blocked", "Failed to copy link. Your browser might block this.", false);
         });
     }
-    function handleDeepSync() {
-      fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(targetPrefix)}`)
-        .then(res => res.json())
-        .then(res => {
-          document.getElementById('background-loader').style.display = 'none';
-          if (!res.data) return;
+    let galleryStream; // Store the connection globally
 
-          allImages = res.data.map(processItem).filter(img => !window.deadImageIds.has(img.id));
-
-          applyFilter(hasRendered); 
-
-          hasRendered = true;
-          isFirstLoad = false; 
-          showToast('Gallery up to date'); 
-          setInterval(() => refreshData(false), 90000); 
-
-        })
-        .catch(err => {
-          console.error("Deep sync failed:", err);
-          document.getElementById('background-loader').style.display = 'none';
-        });
+function setupRealtimeStream() {
+    // 1. Close any existing connections to prevent duplicates
+    if (galleryStream) {
+        galleryStream.close();
     }
+
+    // 2. Open the SSE connection to your backend
+    const streamUrl = `${API_URL}/api/stream?prefix=${encodeURIComponent(targetPrefix)}`;
+    galleryStream = new EventSource(streamUrl);
+
+    // 3. Listen for incoming "new_photo" messages
+    galleryStream.addEventListener('new_photo', (event) => {
+        try {
+            const incomingData = JSON.parse(event.data);
+            
+            // Format to match your existing processItem array structure: [key, name, baseUrl, rawTime]
+            const newItemArray = [
+                incomingData.id, 
+                incomingData.name, 
+                incomingData.baseUrl, 
+                incomingData.time || Date.now()
+            ];
+            
+            const processedItem = processItem(newItemArray);
+
+            // 4. Inject it into the UI immediately
+            if (!window.deadImageIds.has(processedItem.id)) {
+                // Check if it already exists to prevent duplicates
+                const exists = allImages.some(img => img.id === processedItem.id);
+                if (!exists) {
+                    allImages.unshift(processedItem); // Add to the very top
+                    applyFilter(true); // Re-render the grid
+                    showToast("New photo added! 📸");
+                }
+            }
+        } catch (err) {
+            console.error("Error processing live photo:", err);
+        }
+    });
+
+    // 4. Handle connection drops (EventSource auto-reconnects, but good for logging)
+    galleryStream.onerror = (error) => {
+        console.warn("Live stream interrupted. Attempting to reconnect...");
+    };
+}
+    function handleDeepSync() {
+    fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(targetPrefix)}`)
+    .then(res => res.json())
+    .then(res => {
+        document.getElementById('background-loader').style.display = 'none';
+        if (!res.data) return;
+
+        allImages = res.data.map(processItem).filter(img => !window.deadImageIds.has(img.id));
+
+        applyFilter(hasRendered); 
+
+        hasRendered = true;
+        isFirstLoad = false; 
+        showToast('Gallery is live'); 
+        
+        // START THE LIVE STREAM HERE
+        setupRealtimeStream(); 
+    })
+    .catch(err => {
+        console.error("Deep sync failed:", err);
+        document.getElementById('background-loader').style.display = 'none';
+    });
+}
 
     function processItem(item) {
       const [key, name, baseUrl, rawTime] = item;
