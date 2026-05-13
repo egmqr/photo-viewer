@@ -1194,6 +1194,8 @@
     }
     let galleryStream; // Store the connection globally
 
+let galleryStream; // Store the connection globally
+
 function setupRealtimeStream() {
     // 1. Close any existing connections to prevent duplicates
     if (galleryStream) {
@@ -1209,7 +1211,6 @@ function setupRealtimeStream() {
         try {
             const incomingData = JSON.parse(event.data);
             
-            // Format to match your existing processItem array structure: [key, name, baseUrl, rawTime]
             const newItemArray = [
                 incomingData.id, 
                 incomingData.name, 
@@ -1219,13 +1220,11 @@ function setupRealtimeStream() {
             
             const processedItem = processItem(newItemArray);
 
-            // 4. Inject it into the UI immediately
             if (!window.deadImageIds.has(processedItem.id)) {
-                // Check if it already exists to prevent duplicates
                 const exists = allImages.some(img => img.id === processedItem.id);
                 if (!exists) {
-                    allImages.unshift(processedItem); // Add to the very top
-                    applyFilter(true); // Re-render the grid
+                    allImages.unshift(processedItem); 
+                    applyFilter(true); 
                     showToast("New photo added! 📸");
                 }
             }
@@ -1233,35 +1232,40 @@ function setupRealtimeStream() {
             console.error("Error processing live photo:", err);
         }
     });
+
     // Listen for incoming "deleted_photo" messages
     galleryStream.addEventListener('deleted_photo', (event) => {
         try {
             const incomingData = JSON.parse(event.data);
             const deletedId = incomingData.id;
 
-            // Check if it's currently in our list
             const exists = allImages.some(img => img.id === deletedId);
-            
             if (exists) {
-                // Remove it from both arrays
                 allImages = allImages.filter(img => img.id !== deletedId);
                 window.filteredImages = window.filteredImages.filter(img => img.id !== deletedId);
-                
-                // Add to deadImageIds just to be absolutely sure it doesn't try to load again
                 window.deadImageIds.add(deletedId);
-
-                // Re-render the grid immediately
                 applyFilter(true); 
             }
         } catch (err) {
             console.error("Error processing deleted photo:", err);
         }
     });
-    // 4. Handle connection drops (EventSource auto-reconnects, but good for logging)
+
+    // 🟢 THE FIX 1: If the stream drops due to mobile network shifting, trigger a deep sync!
     galleryStream.onerror = (error) => {
-        console.warn("Live stream interrupted. Attempting to reconnect...");
+        console.warn("Live stream interrupted. Resyncing to catch missed photos...");
+        refreshData(false); // Silently grab any missing photos in the background
     };
 }
+
+// 🟢 THE FIX 2: If the user locks their phone or changes tabs, resync immediately when they come back!
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        console.log("Tab became active. Triggering safety deep-sync...");
+        refreshData(false); // Catch any photos uploaded while the phone was asleep
+        setupRealtimeStream(); // Reboot the stream to guarantee a healthy connection
+    }
+});
     function handleDeepSync() {
     fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(targetPrefix)}`)
     .then(res => res.json())
