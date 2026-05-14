@@ -1642,12 +1642,14 @@ function setupEditorWorkspace() {
 }
 
 function preloadDynamicStickers() {
-    const allDynamicStickers = [...(stickerCatalog.custom || []), ...(stickerCatalog.glasses || [])];
-    allDynamicStickers.forEach(url => {
-        const img = new Image();
-        img.src = url;
-    });
-}
+      // Added userStickers to the preload array
+      const allDynamicStickers = [...(stickerCatalog.custom || []), ...(stickerCatalog.glasses || []), ...(stickerCatalog.userStickers || [])];
+      allDynamicStickers.forEach(url => {
+          const img = new Image();
+          img.crossOrigin = "anonymous"; // 👇 FIX: Added this line
+          img.src = url;
+      });
+  }
 
 function updateDrawSettings() {
     if (!ctxDoodle) return;
@@ -2038,14 +2040,15 @@ function loadStickerCategory(category, btnElement) {
     }
 
     let html = '';
-    stickerCatalog[category].forEach(code => {
-        const url = (code.startsWith('http')) ? code : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
-        html += `<img class="sticker-item" src="${url}" loading="lazy" decoding="async" onclick="addSticker('${url}', 120, 120)">`;
-    });
-    
-    stickerCache[category] = html;
-    grid.innerHTML = html;
-}
+      stickerCatalog[category].forEach(code => {
+          const url = (code.startsWith('http')) ? code : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
+          // 👇 FIX: Added crossorigin="anonymous"
+          html += `<img class="sticker-item" src="${url}" crossorigin="anonymous" loading="lazy" decoding="async" onclick="addSticker('${url}', 120, 120)">`;
+      });
+      
+      stickerCache[category] = html;
+      grid.innerHTML = html;
+  }
 
 function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
@@ -2134,10 +2137,12 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     wrapper.style.setProperty('--scale', '1'); // 🟢 NEW: Set default scale
 
     const img = document.createElement('img');
-    img.crossOrigin = "anonymous"; 
-    img.src = url;
+      img.crossOrigin = "anonymous"; 
+      
+      // 👇 FIX: Add a cache-buster query parameter to bypass the strict CORS cache
+      img.src = url + (url.includes('?') ? '&' : '?') + 'c=' + Date.now();
 
-    const delBtn = document.createElement('div');
+      const delBtn = document.createElement('div');
     delBtn.className = 'sticker-delete-btn';
     delBtn.innerHTML = '✕';
     
