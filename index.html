@@ -984,7 +984,7 @@
             if (Array.isArray(files)) {
                 stickerCatalog.custom = files
                     .filter(file => file.name.toLowerCase().endsWith('.png'))
-                    .map(file => `https://egmqr.github.io/photo-viewer/stickers01/${file.name}`);
+                    .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers01/${file.name}`);
                 
                 if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('Custom')) {
                     delete stickerCache['custom']; 
@@ -1010,7 +1010,7 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 DYNAMIC USER STICKERS SCANNER (Strict URL Check)
+      // 🟢 DYNAMIC USER STICKERS SCANNER (R2 API Fetch)
       // Only runs if the URL explicitly says userStickers=true
       const isUserStickersEnabled = window.location.search.toLowerCase().includes('userstickers=true');
 
@@ -1018,37 +1018,47 @@
           const userTab = document.getElementById('tabUserStickers');
           if (userTab) userTab.style.setProperty('display', 'inline-block', 'important'); 
 
-          // 🟢 THE FIX: Strip the _D2 so all days share the exact same GitHub folder!
+          // Check the exact event ID (fallback is handled globally by Ops Dashboard logic if they share)
+          const exactStickerId = window.globalEventId;
           const baseStickerId = window.globalEventId.split('_')[0];
+          
+          const fetchStickers = async (eventIdToUse) => {
+              const r2Prefix = `events/${eventIdToUse}/user-stickers`;
+              const res = await fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(r2Prefix)}&limit=100`);
+              if (!res.ok) throw new Error("Network response was not ok");
+              const result = await res.json();
+              if (result.status === 'success' && result.data && result.data.length > 0) {
+                  return result.data.map(item => item[2]); // Extract full URLs
+              }
+              throw new Error("Empty or invalid response");
+          };
 
-          fetch(`https://api.github.com/repos/egmqr/photo-viewer/contents/stickers-${baseStickerId}`)
-            .then(res => {
-                if (!res.ok) throw new Error("Folder not found.");
-                return res.json();
-            })
-            .then(files => {
-                if (Array.isArray(files) && files.length > 0) {
-                    window.githubStickersFound = true; // Global success flag
-                    
-                    stickerCatalog.userStickers = files
-                        .filter(file => file.name.toLowerCase().endsWith('.png'))
-                        .map(file => `https://cdn.jsdelivr.net/gh/egmqr/photo-viewer/stickers-${baseStickerId}/${file.name}`);
-                    
-                    if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
-                        delete stickerCache['userStickers']; 
-                        loadStickerCategory('userStickers', document.querySelector('.sticker-tab.active'));
-                    }
-                }
-            })
-            .catch(err => {
-                console.warn(`Dynamic stickers bypassed:`, err.message);
-                window.userStickersFailed = true;
-                
-                const grid = document.getElementById('stickerGrid');
-                if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
-                    grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${baseStickerId}' on GitHub.</span></div>`;
-                }
-            });
+          fetchStickers(exactStickerId)
+              .catch(() => {
+                  // Fallback to base ID if exact ID didn't have stickers
+                  if (exactStickerId !== baseStickerId) {
+                      return fetchStickers(baseStickerId);
+                  }
+                  throw new Error("No stickers");
+              })
+              .then(stickerUrls => {
+                  window.githubStickersFound = true; // Legacy global flag
+                  stickerCatalog.userStickers = stickerUrls;
+                  
+                  if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
+                      delete stickerCache['userStickers']; 
+                      loadStickerCategory('userStickers', document.querySelector('.sticker-tab.active'));
+                  }
+              })
+              .catch(err => {
+                  console.warn(`Dynamic stickers bypassed:`, err.message);
+                  window.userStickersFailed = true;
+                  
+                  const grid = document.getElementById('stickerGrid');
+                  if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
+                      grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Upload them via Ops Dashboard!</span></div>`;
+                  }
+              });
       } else {
           // If the URL parameter is missing, cleanly flag it as failed/disabled
           window.userStickersFailed = true;
@@ -2014,7 +2024,7 @@ function loadStickerCategory(category, btnElement) {
     }
 
     if (category === 'userStickers' && window.userStickersFailed) {
-        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Create 'stickers-${window.globalEventId}' on GitHub.</span></div>`;
+        grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Upload them via Ops Dashboard!</span></div>`;
         return;
     }
 
