@@ -2127,15 +2127,20 @@ function addSticker(url, sWidth = 120, sHeight = 120, forceX = null, forceY = nu
     wrapper.dataset.baseH = sHeight;
     wrapper.dataset.scale = 1;
     wrapper.dataset.rot = 0;
-    wrapper.style.setProperty('--scale', '1'); // 🟢 NEW: Set default scale
+    wrapper.style.setProperty('--scale', '1');
 
     const img = document.createElement('img');
-      img.crossOrigin = "anonymous"; 
-      
-      // 👇 FIX: Add a cache-buster query parameter to bypass the strict CORS cache
-      img.src = url + (url.includes('?') ? '&' : '?') + 'c=' + Date.now();
+    
+    // 🟢 THE FIX: Only apply CORS and Cache-Busting to actual web URLs!
+    // Base64 Data URLs (from Draw/Text tools) must be left completely untouched.
+    if (url.startsWith('data:')) {
+        img.src = url;
+    } else {
+        img.crossOrigin = "anonymous"; 
+        img.src = url + (url.includes('?') ? '&' : '?') + 'c=' + Date.now();
+    }
 
-      const delBtn = document.createElement('div');
+    const delBtn = document.createElement('div');
     delBtn.className = 'sticker-delete-btn';
     delBtn.innerHTML = '✕';
     
