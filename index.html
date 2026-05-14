@@ -1010,21 +1010,16 @@
         })
         .catch(err => console.error("Failed to load Placeholders:", err));
 
-      // 🟢 DYNAMIC USER STICKERS SCANNER (R2 API Fetch)
-      // Only runs if the URL explicitly says userStickers=true
-      const isUserStickersEnabled = window.location.search.toLowerCase().includes('userstickers=true');
-
-      if (isUserStickersEnabled && window.globalEventId !== 'unknown') {
-          const userTab = document.getElementById('tabUserStickers');
-          if (userTab) userTab.style.setProperty('display', 'inline-block', 'important'); 
-
-          // Check the exact event ID (fallback is handled globally by Ops Dashboard logic if they share)
+      // 🟢 DYNAMIC USER STICKERS SCANNER (Smart Auto-Detect + Mobile Cache Buster!)
+      if (window.globalEventId !== 'unknown') {
           const exactStickerId = window.globalEventId;
           const baseStickerId = window.globalEventId.split('_')[0];
           
           const fetchStickers = async (eventIdToUse) => {
               const r2Prefix = `events/${eventIdToUse}/user-stickers`;
-              const res = await fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(r2Prefix)}&limit=100`);
+              // 👇 THE FIX: Added &c=${Date.now()} to shatter the mobile browser cache!
+              const res = await fetch(`${API_URL}/api/gallery?prefix=${encodeURIComponent(r2Prefix)}&limit=100&c=${Date.now()}`);
+              
               if (!res.ok) throw new Error("Network response was not ok");
               const result = await res.json();
               if (result.status === 'success' && result.data && result.data.length > 0) {
@@ -1035,15 +1030,21 @@
 
           fetchStickers(exactStickerId)
               .catch(() => {
-                  // Fallback to base ID if exact ID didn't have stickers
+                  // Fallback to base ID if exact multi-day ID didn't have stickers
                   if (exactStickerId !== baseStickerId) {
                       return fetchStickers(baseStickerId);
                   }
                   throw new Error("No stickers");
               })
               .then(stickerUrls => {
-                  window.githubStickersFound = true; // Legacy global flag
+                  window.githubStickersFound = true; // Flag for the UI to reveal the tab
                   stickerCatalog.userStickers = stickerUrls;
+                  
+                  // Unhide the tab if the drawer is already in the DOM
+                  const userTab = document.getElementById('tabUserStickers');
+                  if (userTab) {
+                      userTab.style.setProperty('display', 'inline-block', 'important'); 
+                  }
                   
                   if (document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
                       delete stickerCache['userStickers']; 
@@ -1051,17 +1052,8 @@
                   }
               })
               .catch(err => {
-                  console.warn(`Dynamic stickers bypassed:`, err.message);
-                  window.userStickersFailed = true;
-                  
-                  const grid = document.getElementById('stickerGrid');
-                  if (grid && document.getElementById('stickerDrawer').classList.contains('open') && document.querySelector('.sticker-tab.active').innerText.includes('User')) {
-                      grid.innerHTML = `<div style="color:#aaa; font-size: 13px; margin-top:30px; text-align:center; width:100%;">No event stickers uploaded yet.<br><span style="font-size:10px; opacity:0.7;">Upload them via Ops Dashboard!</span></div>`;
-                  }
+                  window.userStickersFailed = true; // Fails silently, tab stays hidden
               });
-      } else {
-          // If the URL parameter is missing, cleanly flag it as failed/disabled
-          window.userStickersFailed = true;
       }
 
       if (!targetPrefix) {
@@ -2053,7 +2045,9 @@ function openStickerDrawer() {
     if (isDrawMode) toggleDrawMode(); 
     if (window.activeSticker) deselectActiveSticker(); 
     
-    const shouldShowTab = window.location.search.toLowerCase().includes('userstickers=true');
+    // 🟢 THE FIX: Ask the smart detector if we found stickers, completely ignore the URL!
+    const shouldShowTab = (window.githubStickersFound === true);
+    
     const tabsContainer = document.getElementById('stickerTabs');
     let userTabBtn = document.getElementById('tabUserStickers');
     
