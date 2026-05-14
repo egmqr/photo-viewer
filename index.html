@@ -1642,14 +1642,13 @@ function setupEditorWorkspace() {
 }
 
 function preloadDynamicStickers() {
-      // Added userStickers to the preload array
-      const allDynamicStickers = [...(stickerCatalog.custom || []), ...(stickerCatalog.glasses || []), ...(stickerCatalog.userStickers || [])];
-      allDynamicStickers.forEach(url => {
-          const img = new Image();
-          img.crossOrigin = "anonymous"; // 👇 FIX: Added this line
-          img.src = url;
-      });
-  }
+    const allDynamicStickers = [...(stickerCatalog.custom || []), ...(stickerCatalog.glasses || []), ...(stickerCatalog.userStickers || [])];
+    allDynamicStickers.forEach(url => {
+        const img = new Image();
+        // 👇 Removed the crossOrigin line here
+        img.src = url;
+    });
+}
 
 function updateDrawSettings() {
     if (!ctxDoodle) return;
@@ -2040,11 +2039,11 @@ function loadStickerCategory(category, btnElement) {
     }
 
     let html = '';
-      stickerCatalog[category].forEach(code => {
-          const url = (code.startsWith('http')) ? code : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
-          // 👇 FIX: Added crossorigin="anonymous"
-          html += `<img class="sticker-item" src="${url}" crossorigin="anonymous" loading="lazy" decoding="async" onclick="addSticker('${url}', 120, 120)">`;
-      });
+    stickerCatalog[category].forEach(code => {
+        const url = (code.startsWith('http')) ? code : `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${code}.png`;
+        // 👇 Removed crossorigin="anonymous"
+        html += `<img class="sticker-item" src="${url}" loading="lazy" decoding="async" onclick="addSticker('${url}', 120, 120)">`;
+    });
       
       stickerCache[category] = html;
       grid.innerHTML = html;
